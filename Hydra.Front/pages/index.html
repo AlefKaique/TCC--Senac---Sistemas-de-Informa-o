@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hydra PDV — Gestão completa da sua loja em um só lugar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="header">
+    <div class="container header__inner">
+      <a href="#" class="logo">
+        <img src="../img/logo-hydra.png" alt="Hydra PDV">
+      </a>
+
+      <nav class="nav" id="nav">
+        <a href="#home" class="nav__link nav__link--active" data-nav-link>Home</a>
+        <a href="#recursos" class="nav__link" data-nav-link>Recursos</a>
+        <a href="#planos" class="nav__link" data-nav-link>Planos</a>
+        <a href="#termos" class="nav__link" data-nav-link>Termos de Uso</a>
+      </nav>
+
+      <div class="header__actions">
+        <a href="login.html" class="btn btn--ghost btn--sm">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M12 12a5 5 0 100-10 5 5 0 000 10zM3 22c0-4.97 4.03-9 9-9s9 4.03 9 9" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" />
+          </svg>
+          Login
+        </a>
+        <a href="cadastro.html" class="btn btn--outline btn--sm">Cadastre-se</a>
+      </div>
+
+      <button class="hamburger" id="hamburger" aria-label="Abrir menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ===== HERO ===== -->
+    <section class="hero" id="home">
+      <div class="container hero__inner">
+
+
+        <h1 class="hero__title">
+          Gestão completa da<br>
+          sua loja em <span class="text-accent">um só lugar</span>
+        </h1>
+
+        <p class="hero__subtitle">
+          Hydra PDV unifica caixa, estoque, financeiro e clientes numa plataforma simples para
+          pequenos e médios varejistas brasileiros.
+        </p>
+
+        <form class="hero__form" id="hero-form">
+          <input type="email" class="hero__input" placeholder="Insira seu e-mail" required
+            aria-label="Insira seu e-mail">
+          <button type="submit" class="btn btn--primary">
+            <span class="btn__arrow">➜</span> Teste gratuito
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===== FEATURES ===== -->
+    <section class="features" id="recursos">
+      <div class="container features__grid">
+
+        <article class="feature-card">
+
+
+          <span class="feature-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M3 4h2l1.6 9.6A2 2 0 008.6 15H18a2 2 0 001.95-1.55L21.5 8H6" stroke="currentColor"
+                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+              <circle cx="9" cy="19" r="1.4" fill="currentColor" />
+              <circle cx="17" cy="19" r="1.4" fill="currentColor" />
+            </svg>
+          </span>
+          <h2>PDV<br>Inteligente</h2>
+          <p>Finalize vendas rapidamente com suporte a código de barras, múltiplas formas de pagamento e emissão de
+            cupom.</p>
+        </article>
+
+        <article class="feature-card">
+
+          <span class="feature-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M3 7l9-4 9 4-9 4-9-4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+              <path d="M3 7v10l9 4 9-4V7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+              <path d="M12 11v10" stroke="currentColor" stroke-width="1.8" />
+            </svg>
+          </span>
+          <h2>Controle<br>de Estoque</h2>
+          <p>Monitore entradas e saídas, defina estoques mínimos e receba alertas automáticos antes de zerar.</p>
+        </article>
+
+        <article class="feature-card feature-card--large">
+
+          <div class="feature-card__deco">
+            <span class="q q1"></span>
+            <span class="q q2"></span>
+            <span class="q q3"></span>
+            <span class="q q4"></span>
+          </div>
+
+          <span class="feature-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="18" height="18" rx="2.5" stroke="currentColor" stroke-width="1.8" />
+              <path d="M7 15v-3M12 15V8M17 15v-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+          </span>
+          <h2>Dashboard<br>em Tempo Real</h2>
+          <p>Acompanhe KPIs do seu negócio: faturamento, ticket médio, produtos mais vendidos e muito mais.</p>
+        </article>
+
+        <article class="feature-card feature-card--large">
+
+          <div class="feature-card__deco">
+            <span class="q q1"></span>
+            <span class="q q2"></span>
+            <span class="q q3"></span>
+            <span class="q q4"></span>
+          </div>
+
+          <span class="feature-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.8" />
+              <path d="M3.5 19c0-3 2.5-5.2 5.5-5.2s5.5 2.2 5.5 5.2" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" />
+              <circle cx="17" cy="8.5" r="2.4" stroke="currentColor" stroke-width="1.8" />
+              <path d="M15.8 13.6c2.4.3 4.2 2.2 4.2 4.9" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" />
+            </svg>
+          </span>
+          <h2>Gestão de<br>Clientes</h2>
+          <p>Cadastre clientes, acompanhe histórico de compras e fidelize com programa de pontos integrado.</p>
+        </article>
+
+        <article class="feature-card">
+
+          <span class="feature-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M5 17l4.5-11 4.5 11M6.3 13.5h6.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round" />
+              <path d="M16 9l2.5 8M19.8 9l-2.5 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+          </span>
+          <h2>Acessibilidade<br>A+ A-</h2>
+          <p>Aumente ou diminua a fonte. Ícones intuitivos.</p>
+        </article>
+
+        <article class="feature-card">
+
+          <span class="feature-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 3l7 3v5.5c0 4.4-3 7.9-7 9.5-4-1.6-7-5.1-7-9.5V6l7-3z" stroke="currentColor"
+                stroke-width="1.8" stroke-linejoin="round" />
+              <path d="M9.3 12.2l1.9 1.9 3.5-3.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+          </span>
+          <h2>Controle<br>de Acesso</h2>
+          <p>Perfis por cargo: Gerente e Estoquista. Cada um vê somente o que precisa.</p>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ===== PLANS ===== -->
+    <section class="plans" id="planos">
+      <div class="container">
+        <h2 class="section-title">Plano de Assinaturas<br>Sistema Hydra</h2>
+        <p class="section-subtitle">Sem taxas ocultas. Cancele quando quiser</p>
+
+        <div class="plans__grid">
+
+          <!-- FREE -->
+          <div class="plan-card">
+            <h3 class="plan-card__name">Plano Gratuito – Hydra Start</h3>
+            <div class="plan-card__price">
+              <span class="plan-card__value">R$ 00,00</span>
+            </div>
+            <ul class="plan-card__list">
+              <li>Cadastro limitado de produtos</li>
+              <li>Controle básico de estoque</li>
+              <li>Cadastro de até 1 funcionário</li>
+              <li>Relatórios básicos</li>
+              <li>Suporte limitado</li>
+            </ul>
+            <a href="#cadastro" class="plan-btn">Testar grátis <span class="plan-btn__icon">↗</span></a>
+          </div>
+
+          <!-- MONTHLY (featured) -->
+          <div class="plan-card plan-card--featured">
+            <h3 class="plan-card__name">Plano Mensal – Hydra Flex</h3>
+            <div class="plan-card__price">
+              <span class="plan-card__times">3x de</span>
+              <span class="plan-card__value">R$ 33,33</span>
+            </div>
+            <span class="plan-card__note">ou R$ 100 à vista</span>
+            <ul class="plan-card__list">
+              <li>Cadastro ilimitado de produtos</li>
+              <li>Controle completo de estoque</li>
+              <li>Sistema completo</li>
+              <li>Relatórios completo</li>
+              <li>Controle de movimentação de estoque</li>
+              <li>Cadastro de até 5 usuários</li>
+              <li>Backup de informações</li>
+            </ul>
+            <a href="#cadastro" class="plan-btn">Testar grátis <span class="plan-btn__icon">↗</span></a>
+          </div>
+
+          <!-- YEARLY -->
+          <div class="plan-card">
+            <h3 class="plan-card__name">Plano Anual – Hydra Premium</h3>
+            <div class="plan-card__price">
+              <span class="plan-card__times">3x de</span>
+              <span class="plan-card__value">R$ 33,33</span>
+            </div>
+            <span class="plan-card__note">ou R$ 100 à vista</span>
+            <ul class="plan-card__list">
+              <li>Todas as funcionalidades do plano mensal</li>
+              <li>Cadastro de até 20 funcionários</li>
+              <li>Relatórios avançados e dashboards</li>
+              <li>Prioridade no suporte técnico</li>
+              <li>Maior capacidade de armazenamento</li>
+              <li>Atualizações premium</li>
+              <li>Recursos futuros liberados automaticamente</li>
+            </ul>
+            <a href="#cadastro" class="plan-btn">Testar grátis <span class="plan-btn__icon">↗</span></a>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== FAQ ===== -->
+    <section class="faq" id="faq">
+      <div class="container faq__header">
+        <div>
+          <span class="badge"><span class="badge__dot">✓</span> Perguntas Frequentes</span>
+          <h2 class="section-title section-title--left">Dúvidas Frequentes</h2>
+        </div>
+        <p class="faq__intro">Confira as respostas para <strong>as perguntas frequentes</strong> ou entre em contato
+          conosco:</p>
+      </div>
+
+      <div class="container">
+        <div class="accordion" id="accordion">
+
+          <div class="accordion__item is-open">
+            <button class="accordion__trigger">
+              <span class="accordion__number">01.</span>
+              <span class="accordion__question">O Sistema Hydra funciona para qualquer tipo de comércio?</span>
+              <span class="accordion__icon">＋</span>
+            </button>
+            <div class="accordion__panel">
+              <p>Sim. O Sistema Hydra foi desenvolvido para atender pequenos e médios estabelecimentos comerciais,
+                auxiliando no controle de vendas, estoque, clientes e financeiro.</p>
+            </div>
+          </div>
+
+          <div class="accordion__item">
+            <button class="accordion__trigger">
+              <span class="accordion__number">02.</span>
+              <span class="accordion__question">É possível testar o sistema gratuitamente?</span>
+              <span class="accordion__icon">＋</span>
+            </button>
+            <div class="accordion__panel">
+              <p>Sim. O Hydra disponibiliza um plano gratuito para novos usuários conhecerem as funcionalidades básicas
+                da plataforma antes de contratar um plano pago.</p>
+            </div>
+          </div>
+
+          <div class="accordion__item">
+            <button class="accordion__trigger">
+              <span class="accordion__number">03.</span>
+              <span class="accordion__question">O sistema possui controle de estoque?</span>
+              <span class="accordion__icon">＋</span>
+            </button>
+            <div class="accordion__panel">
+              <p>Sim. O sistema permite acompanhar entradas, saídas e quantidade disponível dos produtos, além de emitir
+                alertas para estoque baixo.</p>
+            </div>
+          </div>
+
+          <div class="accordion__item">
+            <button class="accordion__trigger">
+              <span class="accordion__number">04.</span>
+              <span class="accordion__question">Posso cadastrar funcionários no sistema?</span>
+              <span class="accordion__icon">＋</span>
+            </button>
+            <div class="accordion__panel">
+              <p>Sim. O cadastro de funcionários varia de acordo com o plano contratado, permitindo diferentes níveis de
+                acesso e permissões.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TERMS ===== -->
+    <section class="terms" id="termos">
+      <div class="container terms__box">
+        <div class="terms__heading">
+          <h2>Termos de Uso e<br>Aceite de Parceiros</h2>
+          <p>Transparência e segurança nas nossas parcerias.
+            <br>Conheça nossos termos e parceiros homologados.
+          </p>
+        </div>
+
+        <div class="terms__grid">
+          <div class="terms__card">
+            <h3><span class="terms__check">✓</span> Termos de Uso</h3>
+            <p>Ao utilizar o Hydra PDV, você concorda com nossos termos de uso que garantem a segurança dos seus dados,
+              privacidade das informações e conformidade com a LGPD. Nosso compromisso é oferecer um serviço confiável e
+              transparente.</p>
+          </div>
+          <div class="terms__card">
+            <h3><span class="terms__check">✓</span> Parceiros Homologados</h3>
+            <p>Trabalhamos apenas com parceiros certificados e homologados para integração de pagamentos, emissão fiscal
+              e outros serviços essenciais. Todos passam por rigoroso processo de validação de segurança e conformidade.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container">
+      <p>© 2026 Hydra PDV. Todos os direitos reservados.</p>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast">Cadastro recebido! Em breve entraremos em contato.</div>
+  <div class="accessibility-widget">
+    <button id="font-plus">A+</button>
+    <button id="font-minus">A−</button>
+  </div>
+  <script src="../js/script.js"></script>
+</body>
+
+</html>

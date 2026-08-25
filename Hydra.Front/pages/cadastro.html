@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crie sua conta — Hydra PDV</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/cadastro.css">
+</head>
+
+<body class="signup-body">
+
+  <div class="signup">
+
+    <!-- ===== LEFT: FORM ===== -->
+    <div class="signup__form-side">
+      <div class="signup__form-wrap">
+
+        <a href="index.html" class="logo signup__logo">
+          <img src="../img/logo-hydra.png" alt="Hydra PDV">
+        </a>
+
+        <h1 class="signup__title">Crie sua conta</h1>
+        <p class="signup__subtitle">Vamos começar com seu teste gratuito de 30 dias</p>
+        <p class="signup__hint">Preencha os dados para começar</p>
+
+        <form class="signup__form" id="signup-form" novalidate>
+
+          <div class="field">
+            <label for="nome">Nome</label>
+            <input type="text" id="nome" name="nome" placeholder="Digite seu nome" required>
+          </div>
+
+          <div class="field">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" name="email" placeholder="Digite seu e-mail" required>
+          </div>
+
+          <div class="field">
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" name="senha" placeholder="Digite sua senha" required minlength="6">
+          </div>
+
+          <div class="field">
+            <label for="confirmar-senha">Confirmar senha</label>
+            <input type="password" id="confirmar-senha" name="confirmar_senha" placeholder="Digite sua senha novamente"
+              required minlength="6">
+          </div>
+
+          <div class="field">
+            <label for="nome-loja">Nome da loja</label>
+            <input type="text" id="nome-loja" name="nome_loja" placeholder="Digite o nome da sua loja" required>
+          </div>
+
+          <label class="checkbox">
+            <input type="checkbox" id="termos" name="termos" required>
+            <span>Concordo com os <a href="index.html#termos">Termos</a>, <a href="index.html#termos">Política de
+                Privacidade</a> e <a href="index.html#termos">Cookies</a></span>
+          </label>
+
+          <button type="submit" class="btn btn--primary btn--block">Cadastrar-se</button>
+
+          <p class="signup__login">Já tem uma conta? <a href="login.html">Entrar</a></p>
+
+        </form>
+      </div>
+    </div>
+
+    <!-- ===== RIGHT: PROMO PANEL ===== -->
+    <aside class="signup__promo">
+      <div class="signup__promo-inner">
+        <h2>Tudo que seu<br>mercado precisa</h2>
+        <p>Controle vendas, estoque e clientes em um só lugar, com uma interface simples e prática para o dia a dia do
+          seu mercado.</p>
+
+        <div class="mockup" aria-hidden="true">
+          <div class="mockup__main">
+            <div class="mockup__header">
+              <span class="mockup__dot"></span>
+              <span class="mockup__title-bar">Dashboard</span>
+            </div>
+            <div class="mockup__stats">
+              <div class="mockup__stat">
+                <span class="mockup__stat-label">Total de vendas</span>
+                <span class="mockup__stat-value">R$ 6.432,40</span>
+              </div>
+              <div class="mockup__stat">
+                <span class="mockup__stat-label">Ticket médio</span>
+                <span class="mockup__stat-value">R$ 45,23</span>
+              </div>
+              <div class="mockup__stat">
+                <span class="mockup__stat-label">Pedidos</span>
+                <span class="mockup__stat-value">124</span>
+              </div>
+            </div>
+            <svg class="mockup__chart" viewBox="0 0 280 70" preserveAspectRatio="none">
+              <polyline points="0,55 35,40 70,48 105,20 140,32 175,15 210,26 245,10 280,18" fill="none" stroke="#F2994A"
+                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <div class="mockup__rows">
+              <div class="mockup__row"></div>
+              <div class="mockup__row"></div>
+              <div class="mockup__row"></div>
+            </div>
+          </div>
+
+          <div class="mockup__card">
+            <div class="mockup__card-header">
+              <span class="mockup__card-title">Vendas hoje</span>
+            </div>
+            <div class="mockup__bars">
+              <span style="height:40%"></span>
+              <span style="height:65%"></span>
+              <span style="height:50%"></span>
+              <span style="height:85%"></span>
+              <span style="height:60%"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="signup__promo-deco" aria-hidden="true"></div>
+      </div>
+    </aside>
+
+  </div>
+
+  <script src="../js/cadastro.js"></script>
+</body>
+
+</html>

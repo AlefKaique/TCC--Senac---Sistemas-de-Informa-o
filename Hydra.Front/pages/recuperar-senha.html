@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recuperar senha — Hydra PDV</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/login.css">
+</head>
+
+<body class="signup-body">
+
+  <div class="signup">
+
+    <!-- ===== LEFT: FORM ===== -->
+    <div class="signup__form-side">
+      <div class="signup__form-wrap">
+
+        <a href="index.html" class="logo signup__logo">
+          <img src="../img/logo-hydra.png" alt="Hydra PDV">
+        </a>
+
+        <h1 class="signup__title">Recuperar senha</h1>
+        <p class="signup__subtitle">Digite seu e-mail e enviaremos um link para redefinir sua senha.</p>
+
+        <form class="signup__form login__form" id="recover-form" novalidate>
+
+          <div class="field">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" name="email" placeholder="Digite seu e-mail cadastrado" required>
+          </div>
+
+          <button type="submit" class="btn btn--primary btn--block">Enviar link de recuperação</button>
+
+          <p class="signup__login">Lembrou a senha? <a href="login.html">Voltar para o login</a></p>
+
+        </form>
+      </div>
+    </div>
+
+    <!-- ===== RIGHT: PROMO PANEL ===== -->
+    <aside class="signup__promo">
+      <div class="signup__promo-deco" aria-hidden="true"></div>
+      <svg class="signup__promo-shapes" aria-hidden="true" viewBox="0 0 460 620" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="60" cy="80" r="140" fill="rgba(255,255,255,0.035)" />
+        <circle cx="420" cy="460" r="190" fill="rgba(255,255,255,0.045)" />
+        <circle cx="380" cy="60" r="70" fill="rgba(255,255,255,0.03)" />
+        <path d="M -40 320 Q 150 260 340 340 T 500 300" stroke="rgba(255,255,255,0.06)" stroke-width="90" fill="none" />
+      </svg>
+
+      <div class="signup__promo-inner">
+        <h2>Sistema Hydra</h2>
+        <p>Vendas, estoque e relatórios em uma plataforma intuitiva.</p>
+
+        <div class="mockup" aria-hidden="true">
+          <div class="mockup__main">
+            <div class="mockup__header">
+              <span class="mockup__dot"></span>
+              <span class="mockup__title-bar">Dashboard</span>
+            </div>
+            <div class="mockup__stats">
+              <div class="mockup__stat">
+                <span class="mockup__stat-label">Total de vendas</span>
+                <span class="mockup__stat-value">R$ 6.432,40</span>
+              </div>
+              <div class="mockup__stat">
+                <span class="mockup__stat-label">Ticket médio</span>
+                <span class="mockup__stat-value">R$ 45,23</span>
+              </div>
+              <div class="mockup__stat">
+                <span class="mockup__stat-label">Pedidos</span>
+                <span class="mockup__stat-value">124</span>
+              </div>
+            </div>
+            <svg class="mockup__chart" viewBox="0 0 280 70" preserveAspectRatio="none">
+              <polyline points="0,55 35,40 70,48 105,20 140,32 175,15 210,26 245,10 280,18" fill="none" stroke="#F2994A"
+                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <div class="mockup__rows">
+              <div class="mockup__row"></div>
+              <div class="mockup__row"></div>
+              <div class="mockup__row"></div>
+            </div>
+          </div>
+
+          <div class="mockup__card">
+            <div class="mockup__card-header">
+              <span class="mockup__card-title">Vendas hoje</span>
+            </div>
+            <div class="mockup__bars">
+              <span style="height:40%"></span>
+              <span style="height:65%"></span>
+              <span style="height:50%"></span>
+              <span style="height:85%"></span>
+              <span style="height:60%"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <script src="../js/recuperar-senha.js"></script>
+</body>
+
+</html>
