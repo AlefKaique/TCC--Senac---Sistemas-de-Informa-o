@@ -212,7 +212,7 @@
     function renderFooter(totalItems, start, shownCount, totalPages) {
         const footerCount = document.getElementById('hydroFooterCount');
         if (totalItems === 0) {
-            footerCount.textContent = 'Mostrando 0 de 0 itens';
+            footerCount.textContent = 'Mostrando 0 a 0 de 0 itens';
         } else {
             footerCount.textContent = `Mostrando ${start + 1} a ${start + shownCount} de ${totalItems} itens`;
         }

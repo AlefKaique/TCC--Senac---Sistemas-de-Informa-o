@@ -7,25 +7,25 @@
    =================================================================== */
 
 .hydro-stock {
-    --navy-900: #0d1a3d;
-    --navy-800: #122350;
-    --navy-active: #1d3fae;
-    --navy-hover: #182c63;
+    --navy-900: #152e6d;
+    --navy-800: #1d3a86;
+    --navy-active: #152e6d;
+    --navy-hover: #0f2354;
     --ink: #16213e;
     --muted: #697184;
     --muted-soft: #93a0c9;
-    --bg: #f2f4f9;
+    --bg: #fafafa;
     --card: #ffffff;
     --border: #e7e9f2;
     --green: #149e52;
-    --green-bg: #e2f8ea;
-    --amber: #c9790a;
-    --amber-bg: #fdf1d9;
-    --red: #d43838;
-    --red-bg: #fbe6e6;
-    --blue: #2148c9;
-    --blue-bg: #e8edff;
-    --accent-leaf: #3bc46a;
+    --green-bg: #f2fdf7;
+    --amber: #b98523;
+    --amber-bg: #fef8ef;
+    --red: #e24c5c;
+    --red-bg: #fff2f3;
+    --blue: #5e81f4;
+    --blue-bg: #eff2fe;
+    --accent-leaf: #8dce0c;
     --shadow-card: 0 1px 2px rgba(13, 26, 61, .04), 0 10px 26px -16px rgba(13, 26, 61, .16);
     --shadow-pop: 0 20px 50px -20px rgba(13, 26, 61, .35);
     --radius-lg: 16px;
@@ -197,8 +197,9 @@
 .hydro-sidebar {
     width: 250px;
     flex-shrink: 0;
-    background: var(--navy-900);
-    color: #c6ccdf;
+    background: var(--card);
+    border-right: 1px solid var(--border);
+    color: var(--ink);
     display: flex;
     flex-direction: column;
     padding: 26px 18px;
@@ -227,7 +228,7 @@
     font-size: 11px;
     font-weight: 700;
     letter-spacing: .08em;
-    color: #5b6690;
+    color: var(--muted-soft);
     text-transform: uppercase;
     padding: 0 10px;
     margin-bottom: 10px;
@@ -247,13 +248,13 @@
     border-radius: 10px;
     font-size: 14.5px;
     font-weight: 500;
-    color: #aab3d1;
+    color: var(--navy-900);
     transition: background .15s ease, color .15s ease;
 }
 
 .hydro-menu a:hover {
-    background: #16224a;
-    color: #fff;
+    background: var(--bg);
+    color: var(--navy-900);
 }
 
 .hydro-menu a.hydro-active {
@@ -269,7 +270,7 @@
 .hydro-menu-bottom {
     margin-top: auto;
     padding-top: 18px;
-    border-top: 1px solid #1c2954;
+    border-top: 1px solid var(--border);
 }
 
 /* ============ Main ============ */
