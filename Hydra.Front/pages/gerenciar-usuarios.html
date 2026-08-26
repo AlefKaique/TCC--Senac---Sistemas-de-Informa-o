@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hydro · Controle de Estoque</title>
+    <title>Hydro · Gerenciar Usuários</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -43,7 +43,7 @@
                         </li>
                         <li><a href="#" data-view="produtos"><i
                                     class="hydro-ic hydro-ic-box"></i><span>Produtos</span></a></li>
-                        <li><a href="#" class="hydro-active" data-view="estoque"><i
+                        <li><a href="controle-estoque.html"><i
                                     class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
                         <li><a href="#" data-view="financeiro"><i
                                     class="hydro-ic hydro-ic-camera"></i><span>Financeiro</span></a></li>
@@ -51,11 +51,11 @@
                 </nav>
 
                 <div class="hydro-menu hydro-menu-bottom">
-                    <p class="hydro-menu-label" id="hydroMenuAdminLabel">Geral <span class="hydro-menu-restricted" title="Visível apenas para o perfil Administrador (RN04)">Admin</span></p>
+                    <p class="hydro-menu-label">Geral <span class="hydro-menu-restricted" title="Visível apenas para o perfil Administrador (RN04)">Admin</span></p>
                     <ul>
-                        <li id="hydroLiEquipe"><a href="gerenciar-usuarios.html"><i
+                        <li><a href="#" class="hydro-active" data-view="equipe"><i
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
-                        <li id="hydroLiConfig"><a href="configuracoes-loja.html"><i
+                        <li><a href="configuracoes-loja.html"><i
                                     class="hydro-ic hydro-ic-gear"></i><span>Configurações</span></a></li>
                         <li><a href="#" data-view="sair"><i class="hydro-ic hydro-ic-exit"></i><span>Sair</span></a>
                         </li>
@@ -66,11 +66,14 @@
             <!-- Main -->
             <main class="hydro-main">
                 <header class="hydro-topbar">
-                    <h1>Controle de Estoque</h1>
+                    <div class="hydro-topbar-title">
+                        <h1>Gerenciar Usuários</h1>
+                        <span class="hydro-restricted-badge"><i class="hydro-ic hydro-ic-lock"></i> Apenas Administrador</span>
+                    </div>
                     <div class="hydro-topbar-actions">
                         <div class="hydro-search">
                             <i class="hydro-ic hydro-ic-search"></i>
-                            <input type="text" id="hydroSearchInput" placeholder="Buscar produto ou SKU">
+                            <input type="text" id="hydroUserSearchInput" placeholder="Buscar por nome ou e-mail">
                         </div>
                         <a class="hydro-icon-btn" href="configuracoes-loja.html" aria-label="Configurações da loja"><i
                                 class="hydro-ic hydro-ic-gear"></i></a>
@@ -84,24 +87,24 @@
 
                 <section class="hydro-stats">
                     <div class="hydro-stat-card">
-                        <div class="hydro-stat-icon hydro-icon-blue"><i class="hydro-ic hydro-ic-box"></i></div>
+                        <div class="hydro-stat-icon hydro-icon-blue"><i class="hydro-ic hydro-ic-users"></i></div>
                         <div class="hydro-stat-copy">
-                            <p class="hydro-stat-label">Total de itens</p>
-                            <p class="hydro-stat-value" id="hydroStatTotalItens">0</p>
+                            <p class="hydro-stat-label">Total de usuários</p>
+                            <p class="hydro-stat-value" id="hydroStatTotalUsers">0</p>
                         </div>
                     </div>
                     <div class="hydro-stat-card">
-                        <div class="hydro-stat-icon hydro-icon-green"><i class="hydro-ic hydro-ic-dollar"></i></div>
+                        <div class="hydro-stat-icon hydro-icon-green"><i class="hydro-ic hydro-ic-drawer"></i></div>
                         <div class="hydro-stat-copy">
-                            <p class="hydro-stat-label">Valor em estoque</p>
-                            <p class="hydro-stat-value hydro-value-green" id="hydroStatValorEstoque">R$ 0,00</p>
+                            <p class="hydro-stat-label">Operadores de Caixa</p>
+                            <p class="hydro-stat-value" id="hydroStatCaixa">0</p>
                         </div>
                     </div>
                     <div class="hydro-stat-card">
-                        <div class="hydro-stat-icon hydro-icon-amber"><i class="hydro-ic hydro-ic-warning"></i></div>
+                        <div class="hydro-stat-icon hydro-icon-amber"><i class="hydro-ic hydro-ic-inventory"></i></div>
                         <div class="hydro-stat-copy">
-                            <p class="hydro-stat-label">Itens com estoque baixo</p>
-                            <p class="hydro-stat-value hydro-value-amber" id="hydroStatBaixo">0</p>
+                            <p class="hydro-stat-label">Estoquistas</p>
+                            <p class="hydro-stat-value" id="hydroStatEstoquista">0</p>
                         </div>
                     </div>
                 </section>
@@ -109,27 +112,26 @@
                 <section class="hydro-toolbar">
                     <div class="hydro-filters">
                         <label class="hydro-select-field">
-                            <span class="hydro-select-label">Categoria</span>
-                            <select id="hydroFilterCategoria">
-                                <option value="">Todas as categorias</option>
+                            <span class="hydro-select-label">Perfil</span>
+                            <select id="hydroFilterPerfil">
+                                <option value="">Todos os perfis</option>
+                                <option value="Administrador">Administrador</option>
+                                <option value="Operador de Caixa">Operador de Caixa</option>
+                                <option value="Estoquista">Estoquista</option>
                             </select>
                         </label>
                         <label class="hydro-select-field">
                             <span class="hydro-select-label">Status</span>
-                            <select id="hydroFilterStatus">
+                            <select id="hydroFilterStatusUser">
                                 <option value="">Todos os status</option>
-                                <option value="Em estoque">Em estoque</option>
-                                <option value="Baixo">Baixo</option>
-                                <option value="Crítico">Crítico</option>
+                                <option value="Ativo">Ativo</option>
+                                <option value="Inativo">Inativo</option>
                             </select>
                         </label>
                     </div>
                     <div class="hydro-toolbar-buttons">
-                        <button class="hydro-btn hydro-btn-primary" id="hydroBtnEntrada">
-                            <i class="hydro-ic hydro-ic-arrow-down"></i> Entrada de Estoque
-                        </button>
-                        <button class="hydro-btn hydro-btn-outline" id="hydroBtnSaida">
-                            <i class="hydro-ic hydro-ic-arrow-up"></i> Saída de Estoque
+                        <button class="hydro-btn hydro-btn-primary" id="hydroBtnNovoUsuario">
+                            <i class="hydro-ic hydro-ic-plus"></i> Novo usuário
                         </button>
                     </div>
                 </section>
@@ -139,29 +141,27 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th class="hydro-col-check"><input type="checkbox" id="hydroCheckAll"></th>
-                                    <th>Produto</th>
-                                    <th>SKU</th>
-                                    <th>Categoria</th>
-                                    <th>Quantidade</th>
-                                    <th>Estoque mínimo</th>
+                                    <th>Usuário</th>
+                                    <th>Perfil</th>
+                                    <th>Loja</th>
                                     <th>Status</th>
+                                    <th>Criado em</th>
                                     <th class="hydro-col-actions">Ações</th>
                                 </tr>
                             </thead>
-                            <tbody id="hydroTableBody">
+                            <tbody id="hydroUserTableBody">
                             </tbody>
                         </table>
                     </div>
-                    <div class="hydro-empty-state" id="hydroEmptyState">
-                        <i class="hydro-ic hydro-ic-box"></i>
-                        <p>Nenhum produto encontrado</p>
+                    <div class="hydro-empty-state" id="hydroUserEmptyState">
+                        <i class="hydro-ic hydro-ic-users"></i>
+                        <p>Nenhum usuário encontrado</p>
                         <span>Ajuste os filtros ou o termo de busca para ver resultados.</span>
                     </div>
 
                     <div class="hydro-table-footer">
-                        <p id="hydroFooterCount">Mostrando 0 a 0 de 0 itens</p>
-                        <div class="hydro-pagination" id="hydroPagination"></div>
+                        <p id="hydroUserFooterCount">Mostrando 0 a 0 de 0 usuários</p>
+                        <div class="hydro-pagination" id="hydroUserPagination"></div>
                     </div>
                 </section>
             </main>
@@ -184,7 +184,7 @@
     </div>
 
     <script src="../js/api.js"></script>
-    <script src="../js/controle-estoque.js"></script>
+    <script src="../js/gerenciar-usuarios.js"></script>
 </body>
 
 </html>

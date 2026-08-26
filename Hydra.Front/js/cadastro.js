@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     input.addEventListener('input', () => clearError(input));
   });
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     let valid = true;
 
@@ -50,13 +50,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!valid) return;
 
-    // Sucesso — aqui entraria a chamada real ao backend
     const btn = form.querySelector('.btn--block');
-    btn.textContent = 'Conta criada com sucesso!';
+    const originalText = btn.textContent;
     btn.disabled = true;
+    btn.textContent = 'Criando conta...';
 
-    setTimeout(() => {
-      window.location.href = 'index.html';
-    }, 1500);
+    try {
+      await window.hydraApi('/auth/registro', {
+        method: 'POST',
+        body: {
+          nome: document.getElementById('nome').value.trim(),
+          email: document.getElementById('email').value.trim(),
+          senha: senha.value,
+          nome_loja: document.getElementById('nome-loja').value.trim(),
+        },
+      });
+
+      btn.textContent = 'Conta criada com sucesso!';
+      setTimeout(() => {
+        window.location.href = 'controle-estoque.html';
+      }, 1200);
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+      if (err.status === 409) {
+        setError(document.getElementById('email'), err.data.erro);
+      } else {
+        alert(err.message);
+      }
+    }
   });
 });

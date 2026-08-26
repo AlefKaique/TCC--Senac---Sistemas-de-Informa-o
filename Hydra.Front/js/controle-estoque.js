@@ -507,14 +507,35 @@
     document.querySelectorAll('.hydro-menu a[data-view]').forEach((link) => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
+            if (link.dataset.view === 'sair') {
+                window.hydraApi('/auth/logout', { method: 'POST' }).finally(() => {
+                    window.location.href = 'login.html';
+                });
+                return;
+            }
             document.querySelectorAll('.hydro-menu a').forEach((a) => a.classList.remove('hydro-active'));
             link.classList.add('hydro-active');
             closeSidebar();
             if (link.dataset.view !== 'estoque') {
-                showToast('Esta é uma demonstração — apenas a tela de Estoque está implementada');
+                showToast('Esta é uma demonstração — apenas as telas de Estoque, Equipe e Configurações estão implementadas');
             }
         });
     });
+
+    /* ================= Guarda de sessão (redireciona para o login se não autenticado) =================
+       RN04: os itens "Equipe" e "Configurações" só aparecem para o Administrador. */
+    (async function checkAuth() {
+        try {
+            const { usuario } = await window.hydraApi('/auth/me');
+            if (usuario.perfil !== 'administrador') {
+                document.getElementById('hydroMenuAdminLabel').style.display = 'none';
+                document.getElementById('hydroLiEquipe').style.display = 'none';
+                document.getElementById('hydroLiConfig').style.display = 'none';
+            }
+        } catch (err) {
+            window.location.href = 'login.html';
+        }
+    })();
 
     /* ================= Mobile sidebar ================= */
     const sidebar = document.getElementById('hydroSidebar');

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydro · Configurações da Loja</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/controle-estoque.css">
+    <link rel="stylesheet" href="../css/gerenciar-usuarios.css">
+    <link rel="stylesheet" href="../css/configuracoes-loja.css">
+</head>
+
+<body>
+
+    <!-- Tudo isolado dentro de .hydro-stock para não colidir com o CSS/JS do restante do sistema -->
+    <div class="hydro-stock">
+
+        <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+        </button>
+        <div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+
+        <div class="hydro-app">
+
+            <!-- Sidebar -->
+            <aside class="hydro-sidebar" id="hydroSidebar">
+                <div class="hydro-brand">
+                    <img src="../img/logo-hydra-verde.png" alt="Hydra PDV">
+                </div>
+
+                <nav class="hydro-menu">
+                    <p class="hydro-menu-label">Menu</p>
+                    <ul>
+                        <li><a href="#" data-view="dashboard"><i
+                                    class="hydro-ic hydro-ic-home"></i><span>Dashboard</span></a></li>
+                        <li><a href="#" data-view="caixa"><i class="hydro-ic hydro-ic-drawer"></i><span>Caixa</span></a>
+                        </li>
+                        <li><a href="#" data-view="vendas"><i class="hydro-ic hydro-ic-cart"></i><span>Vendas</span></a>
+                        </li>
+                        <li><a href="#" data-view="produtos"><i
+                                    class="hydro-ic hydro-ic-box"></i><span>Produtos</span></a></li>
+                        <li><a href="controle-estoque.html"><i
+                                    class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
+                        <li><a href="#" data-view="financeiro"><i
+                                    class="hydro-ic hydro-ic-camera"></i><span>Financeiro</span></a></li>
+                    </ul>
+                </nav>
+
+                <div class="hydro-menu hydro-menu-bottom">
+                    <p class="hydro-menu-label">Geral <span class="hydro-menu-restricted" title="Visível apenas para o perfil Administrador (RN04)">Admin</span></p>
+                    <ul>
+                        <li><a href="gerenciar-usuarios.html"><i
+                                    class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
+                        <li><a href="#" class="hydro-active" data-view="configuracoes"><i
+                                    class="hydro-ic hydro-ic-gear"></i><span>Configurações</span></a></li>
+                        <li><a href="#" data-view="sair"><i class="hydro-ic hydro-ic-exit"></i><span>Sair</span></a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Main -->
+            <main class="hydro-main">
+                <header class="hydro-topbar">
+                    <div class="hydro-topbar-title">
+                        <h1>Configurações da Loja</h1>
+                        <span class="hydro-restricted-badge"><i class="hydro-ic hydro-ic-lock"></i> Apenas Administrador</span>
+                    </div>
+                    <div class="hydro-topbar-actions">
+                        <a class="hydro-icon-btn" href="gerenciar-usuarios.html" aria-label="Gerenciar usuários"><i
+                                class="hydro-ic hydro-ic-users"></i></a>
+                        <button class="hydro-icon-btn" aria-label="Notificações">
+                            <i class="hydro-ic hydro-ic-bell"></i>
+                            <span class="hydro-notif-dot"></span>
+                        </button>
+                        <img class="hydro-avatar" src="https://i.pravatar.cc/64?img=13" alt="Foto do usuário">
+                    </div>
+                </header>
+
+                <p class="hydro-settings-intro">Estes dados são diferentes das informações preenchidas no cadastro inicial da conta — aqui você mantém os dados da loja atualizados conforme o negócio cresce.</p>
+
+                <form id="hydroSettingsForm" novalidate>
+
+                    <section class="hydro-card">
+                        <div class="hydro-card-header">
+                            <h2>Identidade da loja</h2>
+                            <p>Nome e logo exibidos no sistema e nos comprovantes de venda.</p>
+                        </div>
+                        <div class="hydro-card-body">
+                            <div class="hydro-logo-row">
+                                <div class="hydro-logo-preview" id="hydroLogoPreview">
+                                    <i class="hydro-ic hydro-ic-image"></i>
+                                </div>
+                                <div class="hydro-logo-actions">
+                                    <label class="hydro-btn hydro-btn-outline hydro-btn-sm hydro-upload-btn" for="hydroLogoInput">
+                                        <i class="hydro-ic hydro-ic-upload"></i> Enviar logo
+                                    </label>
+                                    <input type="file" id="hydroLogoInput" accept="image/*" hidden>
+                                    <span class="hydro-logo-hint">PNG ou JPG, até 2MB</span>
+                                </div>
+                            </div>
+                            <div class="hydro-form-group">
+                                <label for="hydroNomeLoja">Nome da loja</label>
+                                <input type="text" id="hydroNomeLoja" required>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="hydro-card">
+                        <div class="hydro-card-header">
+                            <h2>Dados cadastrais</h2>
+                            <p>Usados em relatórios financeiros e documentos fiscais.</p>
+                        </div>
+                        <div class="hydro-card-body hydro-settings-grid">
+                            <div class="hydro-form-group">
+                                <label for="hydroCnpj"><i class="hydro-ic hydro-ic-building"></i> CNPJ</label>
+                                <input type="text" id="hydroCnpj" placeholder="00.000.000/0000-00">
+                            </div>
+                            <div class="hydro-form-group">
+                                <label for="hydroTelefone"><i class="hydro-ic hydro-ic-phone"></i> Telefone</label>
+                                <input type="text" id="hydroTelefone" placeholder="(00) 00000-0000">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="hydro-card">
+                        <div class="hydro-card-header">
+                            <h2>Endereço</h2>
+                            <p>Endereço físico do estabelecimento.</p>
+                        </div>
+                        <div class="hydro-card-body hydro-settings-grid">
+                            <div class="hydro-form-group">
+                                <label for="hydroCep">CEP</label>
+                                <input type="text" id="hydroCep" placeholder="00000-000">
+                            </div>
+                            <div class="hydro-form-group hydro-span-2">
+                                <label for="hydroEndereco"><i class="hydro-ic hydro-ic-map-pin"></i> Endereço</label>
+                                <input type="text" id="hydroEndereco" placeholder="Rua, avenida...">
+                            </div>
+                            <div class="hydro-form-group">
+                                <label for="hydroCidade">Cidade</label>
+                                <input type="text" id="hydroCidade" placeholder="Cidade">
+                            </div>
+                            <div class="hydro-form-group">
+                                <label for="hydroEstado">Estado</label>
+                                <select id="hydroEstado">
+                                    <option value="SP" selected>São Paulo</option>
+                                    <option value="RJ">Rio de Janeiro</option>
+                                    <option value="MG">Minas Gerais</option>
+                                    <option value="PR">Paraná</option>
+                                    <option value="SC">Santa Catarina</option>
+                                    <option value="RS">Rio Grande do Sul</option>
+                                    <option value="BA">Bahia</option>
+                                    <option value="">Outro</option>
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="hydro-settings-footer">
+                        <span class="hydro-settings-saved" id="hydroSettingsSaved"></span>
+                        <button type="button" class="hydro-btn hydro-btn-outline" id="hydroBtnCancelar">Cancelar</button>
+                        <button type="submit" class="hydro-btn hydro-btn-primary" id="hydroBtnSalvar">Salvar alterações</button>
+                    </div>
+                </form>
+            </main>
+        </div>
+
+        <div class="hydro-toast" id="hydroToast"></div>
+
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/configuracoes-loja.js"></script>
+</body>
+
+</html>
