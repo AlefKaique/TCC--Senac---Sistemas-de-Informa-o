@@ -68,6 +68,7 @@ if ($path === '') {
 
 /** @var array<int,array{0:string,1:string,2:callable}> $routes */
 $routes = [
+    ['GET', '#^/api/health$#', fn () => Response::json(['status' => 'ok'])],
     ['POST', '#^/api/auth/registro$#', fn () => (new AuthController())->registro()],
     ['POST', '#^/api/auth/login$#', fn () => (new AuthController())->login()],
     ['POST', '#^/api/auth/logout$#', fn () => (new AuthController())->logout()],

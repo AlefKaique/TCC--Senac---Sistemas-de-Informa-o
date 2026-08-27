@@ -1,4 +1,4 @@
-# Como rodar o Sistema Hydra localmente
+# Como rodar o Sistema Hydra localmente e no Render
 
 O projeto tem duas partes que precisam rodar **ao mesmo tempo**, cada uma no
 seu próprio terminal:
@@ -102,3 +102,21 @@ Clique no terminal correspondente e aperte `Ctrl+C`.
 | Login não persiste / sessão cai a cada request | A página foi aberta como `file://` em vez de `http://` — sirva pelo Live Server ou `php -S`. |
 | "Falha ao conectar ao banco de dados" | MySQL não está rodando, ou `Hydra.Back/.env` tem credenciais erradas. |
 | CORS bloqueando a requisição | Confirme que `CORS_ALLOWED_ORIGIN` em `Hydra.Back/.env` está como `*` (padrão) durante o desenvolvimento. |
+
+## Publicar no Render
+
+O projeto não é uma aplicação Node: ele não possui `package.json` e não deve
+usar `yarn start`. A configuração está em `render.yaml` e usa o `Dockerfile`
+da raiz para servir o frontend e a API PHP no mesmo Web Service.
+
+1. No Render, escolha **New > Blueprint** e conecte este repositório.
+2. Confirme que o serviço usa o runtime **Docker**, com Dockerfile `./Dockerfile`
+  e contexto `.`. Não informe `yarn start` como Start Command.
+3. Crie um banco MySQL externo e informe no serviço as variáveis `DB_HOST`,
+  `DB_USER` e `DB_PASS`. Mantenha `DB_PORT=3306` e `DB_NAME=hydra_db`.
+4. Execute `schema.sql` nesse banco antes de testar o cadastro.
+5. O endereço público do sistema será a raiz do serviço; o Render verificará
+  automaticamente `/api/health`.
+
+O frontend detecta automaticamente a API no Render (`/api`). Em ambiente
+  local, continua usando `http://localhost:8080/api`.

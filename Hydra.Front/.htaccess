@@ -1,0 +1,4 @@
+DirectoryIndex pages/index.html
+
+RewriteEngine On
+RewriteRule ^api(?:/.*)?$ api/index.php [L,QSA]

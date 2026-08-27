@@ -2,7 +2,11 @@
  * Cliente HTTP para a API do Hydra.Back. Ajuste HYDRA_API_BASE se o
  * back-end estiver rodando em outro host/porta.
  */
-window.HYDRA_API_BASE = window.HYDRA_API_BASE || 'http://localhost:8080/api';
+const defaultApiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8080/api'
+  : `${window.location.origin}/api`;
+
+window.HYDRA_API_BASE = window.HYDRA_API_BASE || defaultApiBase;
 
 window.hydraApi = async function hydraApi(path, options = {}) {
   const res = await fetch(window.HYDRA_API_BASE + path, {

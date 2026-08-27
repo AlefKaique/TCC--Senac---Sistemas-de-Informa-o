@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: hydra
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_NAME
+        value: hydra_db
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: CORS_ALLOWED_ORIGIN
+        value: "*"
+      - key: REMEMBER_ME_DAYS
+        value: "30"
