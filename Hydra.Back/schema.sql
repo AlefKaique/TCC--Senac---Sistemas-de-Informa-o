@@ -57,6 +57,43 @@ CREATE INDEX idx_usuarios_perfil  ON usuarios (perfil);
 
 
 -- ============================================================
+-- Módulo de Clientes (PDV)
+--   RF07 - Edição e Exclusão de Clientes
+--   RF08 - Busca e Filtragem de Clientes (nome, CPF)
+--   RF14 - Consentimento para inclusão de CPF
+--   RN15 - Sem cadastro duplicado de clientes com o mesmo CPF (por loja)
+--   RN16 - Associação de cliente à venda é opcional
+--   RN18 - Coletar apenas o necessário para identificação do cliente
+--
+-- CPF é opcional e só pode ser preenchido com o consentimento explícito
+-- do cliente (consentimento_cpf = TRUE). O e-mail é o identificador
+-- alternativo quando não há CPF, permitindo rastrear o histórico do
+-- cliente (via id_cliente nas vendas) mesmo sem dado documental.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS clientes (
+    id_cliente          INT AUTO_INCREMENT PRIMARY KEY,
+    id_loja             INT NOT NULL,
+    nome                VARCHAR(120) NOT NULL,
+    cpf                 VARCHAR(14)  NULL,
+    email               VARCHAR(100) NULL,
+    telefone            VARCHAR(15)  NULL,
+    consentimento_cpf   BOOLEAN NOT NULL DEFAULT FALSE,
+    data_criacao        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
+        ON DELETE CASCADE,
+
+    -- NULL não conta para UNIQUE em MySQL, então múltiplos clientes sem
+    -- CPF na mesma loja são permitidos; só bloqueia CPF repetido.
+    UNIQUE KEY uq_clientes_loja_cpf (id_loja, cpf)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE INDEX idx_clientes_id_loja ON clientes (id_loja);
+CREATE INDEX idx_clientes_email   ON clientes (email);
+
+
+-- ============================================================
 -- Regras de negócio aplicadas neste modelo (referência ao TCC)
 --   RN04 - Restrição de Acesso: apenas perfil 'administrador'
 --          altera preços/descontos/relatórios financeiros e acessa
