@@ -120,12 +120,13 @@ final class UsuarioRepository
         $stmt->execute(['token' => $token, 'expira' => $expiraEm, 'id' => $idUsuario]);
     }
 
-    public function findByValidResetToken(string $token): ?array
+    /** Valida o código de recuperação (RN05) exigindo também o e-mail, já que o código tem só 6 dígitos. */
+    public function findByValidResetCode(string $email, string $code): ?array
     {
         $stmt = db()->prepare(
-            'SELECT * FROM usuarios WHERE reset_token = :token AND reset_token_expira_em > NOW()'
+            'SELECT * FROM usuarios WHERE email = :email AND reset_token = :token AND reset_token_expira_em > NOW()'
         );
-        $stmt->execute(['token' => $token]);
+        $stmt->execute(['email' => $email, 'token' => $code]);
         $row = $stmt->fetch();
         return $row ?: null;
     }

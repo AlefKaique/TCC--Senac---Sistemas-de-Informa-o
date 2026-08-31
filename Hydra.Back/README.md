@@ -15,6 +15,9 @@ Recuperar senha (Fig. 15), Gerenciar Usuários e Configurações da Loja.
 2. O banco `hydra_db` e as tabelas `lojas`/`usuarios` já devem existir —
    veja `schema.sql` caso precise recriá-las em um banco novo (o script é
    idempotente, usa `CREATE TABLE IF NOT EXISTS`).
+3. (Opcional) Preencha as variáveis `MAIL_*` no `.env` com um SMTP válido
+   para o envio real do código da tela de Recuperar Senha. Sem isso, o
+   código volta na resposta da API (`codigo_dev`) só para teste local.
 
 ## Rodando localmente
 
@@ -37,8 +40,8 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | POST   | `/api/auth/login`             | pública              | Login (Fig. 14) |
 | POST   | `/api/auth/logout`            | logado               | Encerra a sessão |
 | GET    | `/api/auth/me`                | logado               | Usuário autenticado atual |
-| POST   | `/api/auth/esqueci-senha`     | pública              | Gera token de redefinição (Fig. 15) |
-| POST   | `/api/auth/redefinir-senha`   | pública (via token)  | Define nova senha |
+| POST   | `/api/auth/esqueci-senha`     | pública              | Envia código de verificação por e-mail (Fig. 15) |
+| POST   | `/api/auth/redefinir-senha`   | pública (via código) | Valida o código e define nova senha |
 | GET    | `/api/usuarios`                | administrador        | Lista usuários da loja (Gerenciar Usuários) |
 | POST   | `/api/usuarios`                | administrador        | Cria operador_caixa/estoquista |
 | PUT    | `/api/usuarios/{id}`           | administrador        | Edita nome/e-mail/perfil/status |
