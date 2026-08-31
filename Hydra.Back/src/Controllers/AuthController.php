@@ -141,10 +141,11 @@ final class AuthController
     /**
      * POST /api/auth/esqueci-senha
      * Gera um código numérico de 6 dígitos com validade de 15 minutos
-     * (RN05) e envia por e-mail (Mailer). Se o SMTP não estiver
-     * configurado no ambiente (MAIL_HOST vazio), o código volta na
-     * própria resposta para viabilizar o fluxo de teste/demonstração
-     * local, já que não há como entregá-lo por e-mail nesse caso.
+     * (RN05) e envia por e-mail (Mailer, via API do Brevo). Se o Brevo
+     * não estiver configurado no ambiente (BREVO_API_KEY vazio), o
+     * código volta na própria resposta para viabilizar o fluxo de
+     * teste/demonstração local, já que não há como entregá-lo por
+     * e-mail nesse caso.
      */
     public function esqueciSenha(): void
     {

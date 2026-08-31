@@ -20,15 +20,7 @@ services:
         value: "*"
       - key: REMEMBER_ME_DAYS
         value: "30"
-      - key: MAIL_HOST
-        value: smtp.gmail.com
-      - key: MAIL_PORT
-        value: "587"
-      - key: MAIL_ENCRYPTION
-        value: tls
-      - key: MAIL_USER
-        sync: false
-      - key: MAIL_PASS
+      - key: BREVO_API_KEY
         sync: false
       - key: MAIL_FROM
         sync: false
