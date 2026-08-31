@@ -6,6 +6,7 @@ use Hydra\Repositories\LojaRepository;
 use Hydra\Repositories\UsuarioRepository;
 use Hydra\Support\Auth;
 use Hydra\Support\Env;
+use Hydra\Support\Mailer;
 use Hydra\Support\Request;
 use Hydra\Support\Response;
 
@@ -139,10 +140,11 @@ final class AuthController
 
     /**
      * POST /api/auth/esqueci-senha
-     * Gera um token de redefinição com validade (RN05). Em produção este
-     * token seria enviado por e-mail; como não há serviço de e-mail
-     * configurado neste projeto, ele é devolvido na própria resposta para
-     * viabilizar o fluxo de teste/demonstração.
+     * Gera um código numérico de 6 dígitos com validade de 15 minutos
+     * (RN05) e envia por e-mail (Mailer). Se o SMTP não estiver
+     * configurado no ambiente (MAIL_HOST vazio), o código volta na
+     * própria resposta para viabilizar o fluxo de teste/demonstração
+     * local, já que não há como entregá-lo por e-mail nesse caso.
      */
     public function esqueciSenha(): void
     {
@@ -157,28 +159,40 @@ final class AuthController
             return;
         }
 
-        $token = bin2hex(random_bytes(32));
-        $expiraEm = (new \DateTimeImmutable('+1 hour'))->format('Y-m-d H:i:s');
-        $this->usuarios->setResetToken((int) $usuario['id_usuario'], $token, $expiraEm);
+        $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiraEm = (new \DateTimeImmutable('+15 minutes'))->format('Y-m-d H:i:s');
+        $this->usuarios->setResetToken((int) $usuario['id_usuario'], $codigo, $expiraEm);
 
-        Response::json(['ok' => true, 'reset_token_dev' => $token]);
+        $enviado = Mailer::send(
+            $email,
+            'Código de recuperação de senha — Hydra PDV',
+            $this->emailCodigoHtml((string) $usuario['nome'], $codigo)
+        );
+
+        $resposta = ['ok' => true];
+        if (!$enviado) {
+            $resposta['codigo_dev'] = $codigo;
+        }
+
+        Response::json($resposta);
     }
 
     /** POST /api/auth/redefinir-senha */
     public function redefinirSenha(): void
     {
         $dados = Request::json();
-        $token = (string) ($dados['token'] ?? '');
+        $email = trim(strtolower((string) ($dados['email'] ?? '')));
+        $codigo = trim((string) ($dados['codigo'] ?? ''));
         $senha = (string) ($dados['senha'] ?? '');
 
-        if ($token === '' || strlen($senha) < 6) {
-            Response::json(['erro' => 'Token inválido ou senha muito curta'], 422);
+        if ($email === '' || $codigo === '' || strlen($senha) < 6) {
+            Response::json(['erro' => 'Preencha o código recebido e uma senha com pelo menos 6 caracteres'], 422);
             return;
         }
 
-        $usuario = $this->usuarios->findByValidResetToken($token);
+        $usuario = $this->usuarios->findByValidResetCode($email, $codigo);
         if ($usuario === null) {
-            Response::json(['erro' => 'Token inválido ou expirado'], 400);
+            Response::json(['erro' => 'Código inválido ou expirado'], 400);
             return;
         }
 
@@ -188,6 +202,20 @@ final class AuthController
         );
 
         Response::json(['ok' => true]);
+    }
+
+    private function emailCodigoHtml(string $nome, string $codigo): string
+    {
+        $primeiroNome = htmlspecialchars(explode(' ', trim($nome))[0] ?? '', ENT_QUOTES, 'UTF-8');
+        return <<<HTML
+            <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1B2A63;">
+                <h2 style="margin-bottom: 8px;">Recuperação de senha</h2>
+                <p>Olá, {$primeiroNome}!</p>
+                <p>Use o código abaixo para redefinir sua senha no Hydra PDV. Ele expira em 15 minutos.</p>
+                <p style="font-size: 32px; font-weight: 700; letter-spacing: 6px; background: #F4F5F9; padding: 16px 24px; border-radius: 8px; text-align: center;">{$codigo}</p>
+                <p>Se você não solicitou essa recuperação, pode ignorar este e-mail.</p>
+            </div>
+            HTML;
     }
 
     /** @param array<string,mixed> $usuario */

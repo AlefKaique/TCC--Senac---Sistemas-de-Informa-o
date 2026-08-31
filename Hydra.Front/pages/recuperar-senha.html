@@ -28,20 +28,61 @@
         </a>
 
         <h1 class="signup__title">Recuperar senha</h1>
-        <p class="signup__subtitle">Digite seu e-mail e enviaremos um link para redefinir sua senha.</p>
 
-        <form class="signup__form login__form" id="recover-form" novalidate>
+        <!-- ===== STEP 1: E-MAIL ===== -->
+        <div id="step-email">
+          <p class="signup__subtitle">Digite seu e-mail e enviaremos um código de verificação para redefinir sua
+            senha.</p>
 
-          <div class="field">
-            <label for="email">E-mail</label>
-            <input type="email" id="email" name="email" placeholder="Digite seu e-mail cadastrado" required>
-          </div>
+          <form class="signup__form login__form" id="recover-form" novalidate>
 
-          <button type="submit" class="btn btn--primary btn--block">Enviar link de recuperação</button>
+            <div class="field">
+              <label for="email">E-mail</label>
+              <input type="email" id="email" name="email" placeholder="Digite seu e-mail cadastrado" required>
+            </div>
 
-          <p class="signup__login">Lembrou a senha? <a href="login.html">Voltar para o login</a></p>
+            <button type="submit" class="btn btn--primary btn--block">Enviar código de verificação</button>
 
-        </form>
+            <p class="signup__login">Lembrou a senha? <a href="login.html">Voltar para o login</a></p>
+
+          </form>
+        </div>
+
+        <!-- ===== STEP 2: CÓDIGO + NOVA SENHA ===== -->
+        <div id="step-code" class="is-hidden">
+          <p class="signup__subtitle">Enviamos um código de 6 dígitos para <strong id="sent-to-email"></strong>.
+            Digite-o abaixo junto com sua nova senha.</p>
+
+          <form class="signup__form login__form" id="reset-form" novalidate>
+
+            <div class="field">
+              <label for="codigo">Código de verificação</label>
+              <input type="text" id="codigo" name="codigo" placeholder="000000" inputmode="numeric"
+                autocomplete="one-time-code" maxlength="6" pattern="\d{6}" required>
+            </div>
+
+            <div class="field">
+              <label for="nova-senha">Nova senha</label>
+              <input type="password" id="nova-senha" name="nova_senha" placeholder="Digite sua nova senha" required
+                minlength="6">
+            </div>
+
+            <div class="field">
+              <label for="confirmar-nova-senha">Confirmar nova senha</label>
+              <input type="password" id="confirmar-nova-senha" name="confirmar_nova_senha"
+                placeholder="Digite sua nova senha novamente" required minlength="6">
+            </div>
+
+            <button type="submit" class="btn btn--primary btn--block">Redefinir senha</button>
+
+            <p class="signup__login">
+              Não recebeu? <a href="#" id="resend-code">Reenviar código</a> ·
+              <a href="#" id="use-another-email">Usar outro e-mail</a>
+            </p>
+
+          </form>
+        </div>
+
       </div>
     </div>
 

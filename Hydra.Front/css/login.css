@@ -287,6 +287,18 @@ html, body.signup-body{
   margin-top: 24px;
 }
 
+.is-hidden{
+  display: none !important;
+}
+
+#codigo{
+  text-align: center;
+  letter-spacing: 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
 /* ============ LOGIN — extras ============ */
 .login__row{
   display: flex;
