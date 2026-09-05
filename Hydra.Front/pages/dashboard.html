@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydro · Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/dashboard.css">
+</head>
+
+<body>
+
+    <!-- Tudo isolado dentro de .hydro-dash para não colidir com o CSS/JS do restante do sistema -->
+    <div class="hydro-dash">
+
+        <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+        </button>
+        <div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+
+        <div class="hydro-app">
+
+            <!-- Sidebar -->
+            <aside class="hydro-sidebar" id="hydroSidebar">
+                <div class="hydro-brand">
+                    <img src="../img/logo-hydra.png" alt="Hydra PDV">
+                </div>
+
+                <nav class="hydro-menu">
+                    <p class="hydro-menu-label">Menu</p>
+                    <ul>
+                        <li><a href="#" class="hydro-active" data-view="dashboard"><i
+                                    class="hydro-ic hydro-ic-home"></i><span>Dashboard</span></a></li>
+                        <li><a href="caixa.html" data-view="caixa"><i class="hydro-ic hydro-ic-drawer"></i><span>Caixa</span></a>
+                        </li>
+                        <li><a href="#" data-view="vendas"><i class="hydro-ic hydro-ic-cart"></i><span>Vendas</span></a>
+                        </li>
+                        <li><a href="produtos.html" data-view="produtos"><i
+                                    class="hydro-ic hydro-ic-box"></i><span>Produtos</span></a></li>
+                        <li><a href="controle-estoque.html" data-view="estoque"><i
+                                    class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
+                        <li><a href="#" data-view="financeiro"><i
+                                    class="hydro-ic hydro-ic-camera"></i><span>Financeiro</span></a></li>
+                    </ul>
+                </nav>
+
+                <div class="hydro-menu hydro-menu-bottom">
+                    <p class="hydro-menu-label">Geral</p>
+                    <ul>
+                        <li><a href="login.html" data-view="sair"><i class="hydro-ic hydro-ic-exit"></i><span>Sair</span></a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Main -->
+            <main class="hydro-main">
+                <header class="hydro-topbar">
+                    <h1>Dashboard</h1>
+                    <div class="hydro-topbar-actions">
+                        <div class="hydro-search">
+                            <i class="hydro-ic hydro-ic-search"></i>
+                            <input type="text" id="hydroSearchInput" placeholder="Buscar">
+                        </div>
+                        <button class="hydro-icon-btn" aria-label="Configurações"><i
+                                class="hydro-ic hydro-ic-gear"></i></button>
+                        <button class="hydro-icon-btn" aria-label="Notificações">
+                            <i class="hydro-ic hydro-ic-bell"></i>
+                            <span class="hydro-notif-dot"></span>
+                        </button>
+                        <img class="hydro-avatar" src="https://i.pravatar.cc/64?img=13" alt="Foto do usuário">
+                    </div>
+                </header>
+
+                <!-- KPIs -->
+                <section class="hydro-kpi-grid" id="hydroKpiGrid"></section>
+
+                <!-- Gráficos -->
+                <section class="hydro-charts-grid">
+                    <div class="hydro-card hydro-chart-card">
+                        <div class="hydro-chart-header">
+                            <h2>Gráfico de entradas x saídas</h2>
+                            <span class="hydro-chart-period">Últimos 30 dias</span>
+                        </div>
+                        <div class="hydro-chart-body" id="hydroFlowChart"></div>
+                        <div class="hydro-chart-legend">
+                            <span class="hydro-legend-item"><i class="hydro-legend-dot hydro-legend-in"></i>Entradas</span>
+                            <span class="hydro-legend-item"><i class="hydro-legend-dot hydro-legend-out"></i>Saídas</span>
+                        </div>
+                    </div>
+
+                    <div class="hydro-card hydro-chart-card">
+                        <div class="hydro-chart-header">
+                            <h2>Top produtos mais movimentados</h2>
+                            <span class="hydro-chart-period">Últimos 30 dias</span>
+                        </div>
+                        <div class="hydro-chart-body" id="hydroTopChart"></div>
+                    </div>
+                </section>
+
+                <!-- Alertas de estoque -->
+                <section class="hydro-card hydro-alerts-card">
+                    <div class="hydro-alerts-header">
+                        <h2>Alertas de estoque</h2>
+                    </div>
+                    <div class="hydro-table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>SKU</th>
+                                    <th>Estoque Atual</th>
+                                    <th>Estoque Mínimo</th>
+                                    <th>Status</th>
+                                    <th class="hydro-col-actions">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hydroAlertsBody"></tbody>
+                        </table>
+                    </div>
+                    <p class="hydro-alerts-empty" id="hydroAlertsEmpty" hidden>Nenhum alerta no momento — todos os produtos estão com estoque saudável.</p>
+                </section>
+            </main>
+        </div>
+
+        <div class="hydro-toast" id="hydroToast"></div>
+
+    </div>
+
+    <script src="../js/hydro-store.js"></script>
+    <script src="../js/dashboard.js"></script>
+</body>
+
+</html>
