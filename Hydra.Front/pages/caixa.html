@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydro · Caixa</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/caixa.css">
+</head>
+
+<body>
+
+    <!-- Tudo isolado dentro de .hydro-caixa para não colidir com o CSS/JS do restante do sistema -->
+    <div class="hydro-caixa">
+
+        <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+        </button>
+        <div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+
+        <div class="hydro-app">
+
+            <!-- Sidebar -->
+            <aside class="hydro-sidebar" id="hydroSidebar">
+                 <div class="hydro-brand">
+                    <img src="../img/logo-hydra.png" alt="Hydra PDV">
+                </div>
+
+                <nav class="hydro-menu">
+                    <p class="hydro-menu-label">Menu</p>
+                    <ul>
+                        <li><a href="dashboard.html" data-view="dashboard"><i
+                                    class="hydro-ic hydro-ic-home"></i><span>Dashboard</span></a></li>
+                        <li><a href="#" class="hydro-active" data-view="caixa"><i
+                                    class="hydro-ic hydro-ic-drawer"></i><span>Caixa</span></a></li>
+                        <li><a href="#" data-view="vendas"><i class="hydro-ic hydro-ic-cart"></i><span>Vendas</span></a>
+                        </li>
+                        <li><a href="produtos.html" data-view="produtos"><i
+                                    class="hydro-ic hydro-ic-box"></i><span>Produtos</span></a></li>
+                        <li><a href="controle-estoque.html" data-view="estoque"><i
+                                    class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
+                        <li><a href="#" data-view="financeiro"><i
+                                    class="hydro-ic hydro-ic-camera"></i><span>Financeiro</span></a></li>
+                    </ul>
+                </nav>
+
+                <div class="hydro-menu hydro-menu-bottom">
+                    <p class="hydro-menu-label">Geral</p>
+                    <ul>
+                        <li><a href="login.html" data-view="sair"><i class="hydro-ic hydro-ic-exit"></i><span>Sair</span></a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Main -->
+            <main class="hydro-main">
+                <header class="hydro-topbar">
+                    <h1>Caixa</h1>
+                    <div class="hydro-topbar-actions">
+                        <div class="hydro-search">
+                            <i class="hydro-ic hydro-ic-search"></i>
+                            <input type="text" id="hydroProductSearch" placeholder="Buscar">
+                        </div>
+                        <button class="hydro-icon-btn" aria-label="Configurações"><i
+                                class="hydro-ic hydro-ic-gear"></i></button>
+                        <button class="hydro-icon-btn" aria-label="Notificações">
+                            <i class="hydro-ic hydro-ic-bell"></i>
+                            <span class="hydro-notif-dot"></span>
+                        </button>
+                        <img class="hydro-avatar" src="https://i.pravatar.cc/64?img=13" alt="Foto do usuário">
+                    </div>
+                </header>
+
+                <!-- Abas de pedidos -->
+                <div class="hydro-order-tabs" id="hydroOrderTabs"></div>
+
+                <div class="hydro-pos-layout">
+
+                    <!-- Grade de produtos -->
+                    <section class="hydro-products-panel">
+                        <div class="hydro-product-grid" id="hydroProductGrid"></div>
+                    </section>
+
+                    <!-- Resumo do pedido -->
+                    <aside class="hydro-order-card" id="hydroOrderCard">
+                        <div class="hydro-order-header">
+                            <div>
+                                <h2 id="hydroOrderTitle">Pedido #0000</h2>
+                                <p id="hydroOrderClient">Cliente ID #—</p>
+                            </div>
+                            <div class="hydro-order-header-actions">
+                                <button class="hydro-icon-btn hydro-icon-btn-sm" id="hydroEditClientBtn" aria-label="Editar cliente">
+                                    <i class="hydro-ic hydro-ic-pencil"></i>
+                                </button>
+                                <button class="hydro-icon-btn hydro-icon-btn-sm hydro-icon-btn-danger" id="hydroClearOrderBtn" aria-label="Cancelar pedido">
+                                    <i class="hydro-ic hydro-ic-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <p class="hydro-order-section-label">Itens</p>
+
+                        <div class="hydro-order-items" id="hydroOrderItems">
+                            <p class="hydro-order-empty" id="hydroOrderEmpty">Nenhum item adicionado ainda. Selecione produtos na lista ao lado.</p>
+                        </div>
+
+                        <div class="hydro-order-total-row">
+                            <span>Total</span>
+                            <span id="hydroOrderTotal">R$ 0,00</span>
+                        </div>
+
+                        <p class="hydro-order-section-label">Método de Pagamento</p>
+                        <div class="hydro-payment-methods" id="hydroPaymentMethods">
+                            <button type="button" class="hydro-payment-btn" data-method="dinheiro">
+                                <i class="hydro-ic hydro-ic-cash"></i>
+                                <span>Dinheiro</span>
+                            </button>
+                            <button type="button" class="hydro-payment-btn" data-method="cartao">
+                                <i class="hydro-ic hydro-ic-card"></i>
+                                <span>Cartão</span>
+                            </button>
+                            <button type="button" class="hydro-payment-btn" data-method="pix">
+                                <i class="hydro-ic hydro-ic-pix"></i>
+                                <span>PIX</span>
+                            </button>
+                        </div>
+
+                        <div class="hydro-order-actions">
+                            <button type="button" class="hydro-btn hydro-btn-outline" id="hydroCancelOrderBtn">Cancelar</button>
+                            <button type="button" class="hydro-btn hydro-btn-primary" id="hydroFinishOrderBtn">Finalizar</button>
+                        </div>
+                    </aside>
+
+                </div>
+            </main>
+        </div>
+
+        <div class="hydro-toast" id="hydroToast"></div>
+
+    </div>
+
+    <script src="../js/hydro-store.js"></script>
+    <script src="../js/caixa.js"></script>
+</body>
+
+</html>
