@@ -2,7 +2,7 @@
     'use strict';
 
     (async function guardAdminMenu() {
-        if (window.HYDRA_PUBLIC_DEMO || !window.hydraApi) return;
+        if (!window.hydraApi) return;
         try {
             const { usuario } = await window.hydraApi('/auth/me');
             if (usuario.perfil !== 'administrador') {
@@ -10,8 +10,7 @@
                 document.getElementById('hydroLiConfig').style.display = 'none';
             }
         } catch (err) {
-            document.getElementById('hydroLiEquipe').style.display = 'none';
-            document.getElementById('hydroLiConfig').style.display = 'none';
+            // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
         }
     })();
 

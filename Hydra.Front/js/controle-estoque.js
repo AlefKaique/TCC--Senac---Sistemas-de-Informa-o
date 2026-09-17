@@ -524,7 +524,7 @@
 
     /* ================= Guarda de sessão =================
        RN04: os itens "Equipe" e "Configurações" só aparecem para o Administrador.
-       Visitantes não autenticados (demo pública) apenas não veem os itens de admin. */
+       Visitantes não autenticados (demo pública) continuam vendo todas as telas. */
     (async function checkAuth() {
         if (!window.hydraApi) return;
         try {
@@ -535,9 +535,7 @@
                 document.getElementById('hydroLiConfig').style.display = 'none';
             }
         } catch (err) {
-            document.getElementById('hydroMenuAdminLabel').style.display = 'none';
-            document.getElementById('hydroLiEquipe').style.display = 'none';
-            document.getElementById('hydroLiConfig').style.display = 'none';
+            // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
         }
     })();
 
