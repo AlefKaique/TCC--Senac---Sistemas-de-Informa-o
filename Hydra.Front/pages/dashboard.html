@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hydro · Dashboard</title>
+    <link rel="icon" type="image/png" href="../img/logo-hydra.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -29,9 +30,9 @@
 
             <!-- Sidebar -->
             <aside class="hydro-sidebar" id="hydroSidebar">
-                <div class="hydro-brand">
+                <a class="hydro-brand" href="dashboard.html" aria-label="Ir para o início">
                     <img src="../img/logo-hydra.png" alt="Hydra PDV">
-                </div>
+                </a>
 
                 <nav class="hydro-menu">
                     <p class="hydro-menu-label">Menu</p>
@@ -74,15 +75,6 @@
                         <div class="hydro-search">
                             <i class="hydro-ic hydro-ic-search"></i>
                             <input type="text" id="hydroSearchInput" placeholder="Buscar">
-                        </div>
-                        <div class="hydro-font-control">
-                            <button class="hydro-icon-btn" type="button" data-font-toggle="font-panel-dashboard" aria-label="Ajustar tamanho da fonte" aria-expanded="false"><i
-                                    class="hydro-ic hydro-ic-gear"></i></button>
-                            <div class="hydro-font-panel" id="font-panel-dashboard" hidden>
-                                <span class="hydro-font-panel__label">Fonte</span>
-                                <button type="button" data-font-action="decrease" aria-label="Diminuir fonte">A-</button>
-                                <button type="button" data-font-action="increase" aria-label="Aumentar fonte">A+</button>
-                            </div>
                         </div>
                         <button class="hydro-icon-btn" aria-label="Notificações">
                             <i class="hydro-ic hydro-ic-bell"></i>
@@ -148,9 +140,8 @@
     </div>
 
     <script src="../js/hydro-store.js"></script>
-    <script src="../js/public-demo.js"></script>
     <script src="../js/api.js"></script>
-    <script src="../js/font-size.js"></script>
+    <script src="../js/public-demo.js"></script>
     <script src="../js/dashboard.js"></script>
 </body>
 
