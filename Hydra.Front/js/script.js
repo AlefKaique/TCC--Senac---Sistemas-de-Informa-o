@@ -1,3 +1,19 @@
+// ===== Logo/header: ajusta destino e some com Login/Cadastre-se para quem já está logado =====
+(function () {
+  const homeLink = document.getElementById('hydroHomeLink');
+  const loginBtn = document.getElementById('hydroLoginBtn');
+  const signupBtn = document.getElementById('hydroSignupBtn');
+  if (!window.hydraApi) return;
+
+  window.hydraApi('/auth/me')
+    .then(() => {
+      if (homeLink) homeLink.setAttribute('href', 'dashboard.html');
+      if (loginBtn) loginBtn.remove();
+      if (signupBtn) signupBtn.remove();
+    })
+    .catch(() => { });
+})();
+
 // ===== Mobile menu toggle =====
 const hamburger = document.getElementById('hamburger');
 const nav = document.getElementById('nav');
