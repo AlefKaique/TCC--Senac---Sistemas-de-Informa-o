@@ -1,6 +1,20 @@
 (function () {
     'use strict';
 
+    (async function guardAdminMenu() {
+        if (window.HYDRA_PUBLIC_DEMO || !window.hydraApi) return;
+        try {
+            const { usuario } = await window.hydraApi('/auth/me');
+            if (usuario.perfil !== 'administrador') {
+                document.getElementById('hydroLiEquipe').style.display = 'none';
+                document.getElementById('hydroLiConfig').style.display = 'none';
+            }
+        } catch (err) {
+            document.getElementById('hydroLiEquipe').style.display = 'none';
+            document.getElementById('hydroLiConfig').style.display = 'none';
+        }
+    })();
+
     HydroStore.seedHistoryIfNeeded();
 
     const products = HydroStore.getProducts();

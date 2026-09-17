@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/caixa.css">
     <link rel="stylesheet" href="../css/public-demo.css">
+    <link rel="stylesheet" href="../css/font-size.css">
 </head>
 
 <body>
@@ -35,16 +36,26 @@
                 <nav class="hydro-menu">
                     <p class="hydro-menu-label">Menu</p>
                     <ul>
-                        <li><a href="dashboard.html" data-view="dashboard"><i
-                                    class="hydro-ic hydro-ic-home"></i><span>Dashboard</span></a></li>
                         <li><a href="#" class="hydro-active" data-view="caixa"><i
                                     class="hydro-ic hydro-ic-drawer"></i><span>Caixa</span></a></li>
+                        <li><a href="dashboard.html" data-view="dashboard"><i
+                                    class="hydro-ic hydro-ic-home"></i><span>Dashboard</span></a></li>
                         <li><a href="produtos.html" data-view="produtos"><i
                                     class="hydro-ic hydro-ic-box"></i><span>Produtos</span></a></li>
                         <li><a href="controle-estoque.html" data-view="estoque"><i
                                     class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
                     </ul>
                 </nav>
+
+                <div class="hydro-menu hydro-menu-admin">
+                    <p class="hydro-menu-label"><span class="hydro-menu-restricted">Admin</span></p>
+                    <ul>
+                        <li id="hydroLiEquipe"><a href="gerenciar-usuarios.html"><i
+                                    class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
+                        <li id="hydroLiConfig"><a href="configuracoes-loja.html"><i
+                                    class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span></a></li>
+                    </ul>
+                </div>
 
                 <div class="hydro-menu hydro-menu-bottom">
                     <p class="hydro-menu-label">Geral</p>
@@ -64,8 +75,15 @@
                             <i class="hydro-ic hydro-ic-search"></i>
                             <input type="text" id="hydroProductSearch" placeholder="Buscar">
                         </div>
-                        <button class="hydro-icon-btn" aria-label="Configurações"><i
-                                class="hydro-ic hydro-ic-gear"></i></button>
+                        <div class="hydro-font-control">
+                            <button class="hydro-icon-btn" type="button" data-font-toggle="font-panel-caixa" aria-label="Ajustar tamanho da fonte" aria-expanded="false"><i
+                                    class="hydro-ic hydro-ic-gear"></i></button>
+                            <div class="hydro-font-panel" id="font-panel-caixa" hidden>
+                                <span class="hydro-font-panel__label">Fonte</span>
+                                <button type="button" data-font-action="decrease" aria-label="Diminuir fonte">A-</button>
+                                <button type="button" data-font-action="increase" aria-label="Aumentar fonte">A+</button>
+                            </div>
+                        </div>
                         <button class="hydro-icon-btn" aria-label="Notificações">
                             <i class="hydro-ic hydro-ic-bell"></i>
                             <span class="hydro-notif-dot"></span>
@@ -143,7 +161,9 @@
     </div>
 
     <script src="../js/hydro-store.js"></script>
+    <script src="../js/api.js"></script>
     <script src="../js/public-demo.js"></script>
+    <script src="../js/font-size.js"></script>
     <script src="../js/caixa.js"></script>
 </body>
 

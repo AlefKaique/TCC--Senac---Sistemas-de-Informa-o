@@ -228,6 +228,7 @@ img{ max-width:100%; display:block; }
   gap:12px;
   flex-wrap:wrap;
 }
+.hero__system-link{ margin-top:18px; }
 .hero__input{
   font-family: var(--font-body);
   font-size:0.95rem;

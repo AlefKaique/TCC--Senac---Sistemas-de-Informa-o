@@ -55,7 +55,15 @@
         if (link && link.dataset.view === 'sair') {
             event.preventDefault();
             event.stopImmediatePropagation();
-            openModal();
+            if (window.hydraApi) {
+                window.hydraApi('/auth/logout', { method: 'POST' })
+                    .catch(function () { })
+                    .finally(function () {
+                        window.location.href = 'index.html';
+                    });
+            } else {
+                window.location.href = 'index.html';
+            }
             return;
         }
 
@@ -67,6 +75,7 @@
         }
 
         var button = event.target.closest('button');
+        if (button && (button.hasAttribute('data-font-toggle') || button.hasAttribute('data-font-action'))) return;
         if (button && !button.closest('.hydra-demo-modal__dialog')) {
             event.preventDefault();
             event.stopImmediatePropagation();

@@ -1,0 +1,81 @@
+.hydro-font-control {
+    position: relative;
+}
+
+.hydro-ic-users {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    background-color: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M23 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M23 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.hydro-config-store {
+    color: #f2994a;
+}
+
+.hydro-menu-admin {
+    margin-top: 18px;
+}
+
+.hydro-menu-admin .hydro-menu-label {
+    margin-bottom: 10px;
+}
+
+.hydro-menu-restricted {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--amber-bg, #fff4df);
+    color: var(--amber, #b7791f);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: normal;
+    text-transform: none;
+    vertical-align: middle;
+}
+
+.hydro-font-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid var(--border, #e4e7ef);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(19, 31, 77, 0.14);
+}
+
+.hydro-font-panel[hidden] {
+    display: none;
+}
+
+.hydro-font-panel button {
+    min-width: 34px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--border, #e4e7ef);
+    border-radius: 7px;
+    background: #fff;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.hydro-font-panel button:hover {
+    background: #f6f7fb;
+}
+
+.hydro-font-panel__label {
+    padding: 0 3px;
+    font-size: 12px;
+    white-space: nowrap;
+}

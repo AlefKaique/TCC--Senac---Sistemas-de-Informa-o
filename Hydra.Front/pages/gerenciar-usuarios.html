@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="../css/controle-estoque.css">
     <link rel="stylesheet" href="../css/gerenciar-usuarios.css">
     <link rel="stylesheet" href="../css/public-demo.css">
+    <link rel="stylesheet" href="../css/font-size.css">
 </head>
 
 <body>
@@ -31,16 +32,16 @@
             <!-- Sidebar -->
             <aside class="hydro-sidebar" id="hydroSidebar">
                 <div class="hydro-brand">
-                    <img src="../img/logo-hydra-verde.png" alt="Hydra PDV">
+                    <img src="../img/logo-hydra.png" alt="Hydra PDV">
                 </div>
 
                 <nav class="hydro-menu">
                     <p class="hydro-menu-label">Menu</p>
                     <ul>
-                        <li><a href="#" data-view="dashboard"><i
-                                    class="hydro-ic hydro-ic-home"></i><span>Dashboard</span></a></li>
                         <li><a href="#" data-view="caixa"><i class="hydro-ic hydro-ic-drawer"></i><span>Caixa</span></a>
                         </li>
+                        <li><a href="#" data-view="dashboard"><i
+                                    class="hydro-ic hydro-ic-home"></i><span>Dashboard</span></a></li>
                         <li><a href="#" data-view="produtos"><i
                                     class="hydro-ic hydro-ic-box"></i><span>Produtos</span></a></li>
                         <li><a href="controle-estoque.html"><i
@@ -48,13 +49,19 @@
                     </ul>
                 </nav>
 
-                <div class="hydro-menu hydro-menu-bottom">
-                    <p class="hydro-menu-label">Geral <span class="hydro-menu-restricted" title="Visível apenas para o perfil Administrador (RN04)">Admin</span></p>
+                <div class="hydro-menu hydro-menu-admin">
+                    <p class="hydro-menu-label"><span class="hydro-menu-restricted">Admin</span></p>
                     <ul>
                         <li><a href="#" class="hydro-active" data-view="equipe"><i
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
                         <li><a href="configuracoes-loja.html"><i
-                                    class="hydro-ic hydro-ic-gear"></i><span>Configurações</span></a></li>
+                                    class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="hydro-menu hydro-menu-bottom">
+                    <p class="hydro-menu-label">Geral</p>
+                    <ul>
                         <li><a href="#" data-view="sair"><i class="hydro-ic hydro-ic-exit"></i><span>Sair</span></a>
                         </li>
                     </ul>
@@ -73,8 +80,17 @@
                             <i class="hydro-ic hydro-ic-search"></i>
                             <input type="text" id="hydroUserSearchInput" placeholder="Buscar por nome ou e-mail">
                         </div>
-                        <a class="hydro-icon-btn" href="configuracoes-loja.html" aria-label="Configurações da loja"><i
-                                class="hydro-ic hydro-ic-gear"></i></a>
+                        <a class="hydro-icon-btn" href="configuracoes-loja.html" aria-label="Configuração Loja"><i
+                            class="hydro-ic hydro-ic-gear"></i></a>
+                        <div class="hydro-font-control">
+                            <button class="hydro-icon-btn" type="button" data-font-toggle="font-panel-equipe" aria-label="Ajustar tamanho da fonte" aria-expanded="false"><i
+                                class="hydro-ic hydro-ic-gear"></i></button>
+                            <div class="hydro-font-panel" id="font-panel-equipe" hidden>
+                            <span class="hydro-font-panel__label">Fonte</span>
+                            <button type="button" data-font-action="decrease" aria-label="Diminuir fonte">A-</button>
+                            <button type="button" data-font-action="increase" aria-label="Aumentar fonte">A+</button>
+                            </div>
+                        </div>
                         <button class="hydro-icon-btn" aria-label="Notificações">
                             <i class="hydro-ic hydro-ic-bell"></i>
                             <span class="hydro-notif-dot"></span>
@@ -183,6 +199,7 @@
 
     <script src="../js/api.js"></script>
     <script src="../js/public-demo.js"></script>
+    <script src="../js/font-size.js"></script>
     <script src="../js/gerenciar-usuarios.js"></script>
 </body>
 
