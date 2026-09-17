@@ -391,6 +391,28 @@
     box-shadow: 0 0 0 1px var(--border);
 }
 
+.hydro-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hydro-user-name {
+    max-width: 140px;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+    .hydro-user-name {
+        display: none;
+    }
+}
+
 /* ============ Botões ============ */
 .hydro-btn {
     display: inline-flex;

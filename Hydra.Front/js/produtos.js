@@ -5,6 +5,8 @@
         if (!window.hydraApi) return;
         try {
             const { usuario } = await window.hydraApi('/auth/me');
+            const nameEl = document.getElementById('hydroUserName');
+            if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
             if (usuario.perfil !== 'administrador') {
                 document.getElementById('hydroLiEquipe').style.display = 'none';
                 document.getElementById('hydroLiConfig').style.display = 'none';
