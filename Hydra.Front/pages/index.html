@@ -13,6 +13,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/public-demo.css">
+  <link rel="stylesheet" href="../css/font-size.css">
 </head>
 
 <body>
@@ -32,6 +33,15 @@
       </nav>
 
       <div class="header__actions">
+        <a href="dashboard.html" class="btn btn--outline btn--sm">PREVIA PDV</a>
+        <div class="hydro-font-control">
+          <button class="btn btn--ghost btn--sm" type="button" data-font-toggle="font-panel-home" aria-label="Ajustar tamanho da fonte" aria-expanded="false">⚙</button>
+          <div class="hydro-font-panel" id="font-panel-home" hidden>
+            <span class="hydro-font-panel__label">Fonte</span>
+            <button type="button" data-font-action="decrease" aria-label="Diminuir fonte">A-</button>
+            <button type="button" data-font-action="increase" aria-label="Aumentar fonte">A+</button>
+          </div>
+        </div>
         <a href="login.html" class="btn btn--ghost btn--sm">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <path d="M12 12a5 5 0 100-10 5 5 0 000 10zM3 22c0-4.97 4.03-9 9-9s9 4.03 9 9" stroke="currentColor"
@@ -72,6 +82,7 @@
             <span class="btn__arrow">➜</span> Teste gratuito
           </button>
         </form>
+
       </div>
     </section>
 
@@ -353,10 +364,11 @@
 
   <div class="toast" id="toast">Cadastro recebido! Em breve entraremos em contato.</div>
   <div class="accessibility-widget">
-    <button id="font-plus">A+</button>
-    <button id="font-minus">A−</button>
+    <button id="font-plus" data-font-action="increase">A+</button>
+    <button id="font-minus" data-font-action="decrease">A−</button>
   </div>
   <script src="../js/public-demo.js"></script>
+  <script src="../js/font-size.js"></script>
   <script src="../js/script.js"></script>
 </body>
 

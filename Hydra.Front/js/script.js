@@ -74,34 +74,3 @@ const spyObserver = new IntersectionObserver((entries) => {
 
 spySections.forEach(section => spyObserver.observe(section));
 
-// ===== Accessibility: font size adjustment =====
-
-let size = parseFloat(localStorage.getItem("fontSize")) || 16;
-
-document.documentElement.style.fontSize = size + "px";
-
-document.getElementById("font-plus").onclick = () => {
-
-  if (size < 22) {
-
-    size++;
-
-    document.documentElement.style.fontSize = size + "px";
-
-    localStorage.setItem("fontSize", size);
-  }
-
-}
-
-document.getElementById("font-minus").onclick = () => {
-
-  if (size > 12) {
-
-    size--;
-
-    document.documentElement.style.fontSize = size + "px";
-
-    localStorage.setItem("fontSize", size);
-  }
-
-}
