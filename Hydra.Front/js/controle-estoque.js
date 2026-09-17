@@ -525,6 +525,7 @@
     /* ================= Guarda de sessão (redireciona para o login se não autenticado) =================
        RN04: os itens "Equipe" e "Configurações" só aparecem para o Administrador. */
     (async function checkAuth() {
+        if (window.HYDRA_PUBLIC_DEMO) return;
         try {
             const { usuario } = await window.hydraApi('/auth/me');
             if (usuario.perfil !== 'administrador') {
