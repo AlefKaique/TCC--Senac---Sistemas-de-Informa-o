@@ -364,6 +364,28 @@
     border: 2px solid #fff;
 }
 
+.hydro-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hydro-user-name {
+    max-width: 140px;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+    .hydro-user-name {
+        display: none;
+    }
+}
+
 .hydro-avatar {
     width: 40px;
     height: 40px;
