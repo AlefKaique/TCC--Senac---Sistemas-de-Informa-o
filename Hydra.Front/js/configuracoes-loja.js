@@ -135,6 +135,7 @@
 
     /* ================= Init ================= */
     (async function init() {
+        if (window.HYDRA_PUBLIC_DEMO) return;
         try {
             const { usuario } = await window.hydraApi('/auth/me');
             if (usuario.perfil !== 'administrador') {
