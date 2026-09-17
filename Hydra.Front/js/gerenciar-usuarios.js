@@ -450,7 +450,7 @@
 
     /* ================= Init ================= */
     (async function init() {
-        if (window.HYDRA_PUBLIC_DEMO) return;
+        if (!window.hydraApi) return;
         try {
             const { usuario } = await window.hydraApi('/auth/me');
             if (usuario.perfil !== 'administrador') {
@@ -458,7 +458,7 @@
                 return;
             }
         } catch (err) {
-            window.location.href = 'login.html';
+            // Visitante não autenticado (demo pública): mantém a tela estática, sem carregar dados reais.
             return;
         }
 

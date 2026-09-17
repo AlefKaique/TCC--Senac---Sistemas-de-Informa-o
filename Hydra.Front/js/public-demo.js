@@ -1,8 +1,6 @@
 (function () {
     'use strict';
 
-    window.HYDRA_PUBLIC_DEMO = true;
-
     var pageByView = {
         dashboard: 'dashboard.html',
         caixa: 'caixa.html',
@@ -74,6 +72,8 @@
             return;
         }
 
+        if (!demoLocked) return;
+
         var button = event.target.closest('button');
         if (button && (button.hasAttribute('data-font-toggle') || button.hasAttribute('data-font-action'))) return;
         if (button && !button.closest('.hydra-demo-modal__dialog')) {
@@ -84,6 +84,7 @@
     }, true);
 
     document.addEventListener('submit', function (event) {
+        if (!demoLocked) return;
         if (event.target.id === 'login-form' || event.target.id === 'signup-form') return;
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -93,4 +94,17 @@
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') closeModal();
     });
+
+    var demoLocked = false;
+
+    function lockForVisitors() {
+        demoLocked = true;
+        window.HYDRA_PUBLIC_DEMO = true;
+    }
+
+    if (!window.hydraApi) {
+        lockForVisitors();
+    } else {
+        window.hydraApi('/auth/me').catch(lockForVisitors);
+    }
 })();
