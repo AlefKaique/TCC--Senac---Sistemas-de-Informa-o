@@ -176,6 +176,7 @@
 .hydro-app {
     display: flex;
     min-height: 100vh;
+    min-height: 100dvh;
 }
 
 .hydro-sidebar {
@@ -190,6 +191,7 @@
     position: sticky;
     top: 0;
     height: 100vh;
+    height: 100dvh;
     overflow-y: auto;
     z-index: 40;
 }
@@ -875,6 +877,7 @@
         left: 0;
         top: 0;
         height: 100vh;
+        height: 100dvh;
         transform: translateX(-100%);
         transition: transform .25s ease;
     }
