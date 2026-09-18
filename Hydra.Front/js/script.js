@@ -7,7 +7,7 @@
 
   window.hydraApi('/auth/me')
     .then(() => {
-      if (homeLink) homeLink.setAttribute('href', 'dashboard.html');
+      if (homeLink) homeLink.setAttribute('href', 'controle-estoque.html');
       if (loginBtn) loginBtn.remove();
       if (signupBtn) signupBtn.remove();
     })
