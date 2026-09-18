@@ -197,7 +197,6 @@
               <div class="hydro-row-actions">
                 <button class="hydro-action-btn hydro-action-view" title="Ver detalhes" data-id="${p.id}"><i class="hydro-ic hydro-ic-eye"></i></button>
                 <button class="hydro-action-btn hydro-action-edit" title="Editar produto" data-id="${p.id}"><i class="hydro-ic hydro-ic-pencil"></i></button>
-                <button class="hydro-action-btn hydro-action-add" title="Adicionar estoque" data-id="${p.id}"><i class="hydro-ic hydro-ic-plus"></i></button>
               </div>
             </td>
           </tr>`;
@@ -265,9 +264,6 @@
         );
         document.querySelectorAll('.hydro-action-edit').forEach((btn) =>
             btn.addEventListener('click', () => openEditModal(Number(btn.dataset.id)))
-        );
-        document.querySelectorAll('.hydro-action-add').forEach((btn) =>
-            btn.addEventListener('click', () => openAddStockModal(Number(btn.dataset.id)))
         );
     }
 
@@ -382,36 +378,6 @@
         });
     }
 
-    /* ---- Add stock modal (row) ---- */
-    function openAddStockModal(id) {
-        const p = products.find((x) => x.id === id);
-        if (!p) return;
-
-        openModal({
-            title: `Adicionar estoque · ${p.name}`,
-            bodyHtml: `
-        <div class="hydro-detail-row"><span>Quantidade atual</span><span>${p.quantity} un.</span></div>
-        <div class="hydro-form-group">
-          <label for="hydroAddQty">Quantidade a adicionar</label>
-          <input type="number" id="hydroAddQty" min="1" value="10">
-        </div>
-      `,
-            footerHtml: `
-        <button class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroModalCancelBtn">Cancelar</button>
-        <button class="hydro-btn hydro-btn-primary hydro-btn-sm" id="hydroModalConfirmBtn">Adicionar</button>
-      `,
-        });
-
-        document.getElementById('hydroModalCancelBtn').addEventListener('click', closeModal);
-        document.getElementById('hydroModalConfirmBtn').addEventListener('click', () => {
-            const qty = Math.max(1, Number(document.getElementById('hydroAddQty').value) || 0);
-            p.quantity += qty;
-            closeModal();
-            refreshAll();
-            showToast(`${qty} un. adicionadas a "${p.name}"`);
-        });
-    }
-
     /* ---- Entrada / Saída modal (global) ---- */
     function openMovementModal(type) {
         const isEntrada = type === 'entrada';
@@ -496,6 +462,7 @@
         renderTable();
     });
 
+    document.getElementById('hydroBtnNovoProduto').addEventListener('click', () => { window.location.href = 'produtos.html'; });
     document.getElementById('hydroBtnEntrada').addEventListener('click', () => openMovementModal('entrada'));
     document.getElementById('hydroBtnSaida').addEventListener('click', () => openMovementModal('saida'));
 

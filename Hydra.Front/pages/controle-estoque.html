@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hydro · Controle de Estoque</title>
+    <title>Hydra · Controle de Estoque</title>
     <link rel="icon" type="image/png" href="../img/logo-hydra.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,14 +38,12 @@
                 <nav class="hydro-menu">
                     <p class="hydro-menu-label">Menu</p>
                     <ul>
-                        <li><a href="#" data-view="caixa"><i class="hydro-ic hydro-ic-drawer"></i><span>Caixa</span></a>
-                        </li>
-                        <li><a href="#" data-view="dashboard"><i
-                                    class="hydro-ic hydro-ic-home"></i><span>Dashboard</span></a></li>
-                        <li><a href="#" data-view="produtos"><i
-                                    class="hydro-ic hydro-ic-box"></i><span>Produtos</span></a></li>
                         <li><a href="#" class="hydro-active" data-view="estoque"><i
                                     class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
+                        <li><a href="#" data-view="caixa"><i class="hydro-ic hydro-ic-drawer"></i><span>Vendas</span></a>
+                        </li>
+                        <li><a href="#" data-view="dashboard"><i
+                                    class="hydro-ic hydro-ic-home"></i><span>Relatório</span></a></li>
                     </ul>
                 </nav>
 
@@ -133,7 +131,10 @@
                         </label>
                     </div>
                     <div class="hydro-toolbar-buttons">
-                        <button class="hydro-btn hydro-btn-primary" id="hydroBtnEntrada">
+                        <button class="hydro-btn hydro-btn-primary" id="hydroBtnNovoProduto">
+                            <i class="hydro-ic hydro-ic-plus"></i> Cadastrar Produto
+                        </button>
+                        <button class="hydro-btn hydro-btn-outline" id="hydroBtnEntrada">
                             <i class="hydro-ic hydro-ic-arrow-down"></i> Entrada de Estoque
                         </button>
                         <button class="hydro-btn hydro-btn-outline" id="hydroBtnSaida">
