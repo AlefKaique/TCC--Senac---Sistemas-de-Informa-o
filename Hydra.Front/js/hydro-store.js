@@ -67,6 +67,12 @@
         { id: 'p7', name: 'Biscoito Recheado 140g', desc: 'Sabor chocolate.', sku: 'BISCR140', category: 'Alimentos', costPrice: 2.6, price: 4.5, quantity: 55, minStock: 20, unit: 'un', image: null },
         { id: 'p8', name: 'Chocolate ao Leite 90g', desc: 'Barra tradicional.', sku: 'CHOC90', category: 'Alimentos', costPrice: 4.3, price: 7.2, quantity: 48, minStock: 18, unit: 'un', image: null },
         { id: 'p9', name: 'Arroz Branco Tipo 1 5kg', desc: 'Grãos longos e soltos.', sku: 'ARROZ5KG', category: 'Alimentos', costPrice: 17.0, price: 24.9, quantity: 30, minStock: 10, unit: 'un', image: null },
+        /* Produtos vendidos a granel (por peso) — usados pelo módulo de item
+           pesável do Caixa (etiqueta com código de barras "peso embutido",
+           prefixo 2). O campo "plu" é o código interno de 5 dígitos que fica
+           embutido nesse código de barras; "price"/"quantity" são por kg. */
+        { id: 'p10', name: 'Banana Prata (kg)', desc: 'Fruta fresca, vendida a granel.', sku: 'BANANAKG', plu: '00012', category: 'Alimentos', costPrice: 3.9, price: 6.49, quantity: 42.5, minStock: 10, unit: 'kg', image: null },
+        { id: 'p11', name: 'Queijo Mussarela (kg)', desc: 'Fatiado na hora, balcão de frios.', sku: 'QUEIJOKG', plu: '00045', category: 'Alimentos', costPrice: 28.0, price: 42.9, quantity: 8.2, minStock: 3, unit: 'kg', image: null },
     ];
 
     /* ================= Produtos ================= */
@@ -76,6 +82,22 @@
             list = SEED_CATALOG.map(function (p) {
                 return Object.assign({}, p, { criadoEm: nowIso() });
             });
+            write(KEYS.products, list);
+            return list;
+        }
+
+        /* Migração leve: se o catálogo já estava salvo (localStorage de uma
+           execução anterior) antes dos produtos pesáveis de demonstração
+           existirem no seed, adiciona só o que estiver faltando. */
+        var existingIds = {};
+        list.forEach(function (p) { existingIds[p.id] = true; });
+        var missing = SEED_CATALOG.filter(function (p) {
+            return p.unit === 'kg' && !existingIds[p.id];
+        });
+        if (missing.length) {
+            list = list.concat(missing.map(function (p) {
+                return Object.assign({}, p, { criadoEm: nowIso() });
+            }));
             write(KEYS.products, list);
         }
         return list;
