@@ -178,7 +178,6 @@
                     const status = getStatus(p);
                     return `
           <tr data-id="${p.id}">
-            <td class="hydro-col-check" data-label=""><input type="checkbox" class="hydro-row-check"></td>
             <td class="hydro-product-cell-wrap" data-label="Produto">
               <div class="hydro-product-cell">
                 <div class="hydro-product-thumb"><i class="hydro-ic hydro-ic-package"></i></div>
@@ -465,10 +464,6 @@
     document.getElementById('hydroBtnNovoProduto').addEventListener('click', () => { window.location.href = 'produtos.html'; });
     document.getElementById('hydroBtnEntrada').addEventListener('click', () => openMovementModal('entrada'));
     document.getElementById('hydroBtnSaida').addEventListener('click', () => openMovementModal('saida'));
-
-    document.getElementById('hydroCheckAll').addEventListener('change', (e) => {
-        document.querySelectorAll('.hydro-row-check').forEach((cb) => (cb.checked = e.target.checked));
-    });
 
     /* ================= Sidebar nav (cosmético, demo de página única) ================= */
     document.querySelectorAll('.hydro-menu a[data-view]').forEach((link) => {
