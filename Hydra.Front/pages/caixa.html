@@ -70,10 +70,6 @@
                 <header class="hydro-topbar">
                     <h1>Caixa</h1>
                     <div class="hydro-topbar-actions">
-                        <div class="hydro-search">
-                            <i class="hydro-ic hydro-ic-search"></i>
-                            <input type="text" id="hydroProductSearch" placeholder="Buscar">
-                        </div>
                         <button class="hydro-icon-btn" aria-label="Notificações">
                             <i class="hydro-ic hydro-ic-bell"></i>
                             <span class="hydro-notif-dot"></span>
@@ -85,14 +81,48 @@
                     </div>
                 </header>
 
-                <!-- Abas de pedidos -->
-                <div class="hydro-order-tabs" id="hydroOrderTabs"></div>
+                <!-- Abas de navegação da tela de Vendas -->
+                <div class="hydro-order-tabs" id="hydroViewTabs">
+                    <button type="button" class="hydro-order-tab hydro-active" data-view="venda">Nova Venda</button>
+                    <button type="button" class="hydro-order-tab" data-view="historico">Histórico de Vendas</button>
+                </div>
+
+                <!-- Subtela: Nova Venda (PDV) -->
+                <div id="hydroSaleView">
+
+                <!-- Busca / leitura de código de barras -->
+                <div class="hydro-scan-bar">
+                    <i class="hydro-ic hydro-ic-barcode"></i>
+                    <input type="text" id="hydroProductSearch" autocomplete="off"
+                        placeholder="Digite o código de barras ou nome do produto...">
+                    <div class="hydro-scan-suggestions" id="hydroSuggestions"></div>
+                </div>
 
                 <div class="hydro-pos-layout">
 
-                    <!-- Grade de produtos -->
-                    <section class="hydro-products-panel">
-                        <div class="hydro-product-grid" id="hydroProductGrid"></div>
+                    <!-- Itens do pedido -->
+                    <section class="hydro-items-panel">
+                        <div class="hydro-items-table-wrap">
+                            <table class="hydro-items-table hydro-sale-table">
+                                <thead>
+                                    <tr>
+                                        <th class="hydro-col-thumb">Item</th>
+                                        <th>Código</th>
+                                        <th>Descrição</th>
+                                        <th>Qtd</th>
+                                        <th>Unitário</th>
+                                        <th>Total</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hydroOrderItems"></tbody>
+                            </table>
+                            <div class="hydro-items-empty" id="hydroOrderEmpty">
+                                <i class="hydro-ic hydro-ic-barcode"></i>
+                                <p class="hydro-items-empty-title">Nenhum item adicionado</p>
+                                <p class="hydro-items-empty-desc">Escaneie o código de barras ou pesquise um produto para começar a venda.</p>
+                            </div>
+                        </div>
                     </section>
 
                     <!-- Resumo do pedido -->
@@ -112,18 +142,7 @@
                             </div>
                         </div>
 
-                        <p class="hydro-order-section-label">Itens</p>
-
-                        <div class="hydro-order-items" id="hydroOrderItems">
-                            <p class="hydro-order-empty" id="hydroOrderEmpty">Nenhum item adicionado ainda. Selecione produtos na lista ao lado.</p>
-                        </div>
-
-                        <div class="hydro-order-total-row">
-                            <span>Total</span>
-                            <span id="hydroOrderTotal">R$ 0,00</span>
-                        </div>
-
-                        <p class="hydro-order-section-label">Método de Pagamento</p>
+                        <p class="hydro-order-section-label">Formas de Pagamento</p>
                         <div class="hydro-payment-methods" id="hydroPaymentMethods">
                             <button type="button" class="hydro-payment-btn" data-method="dinheiro">
                                 <i class="hydro-ic hydro-ic-cash"></i>
@@ -137,19 +156,210 @@
                                 <i class="hydro-ic hydro-ic-pix"></i>
                                 <span>PIX</span>
                             </button>
+                            <button type="button" class="hydro-payment-btn" data-method="vale">
+                                <i class="hydro-ic hydro-ic-voucher"></i>
+                                <span>Vale</span>
+                            </button>
                         </div>
 
-                        <div class="hydro-order-actions">
-                            <button type="button" class="hydro-btn hydro-btn-outline" id="hydroCancelOrderBtn">Cancelar</button>
-                            <button type="button" class="hydro-btn hydro-btn-primary" id="hydroFinishOrderBtn">Finalizar</button>
+                        <div class="hydro-cash-box" id="hydroCashBox" hidden>
+                            <label for="hydroCashReceived">Valor recebido em dinheiro</label>
+                            <div class="hydro-cash-input-wrap">
+                                <span>R$</span>
+                                <input type="text" inputmode="decimal" id="hydroCashReceived" autocomplete="off" placeholder="0,00">
+                            </div>
+                            <div class="hydro-cash-change-row" id="hydroCashChangeRow">
+                                <span>Troco a devolver</span>
+                                <span id="hydroCashChange">R$ 0,00</span>
+                            </div>
                         </div>
+
+                        <p class="hydro-order-section-label">Cupom de Desconto</p>
+                        <div class="hydro-coupon-row" id="hydroCouponRow">
+                            <input type="text" id="hydroCouponInput" autocomplete="off" placeholder="Digite o código do cupom...">
+                            <button type="button" class="hydro-btn hydro-btn-primary hydro-btn-sm" id="hydroCouponApplyBtn">Aplicar</button>
+                        </div>
+                        <div class="hydro-coupon-applied" id="hydroCouponApplied" hidden>
+                            <span id="hydroCouponAppliedLabel"></span>
+                            <button type="button" id="hydroCouponRemoveBtn" aria-label="Remover cupom">
+                                <i class="hydro-ic hydro-ic-close"></i>
+                            </button>
+                        </div>
+
+                        <div class="hydro-order-totals">
+                            <div class="hydro-order-total-line">
+                                <span>Subtotal</span>
+                                <span id="hydroOrderSubtotal">R$ 0,00</span>
+                            </div>
+                            <div class="hydro-order-total-line hydro-order-total-discount">
+                                <span>Descontos</span>
+                                <span id="hydroOrderDiscount">R$ 0,00</span>
+                            </div>
+                            <div class="hydro-order-total-row">
+                                <span>Total</span>
+                                <span id="hydroOrderTotal">R$ 0,00</span>
+                            </div>
+                        </div>
+
+                        <button type="button" class="hydro-btn hydro-btn-primary hydro-btn-finish" id="hydroFinishOrderBtn">
+                            <span>Finalizar Venda</span>
+                            <i class="hydro-ic hydro-ic-arrow-right"></i>
+                        </button>
                     </aside>
 
                 </div>
+
+                <!-- Resumo fixo do rodapé -->
+                <div class="hydro-pos-footer">
+                    <span class="hydro-pos-footer-item">Itens: <strong id="hydroFooterCount">0</strong></span>
+                    <span class="hydro-pos-footer-item hydro-pos-footer-total">Total da Venda: <strong id="hydroFooterTotal">R$ 0,00</strong></span>
+                </div>
+                </div>
+                <!-- /Subtela: Nova Venda -->
+
+                <!-- Subtela: Histórico de Vendas -->
+                <div id="hydroHistoryView" hidden>
+                    <div class="hydro-scan-bar">
+                        <i class="hydro-ic hydro-ic-search"></i>
+                        <input type="text" id="hydroHistorySearch" autocomplete="off"
+                            placeholder="Buscar por número do pedido ou cliente...">
+                    </div>
+
+                    <section class="hydro-items-panel">
+                        <div class="hydro-items-table-wrap" id="hydroHistoryTableWrap">
+                            <table class="hydro-items-table">
+                                <thead>
+                                    <tr>
+                                        <th>Data/Hora</th>
+                                        <th>Pedido</th>
+                                        <th>Cliente</th>
+                                        <th>Itens</th>
+                                        <th>Pagamento</th>
+                                        <th>Total</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hydroHistoryBody"></tbody>
+                            </table>
+                            <div class="hydro-items-empty">
+                                <i class="hydro-ic hydro-ic-barcode"></i>
+                                <p class="hydro-items-empty-title">Nenhuma venda encontrada</p>
+                                <p class="hydro-items-empty-desc">As vendas finalizadas no Caixa aparecem aqui.</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+                <!-- /Subtela: Histórico de Vendas -->
             </main>
         </div>
 
         <div class="hydro-toast" id="hydroToast"></div>
+
+        <!-- Modal: item pesável (peso embutido / entrada manual) -->
+        <div class="hydro-weight-modal" id="hydroWeightModal" hidden>
+            <div class="hydro-weight-modal-backdrop" data-weight-close></div>
+            <div class="hydro-weight-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="hydroWeightModalTitle">
+                <div class="hydro-weight-modal-header">
+                    <div>
+                        <p class="hydro-weight-modal-eyebrow">Item vendido por peso</p>
+                        <h3 id="hydroWeightModalTitle">Produto</h3>
+                    </div>
+                    <button type="button" class="hydro-icon-btn hydro-icon-btn-sm" data-weight-close aria-label="Fechar">
+                        <i class="hydro-ic hydro-ic-close"></i>
+                    </button>
+                </div>
+
+                <p class="hydro-weight-modal-price" id="hydroWeightModalPrice">R$ 0,00/kg</p>
+
+                <label for="hydroWeightInput">Quantidade</label>
+                <div class="hydro-weight-unit-toggle" id="hydroWeightUnitToggle">
+                    <button type="button" class="hydro-weight-unit-btn hydro-active" data-unit="g">Gramas (g)</button>
+                    <button type="button" class="hydro-weight-unit-btn" data-unit="kg">Quilos (kg)</button>
+                </div>
+                <div class="hydro-cash-input-wrap">
+                    <input type="text" inputmode="decimal" id="hydroWeightInput" autocomplete="off" placeholder="0">
+                    <span id="hydroWeightUnitSuffix">g</span>
+                </div>
+
+                <div class="hydro-weight-modal-total">
+                    <span>Total do item</span>
+                    <span id="hydroWeightModalTotal">R$ 0,00</span>
+                </div>
+
+                <div class="hydro-order-actions">
+                    <button type="button" class="hydro-btn hydro-btn-outline" data-weight-close>Cancelar</button>
+                    <button type="button" class="hydro-btn hydro-btn-primary" id="hydroWeightConfirmBtn">Adicionar à venda</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: detalhes da venda (Histórico de Vendas) -->
+        <div class="hydro-weight-modal" id="hydroSaleDetailModal" hidden>
+            <div class="hydro-weight-modal-backdrop" data-sale-detail-close></div>
+            <div class="hydro-weight-modal-dialog hydro-sale-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="hydroSaleDetailTitle">
+                <div class="hydro-weight-modal-header">
+                    <div>
+                        <p class="hydro-weight-modal-eyebrow" id="hydroSaleDetailWhen">--</p>
+                        <h3 id="hydroSaleDetailTitle">Pedido #0000</h3>
+                    </div>
+                    <button type="button" class="hydro-icon-btn hydro-icon-btn-sm" data-sale-detail-close aria-label="Fechar">
+                        <i class="hydro-ic hydro-ic-close"></i>
+                    </button>
+                </div>
+
+                <div class="hydro-sale-detail-meta">
+                    <div>
+                        <span>Cliente</span>
+                        <strong id="hydroSaleDetailClient">—</strong>
+                    </div>
+                    <div>
+                        <span>Forma de pagamento</span>
+                        <strong id="hydroSaleDetailPayment">—</strong>
+                    </div>
+                </div>
+
+                <div class="hydro-sale-detail-meta" id="hydroSaleDetailCashRow" hidden>
+                    <div>
+                        <span>Valor recebido</span>
+                        <strong id="hydroSaleDetailReceived">R$ 0,00</strong>
+                    </div>
+                    <div>
+                        <span>Troco</span>
+                        <strong id="hydroSaleDetailChange">R$ 0,00</strong>
+                    </div>
+                </div>
+
+                <p class="hydro-order-section-label">Itens</p>
+                <div class="hydro-items-table-wrap hydro-sale-detail-items-wrap">
+                    <table class="hydro-items-table">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Qtd</th>
+                                <th>Unitário</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hydroSaleDetailItems"></tbody>
+                    </table>
+                </div>
+
+                <div class="hydro-order-totals">
+                    <div class="hydro-order-total-line">
+                        <span>Subtotal</span>
+                        <span id="hydroSaleDetailSubtotal">R$ 0,00</span>
+                    </div>
+                    <div class="hydro-order-total-line hydro-order-total-discount">
+                        <span>Descontos<span id="hydroSaleDetailCouponLabel"></span></span>
+                        <span id="hydroSaleDetailDiscount">R$ 0,00</span>
+                    </div>
+                    <div class="hydro-order-total-row">
+                        <span>Total</span>
+                        <span id="hydroSaleDetailTotal">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
     </div>
 

@@ -67,6 +67,14 @@
     font-family: inherit;
 }
 
+/* Garante que o atributo "hidden" sempre vença, mesmo em elementos cuja
+   classe define "display" (ex.: .hydro-cash-box, .hydro-coupon-row) —
+   sem isso, a regra de classe (autor) tem prioridade sobre o [hidden]
+   padrão do navegador e o elemento continua visível. */
+.hydro-caixa [hidden] {
+    display: none !important;
+}
+
 /* ============ Ícones ============ */
 .hydro-ic {
     display: inline-block;
@@ -142,6 +150,11 @@
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6'/%3E%3C/svg%3E");
 }
 
+.hydro-ic-eye {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+}
+
 .hydro-ic-plus {
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E");
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E");
@@ -170,6 +183,26 @@
 .hydro-ic-package {
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 8l-9-5-9 5 9 5 9-5Z'/%3E%3Cpath d='M3 8v8l9 5 9-5V8'/%3E%3Cpath d='M12 13v8'/%3E%3C/svg%3E");
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 8l-9-5-9 5 9 5 9-5Z'/%3E%3Cpath d='M3 8v8l9 5 9-5V8'/%3E%3Cpath d='M12 13v8'/%3E%3C/svg%3E");
+}
+
+.hydro-ic-barcode {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cline x1='7' y1='8' x2='7' y2='16'/%3E%3Cline x1='10' y1='8' x2='10' y2='16'/%3E%3Cline x1='13' y1='8' x2='13' y2='16'/%3E%3Cline x1='17' y1='8' x2='17' y2='16'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cline x1='7' y1='8' x2='7' y2='16'/%3E%3Cline x1='10' y1='8' x2='10' y2='16'/%3E%3Cline x1='13' y1='8' x2='13' y2='16'/%3E%3Cline x1='17' y1='8' x2='17' y2='16'/%3E%3C/svg%3E");
+}
+
+.hydro-ic-voucher {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 9V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z'/%3E%3Cpath d='M13 5v2'/%3E%3Cpath d='M13 17v2'/%3E%3Cpath d='M13 11v2'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 9V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z'/%3E%3Cpath d='M13 5v2'/%3E%3Cpath d='M13 17v2'/%3E%3Cpath d='M13 11v2'/%3E%3C/svg%3E");
+}
+
+.hydro-ic-close {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='M6 6l12 12'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='M6 6l12 12'/%3E%3C/svg%3E");
+}
+
+.hydro-ic-arrow-right {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3Cpath d='M13 6l6 6-6 6'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3Cpath d='M13 6l6 6-6 6'/%3E%3C/svg%3E");
 }
 
 /* ============ Layout ============ */
@@ -471,53 +504,157 @@
     color: #fff;
 }
 
-.hydro-order-tab .hydro-tab-badge {
-    display: inline-flex;
+/* ============ Barra de busca / leitura de código de barras ============ */
+.hydro-scan-bar {
+    position: relative;
+    display: flex;
     align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, .25);
-    font-size: 11px;
-    margin-left: 8px;
+    gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    color: var(--muted-soft);
 }
 
-.hydro-order-tab:not(.hydro-active) .hydro-tab-badge {
-    background: var(--blue-bg);
-    color: var(--blue);
+.hydro-scan-bar > .hydro-ic {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.hydro-scan-bar input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink);
+}
+
+.hydro-scan-bar input::placeholder {
+    color: var(--muted-soft);
+    font-weight: 400;
+}
+
+.hydro-scan-suggestions {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-pop);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 30;
+    display: none;
+}
+
+.hydro-scan-suggestions.hydro-show {
+    display: block;
+}
+
+.hydro-suggestion {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    padding: 11px 16px;
+    font-size: 13.5px;
+    color: var(--ink);
+    background: transparent;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.hydro-suggestion:last-child {
+    border-bottom: none;
+}
+
+.hydro-suggestion:hover:not(:disabled) {
+    background: var(--bg);
+}
+
+.hydro-suggestion:disabled {
+    color: var(--muted-soft);
+    cursor: not-allowed;
+}
+
+.hydro-suggestion-name {
+    font-weight: 600;
+}
+
+.hydro-suggestion-meta {
+    color: var(--muted-soft);
+    font-size: 12px;
+    white-space: nowrap;
 }
 
 /* ============ Layout principal do PDV ============ */
 .hydro-pos-layout {
     display: grid;
-    grid-template-columns: 1fr 340px;
+    grid-template-columns: 1fr 360px;
     gap: 22px;
     align-items: start;
 }
 
-/* ============ Grade de produtos ============ */
-.hydro-product-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
-}
-
-.hydro-product-card {
+/* ============ Tabela de itens do pedido ============ */
+.hydro-items-panel {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    overflow: hidden;
 }
 
-.hydro-product-thumb {
-    height: 110px;
-    border-radius: var(--radius-md);
+.hydro-items-table-wrap {
+    position: relative;
+    overflow-x: auto;
+}
+
+.hydro-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+}
+
+.hydro-items-table th {
+    text-align: left;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    padding: 16px 14px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.hydro-items-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    color: var(--ink);
+}
+
+.hydro-items-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.hydro-col-thumb {
+    width: 56px;
+}
+
+.hydro-item-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
     background: #eef0f6;
     display: flex;
     align-items: center;
@@ -525,123 +662,87 @@
     color: var(--muted-soft);
 }
 
-.hydro-product-thumb .hydro-ic {
-    width: 30px;
-    height: 30px;
+.hydro-item-thumb .hydro-ic {
+    width: 18px;
+    height: 18px;
 }
 
-.hydro-product-info {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    flex: 1;
-}
-
-.hydro-product-name {
-    font-size: 15px;
+.hydro-item-name {
     font-weight: 700;
     color: var(--navy-900);
 }
 
-.hydro-product-desc {
-    font-size: 12.5px;
+.hydro-item-desc {
+    font-size: 12px;
     color: var(--muted);
-    line-height: 1.5;
-}
-
-.hydro-product-stock {
-    font-size: 11.5px;
-    font-weight: 600;
-    color: var(--green);
     margin-top: 2px;
 }
 
-.hydro-product-stock.hydro-stock-zero {
-    color: var(--red);
+.hydro-item-code {
+    color: var(--muted);
+    white-space: nowrap;
 }
 
-.hydro-product-card.hydro-product-out {
-    opacity: .7;
+.hydro-item-unit,
+.hydro-item-total {
+    font-weight: 700;
+    color: var(--navy-900);
+    white-space: nowrap;
 }
 
-.hydro-add-btn:disabled,
-.hydro-qty-btn:disabled {
-    opacity: .4;
-    cursor: not-allowed;
-    filter: none;
-}
-
-.hydro-product-footer {
+.hydro-item-remove {
+    color: var(--muted-soft);
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    justify-content: center;
+    border-radius: var(--radius-sm);
 }
 
-.hydro-product-price {
+.hydro-item-remove:hover {
+    color: var(--red);
+    background: var(--red-bg);
+}
+
+/* Estado vazio: nenhum item escaneado/adicionado ainda */
+.hydro-items-empty {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 10px;
+    padding: 70px 30px;
+    color: var(--muted-soft);
+}
+
+.hydro-items-table-wrap.hydro-empty .hydro-items-table {
+    display: none;
+}
+
+.hydro-items-table-wrap.hydro-empty .hydro-items-empty {
+    display: flex;
+}
+
+.hydro-items-empty .hydro-ic {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 4px;
+}
+
+.hydro-items-empty-title {
     font-size: 16px;
     font-weight: 800;
     color: var(--navy-900);
 }
 
-.hydro-add-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border-radius: 9px;
-    background: var(--navy-active);
-    color: #fff;
+.hydro-items-empty-desc {
     font-size: 13px;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.hydro-add-btn:hover {
-    filter: brightness(1.08);
-}
-
-.hydro-add-btn .hydro-ic {
-    width: 13px;
-    height: 13px;
-}
-
-.hydro-qty-stepper {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--bg);
-    border-radius: 9px;
-    padding: 4px;
-}
-
-.hydro-qty-btn {
-    width: 26px;
-    height: 26px;
-    border-radius: 7px;
-    background: var(--navy-active);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.hydro-qty-btn:hover {
-    filter: brightness(1.1);
-}
-
-.hydro-qty-btn .hydro-ic {
-    width: 12px;
-    height: 12px;
-}
-
-.hydro-qty-value {
-    min-width: 16px;
-    text-align: center;
-    font-weight: 700;
-    font-size: 14px;
-    color: var(--navy-900);
+    color: var(--muted);
+    max-width: 320px;
+    line-height: 1.5;
 }
 
 /* ============ Painel do pedido ============ */
@@ -693,79 +794,65 @@
     color: var(--muted-soft);
 }
 
-.hydro-order-items {
+.hydro-qty-stepper {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 10px;
-    min-height: 60px;
-    max-height: 280px;
-    overflow-y: auto;
+    background: var(--bg);
+    border-radius: 9px;
+    padding: 4px;
+    width: fit-content;
 }
 
-.hydro-order-empty {
-    font-size: 13px;
-    color: var(--muted);
-    padding: 18px 4px;
-    text-align: center;
-    line-height: 1.5;
-}
-
-.hydro-order-item {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
-    font-size: 13.5px;
-}
-
-.hydro-order-item-name {
-    display: flex;
-    gap: 6px;
-    color: var(--ink);
-}
-
-.hydro-order-item-qty {
-    color: var(--muted-soft);
-    font-weight: 700;
-    flex-shrink: 0;
-}
-
-.hydro-order-item-price {
-    font-weight: 700;
-    color: var(--navy-900);
-    white-space: nowrap;
-}
-
-.hydro-order-item-remove {
-    color: var(--muted-soft);
-    flex-shrink: 0;
-    width: 18px;
-    height: 18px;
+.hydro-qty-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: var(--navy-active);
+    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 5px;
+    flex-shrink: 0;
 }
 
-.hydro-order-item-remove:hover {
-    color: var(--red);
-    background: var(--red-bg);
+.hydro-qty-btn:hover:not(:disabled) {
+    filter: brightness(1.1);
 }
 
-.hydro-order-total-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
-    font-size: 15px;
-    font-weight: 800;
+.hydro-qty-btn:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+    filter: none;
+}
+
+.hydro-qty-btn .hydro-ic {
+    width: 12px;
+    height: 12px;
+}
+
+.hydro-qty-value {
+    min-width: 16px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 14px;
     color: var(--navy-900);
 }
 
+/* Linha "Qtd" de itens vendidos por peso (kg) — mostra o peso já definido
+   pelo código de barras da balança ou pela entrada manual, com um botão
+   para reabrir o modal e ajustar. */
+.hydro-weight-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+}
+
+/* ============ Formas de pagamento ============ */
 .hydro-payment-methods {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
 }
 
@@ -799,13 +886,209 @@
     height: 18px;
 }
 
-.hydro-order-actions {
+/* ============ Dinheiro recebido / troco ============ */
+.hydro-cash-box {
     display: flex;
+    flex-direction: column;
     gap: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px;
 }
 
-.hydro-order-actions .hydro-btn {
+.hydro-cash-box label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.hydro-cash-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.hydro-cash-input-wrap span {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted-soft);
+}
+
+.hydro-cash-input-wrap input {
     flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.hydro-cash-input-wrap input::placeholder {
+    color: var(--muted-soft);
+    font-weight: 400;
+}
+
+.hydro-cash-input-wrap.hydro-cash-invalid {
+    border-color: var(--red);
+}
+
+.hydro-cash-change-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--navy-900);
+}
+
+.hydro-cash-change-row span:last-child {
+    font-size: 15px;
+}
+
+.hydro-cash-change-row.hydro-cash-change-warning span:last-child {
+    color: var(--red);
+}
+
+/* ============ Cupom de desconto ============ */
+.hydro-coupon-row {
+    display: flex;
+    gap: 8px;
+}
+
+.hydro-coupon-row input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--ink);
+    background: #fff;
+    outline: none;
+}
+
+.hydro-coupon-row input:focus {
+    border-color: var(--navy-active);
+}
+
+.hydro-coupon-row input::placeholder {
+    color: var(--muted-soft);
+}
+
+.hydro-btn-sm {
+    padding: 9px 16px;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.hydro-coupon-applied {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: var(--green-bg);
+    border: 1px solid var(--green);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--green);
+}
+
+.hydro-coupon-applied button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    color: inherit;
+    flex-shrink: 0;
+}
+
+.hydro-coupon-applied .hydro-ic {
+    width: 12px;
+    height: 12px;
+}
+
+/* ============ Totais ============ */
+.hydro-order-totals {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 4px;
+}
+
+.hydro-order-total-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13.5px;
+    color: var(--muted);
+}
+
+.hydro-order-total-discount span:last-child {
+    color: var(--green);
+    font-weight: 600;
+}
+
+.hydro-order-total-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--navy-900);
+}
+
+.hydro-btn-finish {
+    width: 100%;
+    padding: 14px 18px;
+    font-size: 15px;
+}
+
+.hydro-btn-finish .hydro-ic {
+    width: 16px;
+    height: 16px;
+}
+
+/* ============ Rodapé de resumo ============ */
+.hydro-pos-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    padding: 14px 20px;
+    margin-top: 20px;
+    font-size: 13.5px;
+    color: var(--muted);
+}
+
+.hydro-pos-footer strong {
+    color: var(--navy-900);
+}
+
+.hydro-pos-footer-total {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.hydro-pos-footer-total strong {
+    color: var(--navy-900);
+    font-size: 17px;
 }
 
 /* ============ Mobile toggle / overlay ============ */
@@ -870,6 +1153,164 @@
     background: var(--red);
 }
 
+/* ============ Modal: item pesável ============ */
+.hydro-weight-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.hydro-weight-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(13, 26, 61, .45);
+}
+
+.hydro-weight-modal-dialog {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-pop);
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.hydro-weight-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.hydro-weight-modal-eyebrow {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    color: var(--blue);
+}
+
+.hydro-weight-modal-header h3 {
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--navy-900);
+    margin-top: 2px;
+}
+
+.hydro-weight-modal-price {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-top: -8px;
+}
+
+.hydro-weight-modal-dialog label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.hydro-weight-unit-toggle {
+    display: flex;
+    gap: 8px;
+    margin-top: -6px;
+}
+
+.hydro-weight-unit-btn {
+    flex: 1;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    transition: border-color .15s, background .15s, color .15s;
+}
+
+.hydro-weight-unit-btn:hover {
+    background: #f6f7fb;
+}
+
+.hydro-weight-unit-btn.hydro-active {
+    border-color: var(--navy-active);
+    background: var(--blue-bg);
+    color: var(--navy-900);
+}
+
+.hydro-weight-modal-dialog .hydro-cash-input-wrap input {
+    font-size: 17px;
+}
+
+.hydro-weight-modal-total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--navy-900);
+}
+
+/* ============ Modal: detalhes da venda (Histórico) ============ */
+.hydro-sale-detail-dialog {
+    max-width: 460px;
+    max-height: 88vh;
+    overflow-y: auto;
+}
+
+.hydro-sale-detail-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+}
+
+.hydro-sale-detail-meta div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.hydro-sale-detail-meta span {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+}
+
+.hydro-sale-detail-meta strong {
+    font-size: 14px;
+    color: var(--navy-900);
+}
+
+.hydro-sale-detail-items-wrap {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+#hydroSaleDetailCouponLabel {
+    font-weight: 400;
+    color: var(--muted-soft);
+    text-transform: none;
+    letter-spacing: normal;
+}
+
 /* ============ Responsive ============ */
 @media (max-width: 1180px) {
     .hydro-main {
@@ -878,10 +1319,6 @@
 
     .hydro-pos-layout {
         grid-template-columns: 1fr 300px;
-    }
-
-    .hydro-product-grid {
-        grid-template-columns: repeat(2, 1fr);
     }
 }
 
@@ -920,27 +1357,60 @@
         position: static;
     }
 
-    .hydro-search {
-        width: 180px;
+    .hydro-items-table thead {
+        display: none;
+    }
+
+    .hydro-items-table,
+    .hydro-items-table tbody,
+    .hydro-items-table tr,
+    .hydro-items-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .hydro-items-table tr {
+        padding: 14px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .hydro-items-table td {
+        border-bottom: none;
+        padding: 4px 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .hydro-items-table td[data-label]::before {
+        content: attr(data-label);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        color: var(--muted-soft);
+        flex-shrink: 0;
+    }
+
+    .hydro-col-thumb,
+    .hydro-sale-table td:first-child {
+        display: none;
     }
 }
 
 @media (max-width: 640px) {
-    .hydro-product-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .hydro-search {
-        display: none;
-    }
-
     .hydro-topbar h1 {
         font-size: 22px;
     }
-}
 
-@media (max-width: 440px) {
-    .hydro-product-grid {
-        grid-template-columns: 1fr;
+    .hydro-scan-bar {
+        padding: 12px 14px;
+    }
+
+    .hydro-pos-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
     }
 }
