@@ -270,6 +270,7 @@
 .hydro-breadcrumb-muted {
     color: var(--muted-soft);
     font-weight: 500;
+    text-decoration: none;
 }
 
 .hydro-breadcrumb-sep {

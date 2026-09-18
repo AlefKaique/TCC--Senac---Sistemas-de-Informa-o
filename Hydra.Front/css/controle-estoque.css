@@ -525,6 +525,7 @@
     border: 1px solid transparent;
     transition: filter .15s, background .15s;
     white-space: nowrap;
+    text-decoration: none;
 }
 
 .hydro-btn .hydro-ic {
