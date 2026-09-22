@@ -106,6 +106,13 @@
                             <p class="hydro-stat-value hydro-value-amber" id="hydroStatBaixo">0</p>
                         </div>
                     </div>
+                    <div class="hydro-stat-card">
+                        <div class="hydro-stat-icon hydro-icon-amber"><i class="hydro-ic hydro-ic-warning"></i></div>
+                        <div class="hydro-stat-copy">
+                            <p class="hydro-stat-label">Produtos a vencer</p>
+                            <p class="hydro-stat-value hydro-value-amber" id="hydroStatVencendo">0</p>
+                        </div>
+                    </div>
                 </section>
 
                 <section class="hydro-toolbar">
@@ -132,6 +139,15 @@
                                 <option value="Crítico">Crítico</option>
                             </select>
                         </label>
+                        <label class="hydro-select-field">
+                            <span class="hydro-select-label">Validade</span>
+                            <select id="hydroFilterValidade">
+                                <option value="">Todas</option>
+                                <option value="Vencido">Vencido</option>
+                                <option value="Vence em breve">Vence em breve</option>
+                                <option value="Válido">Válido</option>
+                            </select>
+                        </label>
                     </div>
                     <div class="hydro-toolbar-buttons">
                         <button class="hydro-btn hydro-btn-primary" id="hydroBtnNovoProduto">
@@ -156,6 +172,7 @@
                                     <th>Categoria</th>
                                     <th>Quantidade</th>
                                     <th>Estoque mínimo</th>
+                                    <th>Validade</th>
                                     <th>Status</th>
                                     <th class="hydro-col-actions">Ações</th>
                                 </tr>

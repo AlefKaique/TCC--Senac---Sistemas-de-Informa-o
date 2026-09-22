@@ -1,105 +1,146 @@
 (function () {
     'use strict';
 
-    (async function guardAdminMenu() {
+    // RN04 — "visualizar os relatórios financeiros do dashboard" é
+    // restrito ao Administrador. Operador de Caixa/Estoquista autenticados
+    // são redirecionados; visitante da demo pública continua vendo a tela
+    // (sem dados reais, ver init() abaixo).
+    (async function guardAdminOnly() {
         if (!window.hydraApi) return;
         try {
             const { usuario } = await window.hydraApi('/auth/me');
+            if (usuario.perfil !== 'administrador') {
+                window.location.href = 'controle-estoque.html';
+                return;
+            }
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
-            if (usuario.perfil !== 'administrador') {
-                document.getElementById('hydroLiEquipe').style.display = 'none';
-                document.getElementById('hydroLiConfig').style.display = 'none';
-            }
         } catch (err) {
-            // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
+            // Visitante não autenticado (demo pública): mantém a tela visível.
         }
     })();
 
     HydroStore.seedHistoryIfNeeded();
 
-    const products = HydroStore.getProducts();
-    const sales = HydroStore.getSales();
-    const movements = HydroStore.getMovements();
-
-    function money(value) {
-        return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    /* Conversores do formato retornado pela API real (produtos/vendas/
+       movimentacoes_estoque do schema.sql) para o formato usado pelas
+       funções de renderização deste dashboard — o mesmo já usado pelo
+       catálogo de demonstração do HydroStore. Os ids viram string para
+       continuar batendo com as chaves de objeto usadas em buildTopProducts
+       (toda chave de objeto em JS é string, então productId precisa ser
+       comparado como string também). */
+    function mapApiProduct(p) {
+        return {
+            id: String(p.id_produto),
+            name: p.nome,
+            sku: p.codigo_barras || `PRD-${p.id_produto}`,
+            quantity: Number(p.quantidade),
+            minStock: Number(p.estoque_minimo),
+            validade: p.validade,
+        };
     }
 
-    function dateKey(iso) {
-        return iso.slice(0, 10);
+    function mapApiVenda(v) {
+        return {
+            date: v.data_venda,
+            total: Number(v.valor_total),
+        };
     }
 
-    const today = HydroStore.todayKey();
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterday = HydroStore.todayKey(yesterdayDate);
-
-    /* ================= KPIs ================= */
-    function pctChange(current, previous) {
-        if (previous === null || previous === undefined) return null;
-        if (previous === 0) return current > 0 ? 100 : null;
-        return ((current - previous) / previous) * 100;
+    function mapApiMovimentacao(m) {
+        return {
+            date: m.data_movimentacao,
+            type: m.tipo,
+            qty: Number(m.quantidade),
+            productId: String(m.id_produto),
+        };
     }
 
-    function deltaHtml(pct) {
-        if (pct === null) {
-            return `<span class="hydro-kpi-delta hydro-kpi-delta-neutral">sem comparativo</span>`;
+    /**
+     * Renderiza todo o dashboard (KPIs, gráficos e tabelas de alerta) a
+     * partir de listas de produtos/vendas/movimentações já no formato
+     * interno — vindas da API real (usuário autenticado) ou do catálogo
+     * de demonstração local (visitante da demo pública).
+     */
+    function renderDashboard(products, sales, movements) {
+        function money(value) {
+            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
-        const up = pct >= 0;
-        const icon = up ? 'hydro-ic-trending-up' : 'hydro-ic-trending-down';
-        const cls = up ? 'hydro-kpi-delta-up' : 'hydro-kpi-delta-down';
-        return `<span class="hydro-kpi-delta ${cls}"><i class="hydro-ic ${icon}"></i>${up ? '+' : ''}${pct.toFixed(1)}%</span>`;
-    }
 
-    const salesToday = sales.filter((s) => dateKey(s.date) === today);
-    const salesYesterday = sales.filter((s) => dateKey(s.date) === yesterday);
+        function dateKey(iso) {
+            return iso.slice(0, 10);
+        }
 
-    const vendasHoje = salesToday.reduce((sum, s) => sum + s.total, 0);
-    const vendasOntem = salesYesterday.reduce((sum, s) => sum + s.total, 0);
+        const today = HydroStore.todayKey();
+        const yesterdayDate = new Date();
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        const yesterday = HydroStore.todayKey(yesterdayDate);
 
-    const ticketHoje = salesToday.length ? vendasHoje / salesToday.length : 0;
-    const ticketOntem = salesYesterday.length ? vendasOntem / salesYesterday.length : 0;
+        /* ================= KPIs ================= */
+        function pctChange(current, previous) {
+            if (previous === null || previous === undefined) return null;
+            if (previous === 0) return current > 0 ? 100 : null;
+            return ((current - previous) / previous) * 100;
+        }
 
-    const totalProdutos = products.length;
-    const totalEstoque = products.reduce((sum, p) => sum + (p.quantity || 0), 0);
+        function deltaHtml(pct) {
+            if (pct === null) {
+                return `<span class="hydro-kpi-delta hydro-kpi-delta-neutral">sem comparativo</span>`;
+            }
+            const up = pct >= 0;
+            const icon = up ? 'hydro-ic-trending-up' : 'hydro-ic-trending-down';
+            const cls = up ? 'hydro-kpi-delta-up' : 'hydro-kpi-delta-down';
+            return `<span class="hydro-kpi-delta ${cls}"><i class="hydro-ic ${icon}"></i>${up ? '+' : ''}${pct.toFixed(1)}%</span>`;
+        }
 
-    const prevSnapshot = HydroStore.getPreviousSnapshot();
+        const salesToday = sales.filter((s) => dateKey(s.date) === today);
+        const salesYesterday = sales.filter((s) => dateKey(s.date) === yesterday);
 
-    const kpis = [
-        {
-            title: 'Vendas Hoje',
-            icon: 'hydro-ic-cash',
-            iconClass: 'hydro-icon-blue',
-            value: money(vendasHoje),
-            delta: pctChange(vendasHoje, salesYesterday.length ? vendasOntem : null),
-        },
-        {
-            title: 'Ticket Médio',
-            icon: 'hydro-ic-receipt',
-            iconClass: 'hydro-icon-green',
-            value: money(ticketHoje),
-            delta: pctChange(ticketHoje, salesYesterday.length ? ticketOntem : null),
-        },
-        {
-            title: 'Total produtos',
-            icon: 'hydro-ic-box',
-            iconClass: 'hydro-icon-blue',
-            value: totalProdutos.toLocaleString('pt-BR'),
-            delta: prevSnapshot ? pctChange(totalProdutos, prevSnapshot.totalProdutos) : null,
-        },
-        {
-            title: 'Total estoque',
-            icon: 'hydro-ic-inventory',
-            iconClass: 'hydro-icon-amber',
-            value: totalEstoque.toLocaleString('pt-BR'),
-            delta: prevSnapshot ? pctChange(totalEstoque, prevSnapshot.totalEstoque) : null,
-        },
-    ];
+        const vendasHoje = salesToday.reduce((sum, s) => sum + s.total, 0);
+        const vendasOntem = salesYesterday.reduce((sum, s) => sum + s.total, 0);
 
-    document.getElementById('hydroKpiGrid').innerHTML = kpis
-        .map(
-            (k) => `
+        const ticketHoje = salesToday.length ? vendasHoje / salesToday.length : 0;
+        const ticketOntem = salesYesterday.length ? vendasOntem / salesYesterday.length : 0;
+
+        const totalProdutos = products.length;
+        const totalEstoque = products.reduce((sum, p) => sum + (p.quantity || 0), 0);
+
+        const prevSnapshot = HydroStore.getPreviousSnapshot();
+
+        const kpis = [
+            {
+                title: 'Vendas Hoje',
+                icon: 'hydro-ic-cash',
+                iconClass: 'hydro-icon-blue',
+                value: money(vendasHoje),
+                delta: pctChange(vendasHoje, salesYesterday.length ? vendasOntem : null),
+            },
+            {
+                title: 'Ticket Médio',
+                icon: 'hydro-ic-receipt',
+                iconClass: 'hydro-icon-green',
+                value: money(ticketHoje),
+                delta: pctChange(ticketHoje, salesYesterday.length ? ticketOntem : null),
+            },
+            {
+                title: 'Total produtos',
+                icon: 'hydro-ic-box',
+                iconClass: 'hydro-icon-blue',
+                value: totalProdutos.toLocaleString('pt-BR'),
+                delta: prevSnapshot ? pctChange(totalProdutos, prevSnapshot.totalProdutos) : null,
+            },
+            {
+                title: 'Total estoque',
+                icon: 'hydro-ic-inventory',
+                iconClass: 'hydro-icon-amber',
+                value: totalEstoque.toLocaleString('pt-BR'),
+                delta: prevSnapshot ? pctChange(totalEstoque, prevSnapshot.totalEstoque) : null,
+            },
+        ];
+
+        document.getElementById('hydroKpiGrid').innerHTML = kpis
+            .map(
+                (k) => `
         <article class="hydro-kpi-card">
             <div class="hydro-kpi-header">
                 <span class="hydro-kpi-title">
@@ -113,166 +154,166 @@
                 ${deltaHtml(k.delta)}
             </div>
         </article>`
-        )
-        .join('');
+            )
+            .join('');
 
-    HydroStore.snapshotToday({ totalProdutos, totalEstoque });
+        HydroStore.snapshotToday({ totalProdutos, totalEstoque });
 
-    /* ================= Gráfico: Entradas x Saídas (últimos 30 dias) ================= */
-    function buildDailySeries() {
-        const days = [];
-        for (let d = 29; d >= 0; d--) {
-            const date = new Date();
-            date.setDate(date.getDate() - d);
-            days.push({ key: HydroStore.todayKey(date), date, entradas: 0, saidas: 0 });
+        /* ================= Gráfico: Entradas x Saídas (últimos 30 dias) ================= */
+        function buildDailySeries() {
+            const days = [];
+            for (let d = 29; d >= 0; d--) {
+                const date = new Date();
+                date.setDate(date.getDate() - d);
+                days.push({ key: HydroStore.todayKey(date), date, entradas: 0, saidas: 0 });
+            }
+            const byKey = Object.fromEntries(days.map((d) => [d.key, d]));
+
+            movements.forEach((m) => {
+                const bucket = byKey[dateKey(m.date)];
+                if (!bucket) return;
+                if (m.type === 'entrada') bucket.entradas += m.qty;
+                else bucket.saidas += m.qty;
+            });
+
+            return days;
         }
-        const byKey = Object.fromEntries(days.map((d) => [d.key, d]));
 
-        movements.forEach((m) => {
-            const bucket = byKey[dateKey(m.date)];
-            if (!bucket) return;
-            if (m.type === 'entrada') bucket.entradas += m.qty;
-            else bucket.saidas += m.qty;
-        });
+        function lineChartSvg(days) {
+            const width = 720;
+            const height = 230;
+            const padding = { top: 16, right: 16, bottom: 26, left: 34 };
+            const chartW = width - padding.left - padding.right;
+            const chartH = height - padding.top - padding.bottom;
 
-        return days;
-    }
+            const maxVal = Math.max(1, ...days.map((d) => Math.max(d.entradas, d.saidas)));
+            const stepX = chartW / (days.length - 1);
 
-    function lineChartSvg(days) {
-        const width = 720;
-        const height = 230;
-        const padding = { top: 16, right: 16, bottom: 26, left: 34 };
-        const chartW = width - padding.left - padding.right;
-        const chartH = height - padding.top - padding.bottom;
+            function pointsFor(key) {
+                return days
+                    .map((d, i) => {
+                        const x = padding.left + i * stepX;
+                        const y = padding.top + chartH - (d[key] / maxVal) * chartH;
+                        return `${x.toFixed(1)},${y.toFixed(1)}`;
+                    })
+                    .join(' ');
+            }
 
-        const maxVal = Math.max(1, ...days.map((d) => Math.max(d.entradas, d.saidas)));
-        const stepX = chartW / (days.length - 1);
-
-        function pointsFor(key) {
-            return days
-                .map((d, i) => {
-                    const x = padding.left + i * stepX;
-                    const y = padding.top + chartH - (d[key] / maxVal) * chartH;
-                    return `${x.toFixed(1)},${y.toFixed(1)}`;
+            const gridLines = [0, 0.25, 0.5, 0.75, 1]
+                .map((f) => {
+                    const y = padding.top + chartH * f;
+                    return `<line x1="${padding.left}" y1="${y.toFixed(1)}" x2="${width - padding.right}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" />`;
                 })
-                .join(' ');
-        }
+                .join('');
 
-        const gridLines = [0, 0.25, 0.5, 0.75, 1]
-            .map((f) => {
-                const y = padding.top + chartH * f;
-                return `<line x1="${padding.left}" y1="${y.toFixed(1)}" x2="${width - padding.right}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" />`;
-            })
-            .join('');
+            const labelIdx = [0, 7, 14, 21, 29].filter((i) => i < days.length);
+            const labels = labelIdx
+                .map((i) => {
+                    const x = padding.left + i * stepX;
+                    const d = days[i].date;
+                    const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    return `<text x="${x.toFixed(1)}" y="${height - 6}" font-size="10.5" fill="var(--muted-soft)" text-anchor="middle">${label}</text>`;
+                })
+                .join('');
 
-        const labelIdx = [0, 7, 14, 21, 29].filter((i) => i < days.length);
-        const labels = labelIdx
-            .map((i) => {
-                const x = padding.left + i * stepX;
-                const d = days[i].date;
-                const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-                return `<text x="${x.toFixed(1)}" y="${height - 6}" font-size="10.5" fill="var(--muted-soft)" text-anchor="middle">${label}</text>`;
-            })
-            .join('');
-
-        return `
+            return `
         <svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
             ${gridLines}
             <polyline points="${pointsFor('entradas')}" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
             <polyline points="${pointsFor('saidas')}" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
             ${labels}
         </svg>`;
-    }
+        }
 
-    const dailySeries = buildDailySeries();
-    const hasFlowData = dailySeries.some((d) => d.entradas > 0 || d.saidas > 0);
-    document.getElementById('hydroFlowChart').innerHTML = hasFlowData
-        ? lineChartSvg(dailySeries)
-        : '<p class="hydro-chart-empty">Ainda não há movimentações registradas nos últimos 30 dias.</p>';
+        const dailySeries = buildDailySeries();
+        const hasFlowData = dailySeries.some((d) => d.entradas > 0 || d.saidas > 0);
+        document.getElementById('hydroFlowChart').innerHTML = hasFlowData
+            ? lineChartSvg(dailySeries)
+            : '<p class="hydro-chart-empty">Ainda não há movimentações registradas nos últimos 30 dias.</p>';
 
-    /* ================= Gráfico: Top produtos mais movimentados ================= */
-    function buildTopProducts() {
-        const totals = {};
-        movements.forEach((m) => {
-            totals[m.productId] = (totals[m.productId] || 0) + m.qty;
-        });
-        return Object.entries(totals)
-            .map(([productId, qty]) => {
-                const product = products.find((p) => p.id === productId);
-                return { name: product ? product.name : 'Produto removido', qty };
-            })
-            .sort((a, b) => b.qty - a.qty)
-            .slice(0, 8);
-    }
+        /* ================= Gráfico: Top produtos mais movimentados ================= */
+        function buildTopProducts() {
+            const totals = {};
+            movements.forEach((m) => {
+                totals[m.productId] = (totals[m.productId] || 0) + m.qty;
+            });
+            return Object.entries(totals)
+                .map(([productId, qty]) => {
+                    const product = products.find((p) => p.id === productId);
+                    return { name: product ? product.name : 'Produto removido', qty };
+                })
+                .sort((a, b) => b.qty - a.qty)
+                .slice(0, 8);
+        }
 
-    function shortName(name) {
-        return name.length > 12 ? name.slice(0, 11) + '…' : name;
-    }
+        function shortName(name) {
+            return name.length > 12 ? name.slice(0, 11) + '…' : name;
+        }
 
-    function barChartSvg(items) {
-        const width = 720;
-        const height = 230;
-        const padding = { top: 16, right: 16, bottom: 40, left: 30 };
-        const chartW = width - padding.left - padding.right;
-        const chartH = height - padding.top - padding.bottom;
-        const maxVal = Math.max(1, ...items.map((i) => i.qty));
-        const barGap = 14;
-        const barW = (chartW - barGap * (items.length - 1)) / items.length;
+        function barChartSvg(items) {
+            const width = 720;
+            const height = 230;
+            const padding = { top: 16, right: 16, bottom: 40, left: 30 };
+            const chartW = width - padding.left - padding.right;
+            const chartH = height - padding.top - padding.bottom;
+            const maxVal = Math.max(1, ...items.map((i) => i.qty));
+            const barGap = 14;
+            const barW = (chartW - barGap * (items.length - 1)) / items.length;
 
-        const bars = items
-            .map((item, i) => {
-                const x = padding.left + i * (barW + barGap);
-                const barH = (item.qty / maxVal) * chartH;
-                const y = padding.top + chartH - barH;
-                const isTop = i === 0;
-                const fill = isTop ? 'var(--navy-active)' : 'var(--muted-soft)';
-                const opacity = isTop ? '1' : '.35';
-                return `
+            const bars = items
+                .map((item, i) => {
+                    const x = padding.left + i * (barW + barGap);
+                    const barH = (item.qty / maxVal) * chartH;
+                    const y = padding.top + chartH - barH;
+                    const isTop = i === 0;
+                    const fill = isTop ? 'var(--navy-active)' : 'var(--muted-soft)';
+                    const opacity = isTop ? '1' : '.35';
+                    return `
                 <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="5" fill="${fill}" fill-opacity="${opacity}" />
                 <text x="${(x + barW / 2).toFixed(1)}" y="${(y - 6).toFixed(1)}" font-size="11" font-weight="700" fill="var(--navy-900)" text-anchor="middle">${item.qty}</text>
                 <text x="${(x + barW / 2).toFixed(1)}" y="${height - 20}" font-size="10" fill="var(--muted-soft)" text-anchor="middle">${shortName(item.name)}</text>`;
-            })
-            .join('');
+                })
+                .join('');
 
-        return `
+            return `
         <svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
             <line x1="${padding.left}" y1="${padding.top + chartH}" x2="${width - padding.right}" y2="${padding.top + chartH}" stroke="var(--border)" stroke-width="1" />
             ${bars}
         </svg>`;
-    }
+        }
 
-    const topProducts = buildTopProducts();
-    document.getElementById('hydroTopChart').innerHTML = topProducts.length
-        ? barChartSvg(topProducts)
-        : '<p class="hydro-chart-empty">Ainda não há produtos movimentados nos últimos 30 dias.</p>';
+        const topProducts = buildTopProducts();
+        document.getElementById('hydroTopChart').innerHTML = topProducts.length
+            ? barChartSvg(topProducts)
+            : '<p class="hydro-chart-empty">Ainda não há produtos movimentados nos últimos 30 dias.</p>';
 
-    /* ================= Alertas de estoque ================= */
-    const STATUS_META = {
-        critical: { label: 'Crítico', badge: 'hydro-badge-critical', qty: 'hydro-alert-qty-critical' },
-        warning: { label: 'Atenção', badge: 'hydro-badge-warning', qty: 'hydro-alert-qty-warning' },
-        ok: { label: 'Em estoque', badge: 'hydro-badge-ok', qty: 'hydro-alert-qty-ok' },
-    };
+        /* ================= Alertas de estoque ================= */
+        const STATUS_META = {
+            critical: { label: 'Crítico', badge: 'hydro-badge-critical', qty: 'hydro-alert-qty-critical' },
+            warning: { label: 'Atenção', badge: 'hydro-badge-warning', qty: 'hydro-alert-qty-warning' },
+            ok: { label: 'Em estoque', badge: 'hydro-badge-ok', qty: 'hydro-alert-qty-ok' },
+        };
 
-    const withStatus = products.map((p) => ({
-        product: p,
-        statusKey: HydroStore.stockStatus(p.quantity, p.minStock),
-    }));
+        const withStatus = products.map((p) => ({
+            product: p,
+            statusKey: HydroStore.stockStatus(p.quantity, p.minStock),
+        }));
 
-    const severityOrder = { critical: 0, warning: 1, ok: 2 };
-    const alertRows = withStatus
-        .sort((a, b) => severityOrder[a.statusKey] - severityOrder[b.statusKey] || a.product.quantity - b.product.quantity)
-        .slice(0, 6);
+        const severityOrder = { critical: 0, warning: 1, ok: 2 };
+        const alertRows = withStatus
+            .sort((a, b) => severityOrder[a.statusKey] - severityOrder[b.statusKey] || a.product.quantity - b.product.quantity)
+            .slice(0, 6);
 
-    const alertsBody = document.getElementById('hydroAlertsBody');
-    const alertsEmpty = document.getElementById('hydroAlertsEmpty');
+        const alertsBody = document.getElementById('hydroAlertsBody');
+        const alertsEmpty = document.getElementById('hydroAlertsEmpty');
 
-    if (!alertRows.length) {
-        alertsEmpty.hidden = false;
-    } else {
-        alertsBody.innerHTML = alertRows
-            .map(({ product, statusKey }) => {
-                const meta = STATUS_META[statusKey];
-                return `
+        if (!alertRows.length) {
+            alertsEmpty.hidden = false;
+        } else {
+            alertsBody.innerHTML = alertRows
+                .map(({ product, statusKey }) => {
+                    const meta = STATUS_META[statusKey];
+                    return `
                 <tr>
                     <td class="hydro-alert-product">${product.name}</td>
                     <td class="hydro-alert-sku">${product.sku || '—'}</td>
@@ -281,9 +322,74 @@
                     <td><span class="hydro-badge ${meta.badge}">${meta.label}</span></td>
                     <td><a class="hydro-view-link" href="controle-estoque.html?sku=${encodeURIComponent(product.sku || '')}">Ver produto</a></td>
                 </tr>`;
-            })
-            .join('');
+                })
+                .join('');
+        }
+
+        /* ================= Alertas de validade ================= */
+        const EXPIRY_STATUS_META = {
+            expired: { label: 'Vencido', badge: 'hydro-badge-critical', qty: 'hydro-alert-qty-critical' },
+            warning: { label: 'Vence em breve', badge: 'hydro-badge-warning', qty: 'hydro-alert-qty-warning' },
+        };
+
+        function formatDate(isoDate) {
+            const [y, m, d] = isoDate.split('-');
+            return `${d}/${m}/${y}`;
+        }
+
+        const expirySeverity = { expired: 0, warning: 1 };
+        const expiryRows = products
+            .map((p) => ({ product: p, statusKey: HydroStore.expiryStatus(p.validade) }))
+            .filter(({ statusKey }) => statusKey === 'expired' || statusKey === 'warning')
+            .sort((a, b) => expirySeverity[a.statusKey] - expirySeverity[b.statusKey] || a.product.validade.localeCompare(b.product.validade))
+            .slice(0, 6);
+
+        const expiryBody = document.getElementById('hydroExpiryBody');
+        const expiryEmpty = document.getElementById('hydroExpiryEmpty');
+
+        if (!expiryRows.length) {
+            expiryEmpty.hidden = false;
+        } else {
+            expiryBody.innerHTML = expiryRows
+                .map(({ product, statusKey }) => {
+                    const meta = EXPIRY_STATUS_META[statusKey];
+                    return `
+                <tr>
+                    <td class="hydro-alert-product">${product.name}</td>
+                    <td class="hydro-alert-sku">${product.sku || '—'}</td>
+                    <td><span class="hydro-alert-qty ${meta.qty}">${product.quantity}</span></td>
+                    <td>${formatDate(product.validade)}</td>
+                    <td><span class="hydro-badge ${meta.badge}">${meta.label}</span></td>
+                    <td><a class="hydro-view-link" href="controle-estoque.html?sku=${encodeURIComponent(product.sku || '')}">Ver produto</a></td>
+                </tr>`;
+                })
+                .join('');
+        }
     }
+
+    /* ================= Carga de dados: API real (autenticado) ou catálogo de demonstração ================= */
+    (async function init() {
+        if (window.hydraApi) {
+            try {
+                await window.hydraApi('/auth/me');
+                const [produtosRes, vendasRes, movRes] = await Promise.all([
+                    window.hydraApi('/produtos'),
+                    window.hydraApi('/vendas'),
+                    window.hydraApi('/estoque/movimentacoes'),
+                ]);
+                renderDashboard(
+                    produtosRes.produtos.map(mapApiProduct),
+                    vendasRes.vendas.map(mapApiVenda),
+                    movRes.movimentacoes.map(mapApiMovimentacao)
+                );
+                return;
+            } catch (err) {
+                // Visitante não autenticado, ou perfil sem acesso a Produtos/Vendas
+                // (RF02/RN07) — mostra o catálogo de demonstração local.
+            }
+        }
+        renderDashboard(HydroStore.getProducts(), HydroStore.getSales(), HydroStore.getMovements());
+    })();
 
     /* ================= Busca (atalho para Estoque) ================= */
     document.getElementById('hydroSearchInput').addEventListener('keydown', (e) => {

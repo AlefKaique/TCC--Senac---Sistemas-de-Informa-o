@@ -23,8 +23,11 @@ spl_autoload_register(function (string $class): void {
 require __DIR__ . '/../config/database.php';
 
 use Hydra\Controllers\AuthController;
+use Hydra\Controllers\EstoqueController;
 use Hydra\Controllers\LojaController;
+use Hydra\Controllers\ProdutoController;
 use Hydra\Controllers\UsuarioController;
+use Hydra\Controllers\VendaController;
 use Hydra\Support\Auth;
 use Hydra\Support\Env;
 use Hydra\Support\Response;
@@ -83,6 +86,18 @@ $routes = [
 
     ['GET', '#^/api/loja$#', fn () => (new LojaController())->show()],
     ['PUT', '#^/api/loja$#', fn () => (new LojaController())->update()],
+
+    ['GET', '#^/api/produtos$#', fn () => (new ProdutoController())->index()],
+    ['POST', '#^/api/produtos$#', fn () => (new ProdutoController())->store()],
+    ['PUT', '#^/api/produtos/(\d+)$#', fn ($id) => (new ProdutoController())->update((int) $id)],
+    ['DELETE', '#^/api/produtos/(\d+)$#', fn ($id) => (new ProdutoController())->destroy((int) $id)],
+    ['GET', '#^/api/produtos/(\d+)/movimentacoes$#', fn ($id) => (new ProdutoController())->movimentacoes((int) $id)],
+
+    ['GET', '#^/api/estoque/movimentacoes$#', fn () => (new EstoqueController())->index()],
+    ['POST', '#^/api/estoque/movimentacoes$#', fn () => (new EstoqueController())->store()],
+
+    ['GET', '#^/api/vendas$#', fn () => (new VendaController())->index()],
+    ['POST', '#^/api/vendas$#', fn () => (new VendaController())->store()],
 ];
 
 foreach ($routes as [$routeMethod, $pattern, $handler]) {

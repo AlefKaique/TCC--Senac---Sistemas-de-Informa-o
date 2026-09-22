@@ -153,17 +153,24 @@
                             </div>
                         </div>
 
-                        <div class="hydro-form-group">
-                            <label for="hydroProdUnit">Unidade</label>
-                            <select id="hydroProdUnit" name="unidade">
-                                <option value="un" selected>Unidade (un)</option>
-                                <option value="kg">Quilograma (kg)</option>
-                                <option value="g">Grama (g)</option>
-                                <option value="l">Litro (l)</option>
-                                <option value="ml">Mililitro (ml)</option>
-                                <option value="cx">Caixa (cx)</option>
-                                <option value="pct">Pacote (pct)</option>
-                            </select>
+                        <div class="hydro-form-row">
+                            <div class="hydro-form-group">
+                                <label for="hydroProdUnit">Unidade</label>
+                                <select id="hydroProdUnit" name="unidade">
+                                    <option value="un" selected>Unidade (un)</option>
+                                    <option value="kg">Quilograma (kg)</option>
+                                    <option value="g">Grama (g)</option>
+                                    <option value="l">Litro (l)</option>
+                                    <option value="ml">Mililitro (ml)</option>
+                                    <option value="cx">Caixa (cx)</option>
+                                    <option value="pct">Pacote (pct)</option>
+                                </select>
+                            </div>
+                            <div class="hydro-form-group">
+                                <label for="hydroProdExpiry">Data de validade</label>
+                                <input type="date" id="hydroProdExpiry" name="validade">
+                                <span class="hydro-field-hint">Deixe em branco se o produto não vencer</span>
+                            </div>
                         </div>
                     </section>
 

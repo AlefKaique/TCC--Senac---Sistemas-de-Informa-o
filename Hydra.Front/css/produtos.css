@@ -522,6 +522,13 @@
     display: block;
 }
 
+.hydro-field-hint {
+    font-size: 12px;
+    color: var(--muted, #697184);
+    display: block;
+    margin-top: 4px;
+}
+
 .hydro-input-prefix {
     display: flex;
     align-items: center;

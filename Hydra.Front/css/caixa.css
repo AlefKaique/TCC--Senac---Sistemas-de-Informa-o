@@ -68,9 +68,9 @@
 }
 
 /* Garante que o atributo "hidden" sempre vença, mesmo em elementos cuja
-   classe define "display" (ex.: .hydro-cash-box, .hydro-coupon-row) —
-   sem isso, a regra de classe (autor) tem prioridade sobre o [hidden]
-   padrão do navegador e o elemento continua visível. */
+   classe define "display" (ex.: .hydro-cash-box) — sem isso, a regra de
+   classe (autor) tem prioridade sobre o [hidden] padrão do navegador e
+   o elemento continua visível. */
 .hydro-caixa [hidden] {
     display: none !important;
 }
@@ -956,65 +956,10 @@
     color: var(--red);
 }
 
-/* ============ Cupom de desconto ============ */
-.hydro-coupon-row {
-    display: flex;
-    gap: 8px;
-}
-
-.hydro-coupon-row input {
-    flex: 1;
-    min-width: 0;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 12px;
-    font-size: 13px;
-    color: var(--ink);
-    background: #fff;
-    outline: none;
-}
-
-.hydro-coupon-row input:focus {
-    border-color: var(--navy-active);
-}
-
-.hydro-coupon-row input::placeholder {
-    color: var(--muted-soft);
-}
-
 .hydro-btn-sm {
     padding: 9px 16px;
     font-size: 13px;
     flex-shrink: 0;
-}
-
-.hydro-coupon-applied {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    background: var(--green-bg);
-    border: 1px solid var(--green);
-    border-radius: 10px;
-    padding: 8px 12px;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--green);
-}
-
-.hydro-coupon-applied button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    color: inherit;
-    flex-shrink: 0;
-}
-
-.hydro-coupon-applied .hydro-ic {
-    width: 12px;
-    height: 12px;
 }
 
 /* ============ Totais ============ */
@@ -1031,11 +976,6 @@
     justify-content: space-between;
     font-size: 13.5px;
     color: var(--muted);
-}
-
-.hydro-order-total-discount span:last-child {
-    color: var(--green);
-    font-weight: 600;
 }
 
 .hydro-order-total-row {
@@ -1302,13 +1242,6 @@
     overflow-y: auto;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-}
-
-#hydroSaleDetailCouponLabel {
-    font-weight: 400;
-    color: var(--muted-soft);
-    text-transform: none;
-    letter-spacing: normal;
 }
 
 /* ============ Responsive ============ */

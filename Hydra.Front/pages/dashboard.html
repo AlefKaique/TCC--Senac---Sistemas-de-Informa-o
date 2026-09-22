@@ -133,6 +133,29 @@
                     </div>
                     <p class="hydro-alerts-empty" id="hydroAlertsEmpty" hidden>Nenhum alerta no momento — todos os produtos estão com estoque saudável.</p>
                 </section>
+
+                <!-- Alertas de validade -->
+                <section class="hydro-card hydro-alerts-card">
+                    <div class="hydro-alerts-header">
+                        <h2>Produtos vencidos ou a vencer</h2>
+                    </div>
+                    <div class="hydro-table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>SKU</th>
+                                    <th>Quantidade</th>
+                                    <th>Validade</th>
+                                    <th>Status</th>
+                                    <th class="hydro-col-actions">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hydroExpiryBody"></tbody>
+                        </table>
+                    </div>
+                    <p class="hydro-alerts-empty" id="hydroExpiryEmpty" hidden>Nenhum produto vencido ou próximo do vencimento no momento.</p>
+                </section>
             </main>
         </div>
 

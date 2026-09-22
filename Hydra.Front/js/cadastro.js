@@ -25,6 +25,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (err) err.remove();
   }
 
+  // Mesma política aplicada no back-end (Hydra\Support\PasswordPolicy):
+  // mínimo de 8 caracteres, com maiúscula, minúscula, número e símbolo.
+  function validarSenhaForte(valor) {
+    if (valor.length < 8) return 'A senha deve ter pelo menos 8 caracteres.';
+    if (!/[a-z]/.test(valor)) return 'A senha deve conter ao menos uma letra minúscula.';
+    if (!/[A-Z]/.test(valor)) return 'A senha deve conter ao menos uma letra maiúscula.';
+    if (!/\d/.test(valor)) return 'A senha deve conter ao menos um número.';
+    if (!/[^A-Za-z0-9]/.test(valor)) return 'A senha deve conter ao menos um caractere especial (ex.: ! @ # $ %).';
+    return null;
+  }
+
   [senha, confirmarSenha].forEach(input => {
     input.addEventListener('input', () => clearError(input));
   });
@@ -33,8 +44,9 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     let valid = true;
 
-    if (senha.value.length < 6){
-      setError(senha, 'A senha deve ter pelo menos 6 caracteres.');
+    const erroSenha = validarSenhaForte(senha.value);
+    if (erroSenha) {
+      setError(senha, erroSenha);
       valid = false;
     }
 
