@@ -31,6 +31,20 @@
 
     let imageDataUrl = null;
 
+    /* ================= Unidade "Caixa" =================
+       "Caixa" nunca é gravada como unidade do produto: é só um atalho
+       para o operador indicar a unidade real (a que existe dentro da
+       caixa), exibida neste segundo campo. */
+    const unitSelect = document.getElementById('hydroProdUnit');
+    const boxUnitGroup = document.getElementById('hydroProdBoxUnitGroup');
+
+    function toggleBoxUnitGroup() {
+        boxUnitGroup.hidden = unitSelect.value !== 'cx';
+    }
+
+    unitSelect.addEventListener('change', toggleBoxUnitGroup);
+    toggleBoxUnitGroup();
+
     /* ================= Toast ================= */
     let toastTimer = null;
     function showToast(message, isError) {
@@ -148,6 +162,8 @@
 
     function getFormData() {
         const fd = new FormData(form);
+        const unidadeSelecionada = (fd.get('unidade') || 'un').toString();
+        const unidadeCaixa = (fd.get('unidadeCaixa') || 'un').toString();
         return {
             nome: (fd.get('nome') || '').toString(),
             codigoBarras: (fd.get('codigoBarras') || '').toString(),
@@ -156,7 +172,9 @@
             precoVenda: (fd.get('precoVenda') || '').toString(),
             quantidade: (fd.get('quantidade') || '').toString(),
             estoqueMinimo: (fd.get('estoqueMinimo') || '').toString(),
-            unidade: (fd.get('unidade') || 'un').toString(),
+            // "Caixa" nunca é gravada como unidade do produto — quando
+            // selecionada, o campo extra escolhe a unidade real.
+            unidade: unidadeSelecionada === 'cx' ? unidadeCaixa : unidadeSelecionada,
             validade: (fd.get('validade') || '').toString(),
         };
     }
@@ -247,6 +265,7 @@
             form.reset();
             clearImage();
             clearErrors();
+            toggleBoxUnitGroup();
             saveBtn.disabled = false;
         }, 600);
     });
