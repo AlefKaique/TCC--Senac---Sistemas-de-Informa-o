@@ -25,15 +25,63 @@
         vale: 'Vale',
     };
 
-    /* ================= Cupons de desconto (demo) ================= */
-    const COUPONS = {
-        HYDRA10: { type: 'percent', value: 10, label: '10% de desconto' },
-        BEMVINDO20: { type: 'fixed', value: 20, label: 'R$ 20,00 de desconto' },
+    // A UI só oferece uma forma de pagamento por venda (sem split de
+    // pagamento); o back-end distingue crédito/débito (RN10), então o
+    // botão genérico "Cartão" é enviado como crédito por padrão.
+    const PAYMENT_METHOD_TO_API = { dinheiro: 'dinheiro', cartao: 'cartao_credito', pix: 'pix', vale: 'vale_refeicao' };
+    const PAYMENT_METHOD_FROM_API = {
+        dinheiro: 'dinheiro',
+        cartao_credito: 'cartao',
+        cartao_debito: 'cartao',
+        pix: 'pix',
+        vale_refeicao: 'vale',
     };
 
-    /* ================= Catálogo de produtos (dados reais, compartilhados) ================= */
+    /* ================= Catálogo de produtos e histórico de vendas =================
+       Vêm da API real quando o usuário está autenticado (RF04); para o
+       visitante da demo pública, continuam vindo do HydroStore local. */
+    let usingRealApi = false;
+    let catalog = [];
+    let salesHistory = [];
+
     function getCatalog() {
-        return HydroStore.getProducts();
+        return catalog;
+    }
+
+    // Os ids viram string para bater com as chaves usadas em order.items
+    // (toda chave de objeto em JS é string) e com dataset.productId.
+    function mapApiProduct(p) {
+        return {
+            id: String(p.id_produto),
+            name: p.nome,
+            desc: p.descricao || '',
+            sku: p.codigo_barras || `PRD-${p.id_produto}`,
+            category: p.categoria,
+            price: Number(p.preco_venda),
+            quantity: Number(p.quantidade),
+            unit: p.unidade,
+        };
+    }
+
+    function mapApiVenda(v) {
+        const primeiroPagamento = (v.pagamentos || [])[0];
+        return {
+            id: String(v.id_venda),
+            orderId: v.id_venda,
+            date: v.data_venda,
+            clienteId: v.id_cliente != null ? String(v.id_cliente) : '—',
+            items: (v.itens || []).map((it) => ({
+                productId: String(it.id_produto),
+                name: it.nome_produto,
+                qty: Number(it.quantidade),
+                price: Number(it.preco_unitario),
+            })),
+            subtotal: Number(v.subtotal),
+            total: Number(v.valor_total),
+            payment: primeiroPagamento ? (PAYMENT_METHOD_FROM_API[primeiroPagamento.forma_pagamento] || primeiroPagamento.forma_pagamento) : null,
+            cashReceived: null,
+            change: null,
+        };
     }
 
     function findProduct(productId) {
@@ -94,7 +142,7 @@
 
     function createOrder() {
         orderCounter += 1;
-        return { id: orderCounter, clienteId: '—', items: {}, payment: null, coupon: null, cashReceived: '' };
+        return { id: orderCounter, clienteId: '—', items: {}, payment: null, cashReceived: '' };
     }
 
     let order = createOrder();
@@ -375,15 +423,10 @@
     const orderItemsEl = document.getElementById('hydroOrderItems');
     const orderItemsWrapEl = orderItemsEl.closest('.hydro-items-table-wrap');
     const orderSubtotalEl = document.getElementById('hydroOrderSubtotal');
-    const orderDiscountEl = document.getElementById('hydroOrderDiscount');
     const orderTotalEl = document.getElementById('hydroOrderTotal');
     const footerCountEl = document.getElementById('hydroFooterCount');
     const footerTotalEl = document.getElementById('hydroFooterTotal');
     const paymentButtons = document.querySelectorAll('.hydro-payment-btn');
-    const couponInput = document.getElementById('hydroCouponInput');
-    const couponRowEl = document.getElementById('hydroCouponRow');
-    const couponAppliedEl = document.getElementById('hydroCouponApplied');
-    const couponAppliedLabelEl = document.getElementById('hydroCouponAppliedLabel');
     const cashBoxEl = document.getElementById('hydroCashBox');
     const cashInputEl = document.getElementById('hydroCashReceived');
     const cashInputWrapEl = cashInputEl.closest('.hydro-cash-input-wrap');
@@ -397,14 +440,7 @@
             return sum + (product ? product.price * qty : 0);
         }, 0);
 
-        let discount = 0;
-        if (order.coupon) {
-            discount = order.coupon.type === 'percent'
-                ? subtotal * (order.coupon.value / 100)
-                : Math.min(order.coupon.value, subtotal);
-        }
-
-        return { entries, subtotal, discount, total: Math.max(subtotal - discount, 0) };
+        return { entries, subtotal, total: subtotal };
     }
 
     /* ================= Dinheiro recebido / troco ================= */
@@ -439,7 +475,7 @@
         orderTitleEl.textContent = `Pedido #${order.id}`;
         orderClientEl.textContent = `Cliente ID #${order.clienteId}`;
 
-        const { entries, subtotal, discount, total } = computeTotals(order);
+        const { entries, subtotal, total } = computeTotals(order);
         const itemCount = entries.reduce((sum, [, qty]) => sum + qty, 0);
 
         orderItemsWrapEl.classList.toggle('hydro-empty', entries.length === 0);
@@ -489,20 +525,9 @@
             .join('');
 
         orderSubtotalEl.textContent = money(subtotal);
-        orderDiscountEl.textContent = discount > 0 ? `- ${money(discount)}` : money(0);
         orderTotalEl.textContent = money(total);
         footerCountEl.textContent = String(itemCount);
         footerTotalEl.textContent = money(total);
-
-        couponInput.value = '';
-        if (order.coupon) {
-            couponRowEl.hidden = true;
-            couponAppliedEl.hidden = false;
-            couponAppliedLabelEl.textContent = `${order.coupon.code} — ${order.coupon.label}`;
-        } else {
-            couponRowEl.hidden = false;
-            couponAppliedEl.hidden = true;
-        }
 
         paymentButtons.forEach((btn) => {
             btn.classList.toggle('hydro-selected', btn.dataset.method === order.payment);
@@ -549,37 +574,6 @@
         });
     });
 
-    /* ================= Cupom de desconto ================= */
-    document.getElementById('hydroCouponApplyBtn').addEventListener('click', () => {
-        const order = getActiveOrder();
-        const code = (couponInput.value || '').trim().toUpperCase();
-        if (!code) {
-            showToast('Digite um código de cupom', true);
-            return;
-        }
-        const coupon = COUPONS[code];
-        if (!coupon) {
-            showToast('Cupom inválido ou expirado', true);
-            return;
-        }
-        order.coupon = { code, ...coupon };
-        renderOrderPanel();
-        showToast(`Cupom ${code} aplicado`);
-    });
-
-    couponInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            document.getElementById('hydroCouponApplyBtn').click();
-        }
-    });
-
-    document.getElementById('hydroCouponRemoveBtn').addEventListener('click', () => {
-        const order = getActiveOrder();
-        order.coupon = null;
-        renderOrderPanel();
-    });
-
     /* ================= Ações: editar cliente / cancelar pedido ================= */
     document.getElementById('hydroEditClientBtn').addEventListener('click', () => {
         const order = getActiveOrder();
@@ -602,8 +596,8 @@
     });
 
     /* ================= Finalizar pedido ================= */
-    document.getElementById('hydroFinishOrderBtn').addEventListener('click', () => {
-        const { entries, subtotal, discount, total } = computeTotals(order);
+    document.getElementById('hydroFinishOrderBtn').addEventListener('click', async () => {
+        const { entries, subtotal, total } = computeTotals(order);
 
         if (!entries.length) {
             showToast('Adicione ao menos um item ao pedido', true);
@@ -630,19 +624,43 @@
             return { productId, name: product.name, qty, price: product.price };
         });
 
-        // HydroStore.addSale grava a venda e já dá baixa no estoque compartilhado
-        HydroStore.addSale({
-            orderId: order.id,
-            clienteId: order.clienteId,
-            items: saleItems,
-            subtotal: Math.round(subtotal * 100) / 100,
-            discount: Math.round(discount * 100) / 100,
-            total: Math.round(total * 100) / 100,
-            payment: order.payment,
-            coupon: order.coupon ? order.coupon.code : null,
-            cashReceived: cashReceived === null ? null : Math.round(cashReceived * 100) / 100,
-            change,
-        });
+        const finishBtn = document.getElementById('hydroFinishOrderBtn');
+
+        if (usingRealApi) {
+            finishBtn.disabled = true;
+            try {
+                const { venda } = await window.hydraApi('/vendas', {
+                    method: 'POST',
+                    body: {
+                        itens: entries.map(([productId, qty]) => ({ id_produto: Number(productId), quantidade: qty })),
+                        pagamentos: [{ forma_pagamento: PAYMENT_METHOD_TO_API[order.payment], valor: Math.round(total * 100) / 100 }],
+                    },
+                });
+                // Baixa local do estoque exibido — o back-end já deu a baixa real (RN11).
+                entries.forEach(([productId, qty]) => {
+                    const product = findProduct(productId);
+                    if (product) product.quantity -= qty;
+                });
+                salesHistory.unshift(mapApiVenda(venda));
+            } catch (err) {
+                showToast(err.message, true);
+                finishBtn.disabled = false;
+                return;
+            }
+            finishBtn.disabled = false;
+        } else {
+            // HydroStore.addSale grava a venda e já dá baixa no estoque compartilhado
+            HydroStore.addSale({
+                orderId: order.id,
+                clienteId: order.clienteId,
+                items: saleItems,
+                subtotal: Math.round(subtotal * 100) / 100,
+                total: Math.round(total * 100) / 100,
+                payment: order.payment,
+                cashReceived: cashReceived === null ? null : Math.round(cashReceived * 100) / 100,
+                change,
+            });
+        }
 
         const changeMsg = change !== null ? ` — troco: ${money(change)}` : '';
         showToast(`Pedido #${order.id} finalizado — pagamento em ${PAYMENT_LABELS[order.payment]}${changeMsg}`);
@@ -657,7 +675,7 @@
 
     function renderHistory() {
         const term = (historySearchInput.value || '').trim().toLowerCase();
-        const sales = HydroStore.getSales()
+        const sales = salesHistory
             .slice()
             .sort((a, b) => new Date(b.date) - new Date(a.date))
             .filter((sale) => {
@@ -702,8 +720,6 @@
     const saleDetailChangeEl = document.getElementById('hydroSaleDetailChange');
     const saleDetailItemsEl = document.getElementById('hydroSaleDetailItems');
     const saleDetailSubtotalEl = document.getElementById('hydroSaleDetailSubtotal');
-    const saleDetailDiscountEl = document.getElementById('hydroSaleDetailDiscount');
-    const saleDetailCouponLabelEl = document.getElementById('hydroSaleDetailCouponLabel');
     const saleDetailTotalEl = document.getElementById('hydroSaleDetailTotal');
 
     function openSaleDetailModal(sale) {
@@ -738,10 +754,7 @@
             .join('');
 
         const subtotal = sale.subtotal != null ? sale.subtotal : sale.total;
-        const discount = sale.discount || 0;
         saleDetailSubtotalEl.textContent = money(subtotal);
-        saleDetailDiscountEl.textContent = discount > 0 ? `- ${money(discount)}` : money(0);
-        saleDetailCouponLabelEl.textContent = sale.coupon ? ` (${sale.coupon})` : '';
         saleDetailTotalEl.textContent = money(sale.total);
 
         saleDetailModalEl.hidden = false;
@@ -758,7 +771,7 @@
     historyBodyEl.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-view-sale]');
         if (!btn) return;
-        const sale = HydroStore.getSales().find((s) => s.id === btn.dataset.viewSale);
+        const sale = salesHistory.find((s) => s.id === btn.dataset.viewSale);
         if (sale) openSaleDetailModal(sale);
     });
 
@@ -787,5 +800,27 @@
     }
 
     /* ================= Init ================= */
-    renderAll();
+    (async function init() {
+        if (window.hydraApi) {
+            try {
+                await window.hydraApi('/auth/me');
+                const [produtosRes, vendasRes] = await Promise.all([
+                    window.hydraApi('/produtos'),
+                    window.hydraApi('/vendas'),
+                ]);
+                catalog = produtosRes.produtos.map(mapApiProduct);
+                salesHistory = vendasRes.vendas.map(mapApiVenda);
+                usingRealApi = true;
+            } catch (err) {
+                // Visitante não autenticado, ou perfil sem acesso a Produtos/Vendas
+                // (RF02/RN07) — usa o catálogo de demonstração local.
+                catalog = HydroStore.getProducts();
+                salesHistory = HydroStore.getSales();
+            }
+        } else {
+            catalog = HydroStore.getProducts();
+            salesHistory = HydroStore.getSales();
+        }
+        renderAll();
+    })();
 })();

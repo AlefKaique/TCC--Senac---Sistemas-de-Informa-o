@@ -157,6 +157,7 @@
             quantidade: (fd.get('quantidade') || '').toString(),
             estoqueMinimo: (fd.get('estoqueMinimo') || '').toString(),
             unidade: (fd.get('unidade') || 'un').toString(),
+            validade: (fd.get('validade') || '').toString(),
         };
     }
 
@@ -171,7 +172,7 @@
         return (base || 'PROD') + '-' + Date.now().toString(36).slice(-4).toUpperCase();
     }
 
-    function saveProduct(data) {
+    function saveProductLocally(data) {
         const name = data.nome.trim();
         const product = {
             id: HydroStore.uid('p'),
@@ -184,6 +185,7 @@
             quantity: Number(data.quantidade),
             minStock: data.estoqueMinimo ? Number(data.estoqueMinimo) : 0,
             unit: data.unidade,
+            validade: data.validade || null,
             image: imageDataUrl,
             criadoEm: new Date().toISOString(),
         };
@@ -191,7 +193,28 @@
         return product;
     }
 
-    form.addEventListener('submit', (e) => {
+    /* Grava o produto via API real (RF02). A imagem ainda não é enviada
+       ao back-end — assim como o logotipo da loja, permanece, por ora,
+       como pré-visualização local (sem endpoint de armazenamento). */
+    async function saveProductRemote(data) {
+        const { produto } = await window.hydraApi('/produtos', {
+            method: 'POST',
+            body: {
+                nome: data.nome.trim(),
+                codigo_barras: data.codigoBarras.trim(),
+                categoria: CATEGORY_LABELS[data.categoria] || data.categoria,
+                preco_custo: data.precoCusto || null,
+                preco_venda: Number(data.precoVenda),
+                quantidade: Number(data.quantidade),
+                estoque_minimo: data.estoqueMinimo || 0,
+                unidade: data.unidade,
+                validade: data.validade || null,
+            },
+        });
+        return produto;
+    }
+
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const data = getFormData();
         if (!validate(data)) {
@@ -200,7 +223,24 @@
         }
 
         saveBtn.disabled = true;
-        saveProduct(data);
+
+        if (window.hydraApi) {
+            try {
+                await saveProductRemote(data);
+            } catch (err) {
+                // Visitante não autenticado (demo pública) cai para o cadastro
+                // local; qualquer outro erro (validação, duplicidade, servidor)
+                // é mostrado de verdade para quem está autenticado.
+                if (err.status !== 401) {
+                    showToast(err.message, true);
+                    saveBtn.disabled = false;
+                    return;
+                }
+                saveProductLocally(data);
+            }
+        } else {
+            saveProductLocally(data);
+        }
 
         showToast('Produto salvo com sucesso!');
         setTimeout(() => {

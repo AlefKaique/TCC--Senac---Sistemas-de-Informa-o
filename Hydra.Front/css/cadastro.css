@@ -88,6 +88,12 @@ html, body.signup-body{
   border-color: var(--navy);
   box-shadow: 0 0 0 3px rgba(27,42,99,0.1);
 }
+.field__hint{
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--gray-600);
+  margin: 0;
+}
 
 .checkbox{
   display: flex;

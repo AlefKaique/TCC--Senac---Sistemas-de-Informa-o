@@ -97,4 +97,32 @@ final class Auth
         }
         return $user;
     }
+
+    /**
+     * RF02, RF03, RF05 — Gestão de Produtos e Controle de Estoque são
+     * acessíveis ao Estoquista e ao Administrador (que tem acesso completo
+     * às funções operacionais do sistema).
+     */
+    public static function requireEstoqueAccess(): array
+    {
+        $user = self::requireLogin();
+        if (!in_array($user['perfil'], ['administrador', 'estoquista'], true)) {
+            Response::json(['erro' => 'Apenas Estoquista ou Administrador podem acessar este recurso (RF02/RF03)'], 403);
+            exit;
+        }
+        return $user;
+    }
+
+    /**
+     * RN07 — apenas Operador de Caixa ou Administrador podem registrar vendas.
+     */
+    public static function requireVendaAccess(): array
+    {
+        $user = self::requireLogin();
+        if (!in_array($user['perfil'], ['administrador', 'operador_caixa'], true)) {
+            Response::json(['erro' => 'Apenas Operador de Caixa ou Administrador podem registrar vendas (RN07)'], 403);
+            exit;
+        }
+        return $user;
+    }
 }

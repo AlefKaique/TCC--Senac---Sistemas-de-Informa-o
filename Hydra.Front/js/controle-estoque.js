@@ -53,6 +53,20 @@
         ],
     };
 
+    // Categorias cujos itens possuem data de validade (perecíveis).
+    // Eletrônicos e Papelaria não vencem, então ficam sem essa informação.
+    const PERISHABLE_CATEGORIES = ['Alimentos', 'Bebidas', 'Limpeza'];
+
+    function addDays(date, days) {
+        const d = new Date(date);
+        d.setDate(d.getDate() + days);
+        return d;
+    }
+
+    function toIsoDate(date) {
+        return date.toISOString().slice(0, 10);
+    }
+
     function seedProducts() {
         const list = [];
         let seq = 1;
@@ -68,6 +82,14 @@
                 else quantity = minStock + 10 + (seq % 6) * 8;
                 const price = 6 + ((seq * 13) % 90) + 0.9;
 
+                // Data de validade determinística: alguns itens já vencidos,
+                // outros vencendo em breve, a maioria dentro da validade.
+                let validade = null;
+                if (PERISHABLE_CATEGORIES.includes(category)) {
+                    const offsetDays = ((seq * 53) % 150) - 20;
+                    validade = toIsoDate(addDays(new Date(), offsetDays));
+                }
+
                 list.push({
                     id: seq,
                     name,
@@ -77,6 +99,7 @@
                     quantity,
                     minStock,
                     price: Math.round(price * 100) / 100,
+                    validade,
                 });
                 seq++;
             });
@@ -84,13 +107,40 @@
         return list;
     }
 
-    let products = seedProducts();
+    /* Converte o formato retornado pela API (produtos.* do schema.sql)
+       para o formato usado pelas funções de renderização desta tela. */
+    function mapApiProduct(p) {
+        return {
+            id: p.id_produto,
+            name: p.nome,
+            desc: p.descricao || '',
+            sku: p.codigo_barras || `PRD-${p.id_produto}`,
+            codigoBarras: p.codigo_barras || null,
+            category: p.categoria,
+            quantity: Number(p.quantidade),
+            minStock: Number(p.estoque_minimo),
+            price: Number(p.preco_venda),
+            costPrice: p.preco_custo !== null ? Number(p.preco_custo) : 0,
+            unit: p.unidade,
+            validade: p.validade,
+            status: p.status,
+        };
+    }
+
+    let products = [];
+    // true quando os produtos vieram da API real (usuário autenticado);
+    // false enquanto a tela mostra o catálogo de demonstração (visitante).
+    let usingRealApi = false;
+    // Perfil do usuário autenticado (null para o visitante da demo pública).
+    // RN04: só o Administrador pode alterar preços de produtos.
+    let usuarioPerfil = null;
 
     /* ================= State ================= */
     const state = {
         search: '',
         category: '',
         status: '',
+        validade: '',
         page: 1,
         pageSize: 5,
     };
@@ -107,6 +157,39 @@
         if (status === 'Crítico') return 'hydro-badge-critical';
         if (status === 'Baixo') return 'hydro-badge-low';
         return 'hydro-badge-ok';
+    }
+
+    const EXPIRY_WARNING_DAYS = 30;
+
+    function getExpiryStatus(product) {
+        if (!product.validade) return null;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const expiry = new Date(`${product.validade}T00:00:00`);
+        const diffDays = Math.round((expiry - today) / 86400000);
+        if (diffDays < 0) return 'Vencido';
+        if (diffDays <= EXPIRY_WARNING_DAYS) return 'Vence em breve';
+        return 'Válido';
+    }
+
+    function expiryBadgeClass(status) {
+        if (status === 'Vencido') return 'hydro-badge-critical';
+        if (status === 'Vence em breve') return 'hydro-badge-low';
+        return 'hydro-badge-ok';
+    }
+
+    function formatDate(isoDate) {
+        if (!isoDate) return '';
+        const [y, m, d] = isoDate.split('-');
+        return `${d}/${m}/${y}`;
+    }
+
+    // Formata "YYYY-MM-DD HH:MM:SS" (retorno do MySQL) como "DD/MM/AAAA HH:MM".
+    function formatDateTime(datetime) {
+        const [datePart, timePart] = String(datetime).split(' ');
+        const [y, m, d] = datePart.split('-');
+        const hm = (timePart || '').slice(0, 5);
+        return `${d}/${m}/${y}${hm ? ' ' + hm : ''}`;
     }
 
     function formatCurrency(value) {
@@ -128,7 +211,8 @@
                 p.sku.toLowerCase().includes(state.search);
             const matchesCategory = !state.category || p.category === state.category;
             const matchesStatus = !state.status || status === state.status;
-            return matchesSearch && matchesCategory && matchesStatus;
+            const matchesValidade = !state.validade || getExpiryStatus(p) === state.validade;
+            return matchesSearch && matchesCategory && matchesStatus && matchesValidade;
         });
     }
 
@@ -137,10 +221,15 @@
         const totalItens = products.reduce((sum, p) => sum + p.quantity, 0);
         const valorEstoque = products.reduce((sum, p) => sum + p.quantity * p.price, 0);
         const baixoCount = products.filter((p) => getStatus(p) !== 'Em estoque').length;
+        const vencendoCount = products.filter((p) => {
+            const status = getExpiryStatus(p);
+            return status === 'Vencido' || status === 'Vence em breve';
+        }).length;
 
         document.getElementById('hydroStatTotalItens').textContent = totalItens.toLocaleString('pt-BR');
         document.getElementById('hydroStatValorEstoque').textContent = formatCurrency(valorEstoque);
         document.getElementById('hydroStatBaixo').textContent = baixoCount.toLocaleString('pt-BR');
+        document.getElementById('hydroStatVencendo').textContent = vencendoCount.toLocaleString('pt-BR');
     }
 
     /* ================= Rendering: filters (category options) ================= */
@@ -176,6 +265,10 @@
             tbody.innerHTML = pageItems
                 .map((p) => {
                     const status = getStatus(p);
+                    const expiryStatus = getExpiryStatus(p);
+                    const expiryCell = p.validade
+                        ? `${formatDate(p.validade)}${expiryStatus !== 'Válido' ? ` <span class="hydro-badge ${expiryBadgeClass(expiryStatus)}">${expiryStatus}</span>` : ''}`
+                        : '<span class="hydro-text-muted">—</span>';
                     return `
           <tr data-id="${p.id}">
             <td class="hydro-product-cell-wrap" data-label="Produto">
@@ -191,11 +284,14 @@
             <td data-label="Categoria">${escapeHtml(p.category)}</td>
             <td class="hydro-qty" data-label="Quantidade">${p.quantity}</td>
             <td data-label="Estoque mínimo">${p.minStock}</td>
+            <td data-label="Validade">${expiryCell}</td>
             <td data-label="Status"><span class="hydro-badge ${statusBadgeClass(status)}">${status}</span></td>
             <td class="hydro-col-actions" data-label="Ações">
               <div class="hydro-row-actions">
                 <button class="hydro-action-btn hydro-action-view" title="Ver detalhes" data-id="${p.id}"><i class="hydro-ic hydro-ic-eye"></i></button>
                 <button class="hydro-action-btn hydro-action-edit" title="Editar produto" data-id="${p.id}"><i class="hydro-ic hydro-ic-pencil"></i></button>
+                <button class="hydro-action-btn hydro-action-history" title="Histórico de movimentações" data-id="${p.id}"><i class="hydro-ic hydro-ic-history"></i></button>
+                <button class="hydro-action-btn hydro-action-delete" title="Excluir produto" data-id="${p.id}"><i class="hydro-ic hydro-ic-trash"></i></button>
               </div>
             </td>
           </tr>`;
@@ -264,6 +360,12 @@
         document.querySelectorAll('.hydro-action-edit').forEach((btn) =>
             btn.addEventListener('click', () => openEditModal(Number(btn.dataset.id)))
         );
+        document.querySelectorAll('.hydro-action-history').forEach((btn) =>
+            btn.addEventListener('click', () => openHistoryModal(Number(btn.dataset.id)))
+        );
+        document.querySelectorAll('.hydro-action-delete').forEach((btn) =>
+            btn.addEventListener('click', () => openDeleteModal(Number(btn.dataset.id)))
+        );
     }
 
     /* ================= Modal engine ================= */
@@ -297,6 +399,10 @@
         const p = products.find((x) => x.id === id);
         if (!p) return;
         const status = getStatus(p);
+        const expiryStatus = getExpiryStatus(p);
+        const validadeValue = p.validade
+            ? `${formatDate(p.validade)}${expiryStatus !== 'Válido' ? ` <span class="hydro-badge ${expiryBadgeClass(expiryStatus)}">${expiryStatus}</span>` : ''}`
+            : 'Não aplicável';
         openModal({
             title: p.name,
             bodyHtml: `
@@ -305,6 +411,7 @@
         <div class="hydro-detail-row"><span>Categoria</span><span>${escapeHtml(p.category)}</span></div>
         <div class="hydro-detail-row"><span>Quantidade</span><span>${p.quantity} un.</span></div>
         <div class="hydro-detail-row"><span>Estoque mínimo</span><span>${p.minStock} un.</span></div>
+        <div class="hydro-detail-row"><span>Validade</span><span>${validadeValue}</span></div>
         <div class="hydro-detail-row"><span>Preço unitário</span><span>${formatCurrency(p.price)}</span></div>
         <div class="hydro-detail-row"><span>Valor em estoque</span><span>${formatCurrency(p.price * p.quantity)}</span></div>
         <div class="hydro-detail-row"><span>Status</span><span><span class="hydro-badge ${statusBadgeClass(status)}">${status}</span></span></div>
@@ -319,6 +426,22 @@
         const p = products.find((x) => x.id === id);
         if (!p) return;
         const categories = Array.from(new Set(products.map((x) => x.category))).sort();
+
+        // RN04 — só o Administrador pode alterar preços de produtos; para os
+        // demais perfis (Estoquista), os campos de preço nem aparecem no
+        // formulário de edição.
+        const isAdmin = usuarioPerfil === 'administrador';
+        const priceFieldsHtml = isAdmin
+            ? `
+        <div class="hydro-form-group">
+          <label for="hydroEditCostPrice">Preço de custo (R$)</label>
+          <input type="number" id="hydroEditCostPrice" min="0" step="0.01" value="${p.costPrice || ''}">
+        </div>
+        <div class="hydro-form-group">
+          <label for="hydroEditSalePrice">Preço de venda (R$)</label>
+          <input type="number" id="hydroEditSalePrice" min="0" step="0.01" value="${p.price}">
+        </div>`
+            : '';
 
         openModal({
             title: 'Editar produto',
@@ -336,7 +459,7 @@
           <select id="hydroEditCategory">
             ${categories.map((c) => `<option value="${escapeHtml(c)}" ${c === p.category ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}
           </select>
-        </div>
+        </div>${priceFieldsHtml}
         <div class="hydro-form-group">
           <label for="hydroEditQuantity">Quantidade</label>
           <input type="number" id="hydroEditQuantity" min="0" value="${p.quantity}">
@@ -344,6 +467,10 @@
         <div class="hydro-form-group">
           <label for="hydroEditMin">Estoque mínimo</label>
           <input type="number" id="hydroEditMin" min="0" value="${p.minStock}">
+        </div>
+        <div class="hydro-form-group">
+          <label for="hydroEditValidade">Data de validade</label>
+          <input type="date" id="hydroEditValidade" value="${p.validade || ''}">
         </div>
       `,
             footerHtml: `
@@ -353,15 +480,64 @@
         });
 
         document.getElementById('hydroModalCancelBtn').addEventListener('click', closeModal);
-        document.getElementById('hydroModalSaveBtn').addEventListener('click', () => {
+        document.getElementById('hydroModalSaveBtn').addEventListener('click', async () => {
             const name = document.getElementById('hydroEditName').value.trim();
             const desc = document.getElementById('hydroEditDesc').value.trim();
             const category = document.getElementById('hydroEditCategory').value;
             const quantity = Math.max(0, Number(document.getElementById('hydroEditQuantity').value) || 0);
             const minStock = Math.max(0, Number(document.getElementById('hydroEditMin').value) || 0);
+            const validade = document.getElementById('hydroEditValidade').value || null;
+            // Só existem no formulário quando usuarioPerfil === 'administrador' (RN04).
+            const costPriceInput = document.getElementById('hydroEditCostPrice');
+            const salePriceInput = document.getElementById('hydroEditSalePrice');
+            const costPrice = costPriceInput ? Number(costPriceInput.value) || 0 : p.costPrice || 0;
+            const salePrice = salePriceInput ? Number(salePriceInput.value) || 0 : p.price;
 
             if (!name) {
                 showToast('Informe o nome do produto');
+                return;
+            }
+            if (salePriceInput && salePrice <= 0) {
+                showToast('Informe um preço de venda válido');
+                return;
+            }
+
+            if (usingRealApi) {
+                const saveBtn = document.getElementById('hydroModalSaveBtn');
+                saveBtn.disabled = true;
+                try {
+                    // A quantidade só muda de fato via movimentação de estoque
+                    // (RF12/RN11), para manter o histórico consolidado (RF10).
+                    const delta = Math.round((quantity - p.quantity) * 1000) / 1000;
+                    if (delta !== 0) {
+                        await window.hydraApi('/estoque/movimentacoes', {
+                            method: 'POST',
+                            body: { id_produto: p.id, tipo: delta > 0 ? 'entrada' : 'saida', quantidade: Math.abs(delta) },
+                        });
+                    }
+                    const { produto } = await window.hydraApi(`/produtos/${p.id}`, {
+                        method: 'PUT',
+                        body: {
+                            nome: name,
+                            descricao: desc,
+                            codigo_barras: p.codigoBarras,
+                            categoria: category,
+                            preco_custo: costPrice || null,
+                            preco_venda: salePrice,
+                            estoque_minimo: minStock,
+                            unidade: p.unit,
+                            validade,
+                            status: p.status || 'ativo',
+                        },
+                    });
+                    Object.assign(p, mapApiProduct(produto));
+                    closeModal();
+                    refreshAll();
+                    showToast('Produto atualizado com sucesso');
+                } catch (err) {
+                    showToast(err.message);
+                    saveBtn.disabled = false;
+                }
                 return;
             }
 
@@ -370,10 +546,95 @@
             p.category = category;
             p.quantity = quantity;
             p.minStock = minStock;
+            p.validade = validade;
+            if (salePriceInput) {
+                p.costPrice = costPrice;
+                p.price = salePrice;
+            }
 
             closeModal();
             refreshAll();
             showToast('Produto atualizado com sucesso');
+        });
+    }
+
+    /* ---- Histórico de movimentações (RF10) ---- */
+    async function openHistoryModal(id) {
+        const p = products.find((x) => x.id === id);
+        if (!p) return;
+
+        openModal({
+            title: `Movimentações — ${p.name}`,
+            bodyHtml: '<p class="hydro-detail-row"><span>Carregando…</span></p>',
+            footerHtml: `<button class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroModalOkBtn">Fechar</button>`,
+        });
+        document.getElementById('hydroModalOkBtn').addEventListener('click', closeModal);
+
+        if (!usingRealApi) {
+            modalBody.innerHTML = '<p class="hydro-detail-row"><span>Histórico de movimentações disponível após login (demonstração não guarda esse histórico).</span></p>';
+            return;
+        }
+
+        try {
+            const { movimentacoes } = await window.hydraApi(`/produtos/${p.id}/movimentacoes`);
+            if (!movimentacoes.length) {
+                modalBody.innerHTML = '<p class="hydro-detail-row"><span>Nenhuma movimentação registrada para este produto.</span></p>';
+                return;
+            }
+            const ORIGEM_LABELS = { cadastro: 'Cadastro', ajuste_manual: 'Ajuste manual', venda: 'Venda' };
+            modalBody.innerHTML = movimentacoes
+                .map((m) => {
+                    const tipoLabel = m.tipo === 'entrada' ? 'Entrada' : 'Saída';
+                    const origemLabel = ORIGEM_LABELS[m.origem] || m.origem;
+                    return `
+          <div class="hydro-detail-row">
+            <span>${formatDateTime(m.data_movimentacao)} · ${escapeHtml(origemLabel)}</span>
+            <span class="hydro-badge ${m.tipo === 'entrada' ? 'hydro-badge-ok' : 'hydro-badge-critical'}">${tipoLabel} · ${m.quantidade}</span>
+          </div>`;
+                })
+                .join('');
+        } catch (err) {
+            modalBody.innerHTML = `<p class="hydro-detail-row"><span>${escapeHtml(err.message)}</span></p>`;
+        }
+    }
+
+    /* ---- Excluir produto (RF02, RN03, RN20) ---- */
+    function openDeleteModal(id) {
+        const p = products.find((x) => x.id === id);
+        if (!p) return;
+
+        openModal({
+            title: 'Confirmar exclusão',
+            bodyHtml: `<p>Tem certeza de que deseja excluir o produto <strong>${escapeHtml(p.name)}</strong>? Se ele já tiver vendas registradas, será apenas inativado, preservando o histórico (RN03).</p>`,
+            footerHtml: `
+        <button class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroModalCancelBtn">Cancelar</button>
+        <button class="hydro-btn hydro-btn-danger hydro-btn-sm" id="hydroModalConfirmBtn">Excluir</button>
+      `,
+        });
+
+        document.getElementById('hydroModalCancelBtn').addEventListener('click', closeModal);
+        document.getElementById('hydroModalConfirmBtn').addEventListener('click', async () => {
+            const confirmBtn = document.getElementById('hydroModalConfirmBtn');
+            confirmBtn.disabled = true;
+
+            if (usingRealApi) {
+                try {
+                    const { inativado } = await window.hydraApi(`/produtos/${p.id}`, { method: 'DELETE' });
+                    products = products.filter((x) => x.id !== p.id);
+                    closeModal();
+                    refreshAll();
+                    showToast(inativado ? `"${p.name}" já tinha vendas registradas e foi inativado` : `"${p.name}" removido`);
+                } catch (err) {
+                    showToast(err.message);
+                    confirmBtn.disabled = false;
+                }
+                return;
+            }
+
+            products = products.filter((x) => x.id !== p.id);
+            closeModal();
+            refreshAll();
+            showToast(`"${p.name}" removido`);
         });
     }
 
@@ -403,19 +664,34 @@
         });
 
         document.getElementById('hydroModalCancelBtn').addEventListener('click', closeModal);
-        document.getElementById('hydroModalConfirmBtn').addEventListener('click', () => {
+        document.getElementById('hydroModalConfirmBtn').addEventListener('click', async () => {
             const productId = Number(document.getElementById('hydroMoveProduct').value);
             const qty = Math.max(1, Number(document.getElementById('hydroMoveQty').value) || 0);
             const p = products.find((x) => x.id === productId);
             if (!p) return;
 
-            if (isEntrada) {
-                p.quantity += qty;
-            } else {
-                if (qty > p.quantity) {
-                    showToast('Quantidade maior que o estoque disponível');
+            if (!isEntrada && qty > p.quantity) {
+                showToast('Quantidade maior que o estoque disponível');
+                return;
+            }
+
+            if (usingRealApi) {
+                const confirmBtn = document.getElementById('hydroModalConfirmBtn');
+                confirmBtn.disabled = true;
+                try {
+                    const { produto } = await window.hydraApi('/estoque/movimentacoes', {
+                        method: 'POST',
+                        body: { id_produto: p.id, tipo: isEntrada ? 'entrada' : 'saida', quantidade: qty },
+                    });
+                    Object.assign(p, mapApiProduct(produto));
+                } catch (err) {
+                    showToast(err.message);
+                    confirmBtn.disabled = false;
                     return;
                 }
+            } else if (isEntrada) {
+                p.quantity += qty;
+            } else {
                 p.quantity -= qty;
             }
 
@@ -461,6 +737,12 @@
         renderTable();
     });
 
+    document.getElementById('hydroFilterValidade').addEventListener('change', (e) => {
+        state.validade = e.target.value;
+        state.page = 1;
+        renderTable();
+    });
+
     document.getElementById('hydroBtnNovoProduto').addEventListener('click', () => { window.location.href = 'produtos.html'; });
     document.getElementById('hydroBtnEntrada').addEventListener('click', () => openMovementModal('entrada'));
     document.getElementById('hydroBtnSaida').addEventListener('click', () => openMovementModal('saida'));
@@ -484,13 +766,20 @@
         });
     });
 
-    /* ================= Guarda de sessão =================
+    /* ================= Guarda de sessão + carga de produtos =================
        RN04: os itens "Equipe" e "Configurações" só aparecem para o Administrador.
-       Visitantes não autenticados (demo pública) continuam vendo todas as telas. */
-    (async function checkAuth() {
-        if (!window.hydraApi) return;
+       Visitantes não autenticados (demo pública) continuam vendo todas as telas,
+       com o catálogo de demonstração local (RF02: produtos reais exigem login). */
+    (async function initAuthAndProducts() {
+        if (!window.hydraApi) {
+            products = seedProducts();
+            refreshAll();
+            return;
+        }
+
         try {
             const { usuario } = await window.hydraApi('/auth/me');
+            usuarioPerfil = usuario.perfil;
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
             if (usuario.perfil !== 'administrador') {
@@ -500,7 +789,19 @@
             }
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
+            products = seedProducts();
+            refreshAll();
+            return;
         }
+
+        try {
+            const { produtos } = await window.hydraApi('/produtos');
+            products = produtos.map(mapApiProduct);
+            usingRealApi = true;
+        } catch (err) {
+            products = seedProducts();
+        }
+        refreshAll();
     })();
 
     /* ================= Mobile sidebar ================= */
@@ -515,7 +816,4 @@
         sidebar.classList.remove('hydro-open');
         overlay.classList.remove('hydro-show');
     }
-
-    /* ================= Init ================= */
-    refreshAll();
 })();
