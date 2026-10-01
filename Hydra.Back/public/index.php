@@ -8,19 +8,41 @@
 
 declare(strict_types=1);
 
-spl_autoload_register(function (string $class): void {
+/*
+ * Raiz do codigo PHP. Dois layouts sao suportados:
+ *   - desenvolvimento: este arquivo esta em Hydra.Back/public/ e o
+ *     codigo fica ao lado, em ../src e ../config;
+ *   - imagem Docker: este arquivo e servido de /var/www/html/api/ e o
+ *     codigo mora FORA da raiz publica do Apache, em /var/www/app/,
+ *     para nao ser enderecavel pelo navegador.
+ */
+$appRoot = null;
+foreach ([__DIR__ . '/..', '/var/www/app'] as $candidato) {
+    if (is_dir($candidato . '/src')) {
+        $appRoot = $candidato;
+        break;
+    }
+}
+if ($appRoot === null) {
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['erro' => 'Instalacao invalida: diretorio "src" nao encontrado']);
+    exit;
+}
+
+spl_autoload_register(function (string $class) use ($appRoot): void {
     $prefix = 'Hydra\\';
     if (!str_starts_with($class, $prefix)) {
         return;
     }
     $relative = substr($class, strlen($prefix));
-    $path = __DIR__ . '/../src/' . str_replace('\\', '/', $relative) . '.php';
+    $path = $appRoot . '/src/' . str_replace('\\', '/', $relative) . '.php';
     if (is_file($path)) {
         require $path;
     }
 });
 
-require __DIR__ . '/../config/database.php';
+require $appRoot . '/config/database.php';
 
 use Hydra\Controllers\AuthController;
 use Hydra\Controllers\CargoController;
@@ -33,17 +55,34 @@ use Hydra\Support\Auth;
 use Hydra\Support\Env;
 use Hydra\Support\Response;
 
-// ----- CORS (desenvolvimento: front-end e back-end em origens/portas diferentes) -----
-$allowedOrigin = Env::get('CORS_ALLOWED_ORIGIN', '*');
+// ----- CORS -----
+// CORS_ALLOWED_ORIGIN aceita uma lista separada por vírgula com as origens
+// autorizadas (ex.: "https://hydra.exemplo.com,http://localhost:5500").
+//
+// O valor "*" continua existindo para desenvolvimento, mas agora SO vale
+// quando APP_ENV=local. Antes ele ecoava de volta qualquer origem que
+// chamasse a API, junto de Allow-Credentials: true - ou seja, qualquer
+// site na internet era tratado como origem confiável. O SameSite=Lax do
+// cookie evitava o pior na prática, mas isso era sorte, não defesa.
+$origensConfig = (string) Env::get('CORS_ALLOWED_ORIGIN', '');
+$ehLocal = Env::get('APP_ENV', 'production') === 'local';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? null;
-if ($allowedOrigin === '*' && $origin !== null) {
-    // Com cookies de sessão é preciso ecoar a origem exata (o header "*"
-    // não é aceito pelo navegador quando Allow-Credentials é usado).
-    header("Access-Control-Allow-Origin: $origin");
-} else {
-    header("Access-Control-Allow-Origin: $allowedOrigin");
+
+$origensPermitidas = array_filter(array_map('trim', explode(',', $origensConfig)));
+
+if ($origin !== null) {
+    if (in_array($origin, $origensPermitidas, true)) {
+        header("Access-Control-Allow-Origin: $origin");
+        header('Access-Control-Allow-Credentials: true');
+    } elseif ($ehLocal && in_array('*', $origensPermitidas, true)) {
+        // Conveniência de desenvolvimento: front e back em portas diferentes.
+        header("Access-Control-Allow-Origin: $origin");
+        header('Access-Control-Allow-Credentials: true');
+    }
+    // Origem desconhecida em produção: nenhum header CORS é enviado e o
+    // próprio navegador bloqueia a leitura da resposta.
 }
-header('Access-Control-Allow-Credentials: true');
+
 header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Vary: Origin');

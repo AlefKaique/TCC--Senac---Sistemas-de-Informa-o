@@ -32,3 +32,38 @@ window.hydraApi = async function hydraApi(path, options = {}) {
 
   return data;
 };
+
+/**
+ * Mostra ou esconde os itens administrativos da barra lateral conforme as
+ * permissoes do usuario.
+ *
+ * Antes cada tela decidia isso por `usuario.perfil === 'administrador'`,
+ * o perfil legado. Desde que o controle de acesso passou a ser por
+ * permissao, os dois modelos divergiam: um cargo com apenas
+ * "loja.configurar" era classificado como administrador e via os tres
+ * itens, inclusive Cargos, que respondia 403 ao ser aberto; e um cargo
+ * com "usuarios.visualizar" nao via Equipe, embora a API o autorizasse.
+ *
+ * Recebe o objeto devolvido por GET /api/auth/me.
+ */
+window.hydraAplicarMenuPorPermissao = function hydraAplicarMenuPorPermissao(usuario) {
+  const permissoes = (usuario && usuario.permissoes) || [];
+  const itens = [
+    ['hydroLiEquipe', 'usuarios.visualizar'],
+    ['hydroLiConfig', 'loja.visualizar'],
+    ['hydroLiCargos', 'cargos.visualizar'],
+  ];
+
+  let algumVisivel = false;
+  for (const [id, permissao] of itens) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const pode = permissoes.includes(permissao);
+    el.style.display = pode ? '' : 'none';
+    if (pode) algumVisivel = true;
+  }
+
+  // O rotulo "Admin" so faz sentido se sobrou algum item embaixo dele.
+  const rotulo = document.getElementById('hydroMenuAdminLabel');
+  if (rotulo) rotulo.style.display = algumVisivel ? '' : 'none';
+};

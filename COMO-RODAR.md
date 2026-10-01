@@ -101,7 +101,9 @@ Clique no terminal correspondente e aperte `Ctrl+C`.
 | Login funciona, a tela abre e volta pro login sozinha | Front e back usando hostnames diferentes (`127.0.0.1` de um lado, `localhost` do outro) — troque tudo para `localhost`, veja o aviso no passo 4. |
 | Login não persiste / sessão cai a cada request | A página foi aberta como `file://` em vez de `http://` — sirva pelo Live Server ou `php -S`. |
 | "Falha ao conectar ao banco de dados" | MySQL não está rodando, ou `Hydra.Back/.env` tem credenciais erradas. O motivo exato é gravado no log de erro do PHP (no Render, aba **Logs** do serviço); defina `APP_DEBUG=true` para ver esse motivo na própria resposta da API. |
-| CORS bloqueando a requisição | Confirme que `CORS_ALLOWED_ORIGIN` em `Hydra.Back/.env` está como `*` (padrão) durante o desenvolvimento. |
+| CORS bloqueando a requisição | Confirme que `Hydra.Back/.env` tem `APP_ENV=local` **e** `CORS_ALLOWED_ORIGIN=*`. O curinga só vale com `APP_ENV=local`; em produção é preciso listar a origem exata, separada por vírgula. |
+| "Muitas tentativas. Tente novamente em N minutos" | Proteção contra força bruta: 5 falhas no mesmo e-mail bloqueiam login e recuperação por 15 minutos. Para liberar durante um teste, apague a linha correspondente da tabela `tentativas_acesso`. |
+| Código de recuperação não aparece na resposta | O campo `codigo_dev` só é devolvido com `APP_ENV=local` e sem `BREVO_API_KEY`. Em produção ele nunca volta — configure o Brevo. |
 
 ## Publicar no Render
 

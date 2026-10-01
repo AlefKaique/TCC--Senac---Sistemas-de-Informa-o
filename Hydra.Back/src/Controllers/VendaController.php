@@ -92,10 +92,11 @@ final class VendaController
             }
         }
 
-        // Recalcula os preços a partir do produto no banco — nunca confia no
-        // preço enviado pelo cliente.
-        $itensValidados = [];
-        $subtotal = 0.0;
+        // Soma as linhas que repetem o mesmo produto ANTES de validar o
+        // estoque. Sem isso, cada linha era conferida contra o saldo
+        // inteiro: com 10 em estoque, duas linhas de 8 passavam as duas e
+        // a venda baixava 16.
+        $quantidadePorProduto = [];
         foreach ($itensEntrada as $item) {
             $idProduto = (int) ($item['id_produto'] ?? 0);
             $quantidade = $item['quantidade'] ?? null;
@@ -103,8 +104,14 @@ final class VendaController
                 Response::json(['erro' => 'Quantidade inválida em um dos itens'], 422);
                 return;
             }
-            $quantidade = (float) $quantidade;
+            $quantidadePorProduto[$idProduto] = ($quantidadePorProduto[$idProduto] ?? 0.0) + (float) $quantidade;
+        }
 
+        // Recalcula os preços a partir do produto no banco — nunca confia no
+        // preço enviado pelo cliente.
+        $itensValidados = [];
+        $subtotal = 0.0;
+        foreach ($quantidadePorProduto as $idProduto => $quantidade) {
             $produto = $this->produtos->findInLoja($idProduto, $user['id_loja']);
             if ($produto === null || $produto['status'] !== 'ativo') {
                 Response::json(['erro' => 'Produto indisponível para venda'], 422);
@@ -148,8 +155,13 @@ final class VendaController
             );
 
             foreach ($itensValidados as $item) {
+                // A verificação acima serve para a mensagem de erro; a
+                // garantia real vem deste UPDATE condicional, que impede
+                // duas vendas simultâneas de zerarem o mesmo saldo.
+                if (!$this->produtos->baixarQuantidadeSeHouver($item['id_produto'], $item['quantidade'])) {
+                    throw new \RuntimeException('Estoque insuficiente para o produto ' . $item['id_produto']);
+                }
                 $this->vendas->addItem($idVenda, $item['id_produto'], $item['quantidade'], $item['preco_unitario']);
-                $this->produtos->ajustarQuantidade($item['id_produto'], -$item['quantidade']);
                 $this->movimentacoes->create(
                     $user['id_loja'],
                     $item['id_produto'],
@@ -166,6 +178,12 @@ final class VendaController
             }
 
             $pdo->commit();
+        } catch (\RuntimeException $e) {
+            // Estoque esgotado entre a validação e a baixa (outra venda
+            // simultânea levou as últimas unidades).
+            $pdo->rollBack();
+            Response::json(['erro' => 'O estoque de um dos produtos acabou durante a finalização. Confira as quantidades e tente de novo.'], 409);
+            return;
         } catch (\Throwable $e) {
             $pdo->rollBack();
             Response::json(['erro' => 'Não foi possível registrar a venda'], 500);

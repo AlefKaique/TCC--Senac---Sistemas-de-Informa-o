@@ -16,8 +16,18 @@ services:
         sync: false
       - key: DB_PASS
         sync: false
+      # Front e API sao servidos pelo mesmo dominio neste servico, entao
+      # nao ha requisicao cross-origin e a lista pode ficar vazia. Se o
+      # front passar a ser hospedado separadamente, liste aqui a origem
+      # dele - nunca "*", que em producao nao tem efeito de proposito.
       - key: CORS_ALLOWED_ORIGIN
-        value: "*"
+        value: ""
+      - key: APP_ENV
+        value: production
+      - key: APP_TIMEZONE
+        value: America/Sao_Paulo
+      - key: APP_TIMEZONE_OFFSET
+        value: "-03:00"
       - key: BREVO_API_KEY
         sync: false
       - key: MAIL_FROM

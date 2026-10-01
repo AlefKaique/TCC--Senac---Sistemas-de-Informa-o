@@ -6,8 +6,10 @@ use Hydra\Repositories\CargoRepository;
 use Hydra\Repositories\LojaRepository;
 use Hydra\Repositories\UsuarioRepository;
 use Hydra\Support\Auth;
+use Hydra\Support\Env;
 use Hydra\Support\Mailer;
 use Hydra\Support\PasswordPolicy;
+use Hydra\Support\RateLimit;
 use Hydra\Support\Request;
 use Hydra\Support\Response;
 
@@ -106,16 +108,27 @@ final class AuthController
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
         $senha = (string) ($dados['senha'] ?? '');
 
+        $chaveLimite = 'login:' . $email;
+        RateLimit::requireNaoBloqueado($chaveLimite);
+
         $usuario = $email !== '' ? $this->usuarios->findByEmail($email) : null;
 
         if ($usuario === null || !password_verify($senha, $usuario['senha'])) {
+            RateLimit::registrarFalha($chaveLimite);
             Response::json(['erro' => 'E-mail ou senha inválidos'], 401);
             return;
         }
         if ($usuario['status'] !== 'ativo') {
+            // Mensagem específica de propósito: ela revela que o e-mail
+            // existe, mas /api/auth/registro já revela o mesmo ao recusar
+            // um e-mail duplicado, então esconder aqui não fecharia a
+            // enumeração e deixaria o funcionário desativado sem saber o
+            // motivo. O limite de tentativas acima é que impede varredura.
             Response::json(['erro' => 'Este usuário está inativo. Fale com o administrador da loja.'], 403);
             return;
         }
+
+        RateLimit::limpar($chaveLimite);
 
         // Lojas criadas antes do módulo de Cargos ainda não têm cargos —
         // cria os 3 de sistema e associa quem estiver sem cargo (ver
@@ -159,6 +172,12 @@ final class AuthController
     {
         $dados = Request::json();
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
+        // Conta também os pedidos, não só as tentativas de código: sem isso
+        // um atacante geraria códigos novos indefinidamente para ampliar a
+        // janela de ataque.
+        $chaveLimite = 'reset:' . $email;
+        RateLimit::requireNaoBloqueado($chaveLimite);
+
         $usuario = $email !== '' ? $this->usuarios->findByEmail($email) : null;
 
         // Resposta genérica mesmo se o e-mail não existir, para não vazar
@@ -167,6 +186,8 @@ final class AuthController
             Response::json(['ok' => true]);
             return;
         }
+
+        RateLimit::registrarFalha($chaveLimite);
 
         $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $expiraEm = (new \DateTimeImmutable('+15 minutes'))->format('Y-m-d H:i:s');
@@ -179,7 +200,12 @@ final class AuthController
         );
 
         $resposta = ['ok' => true];
-        if (!$enviado) {
+        // O código só volta na resposta em ambiente de desenvolvimento,
+        // declarado explicitamente em APP_ENV. Antes isso dependia apenas
+        // de o envio ter falhado - e como BREVO_API_KEY precisa ser
+        // preenchida à mão no provedor, esquecer disso em produção fazia
+        // a API entregar o código de qualquer conta a qualquer um.
+        if (!$enviado && Env::get('APP_ENV', 'production') === 'local') {
             $resposta['codigo_dev'] = $codigo;
         }
 
@@ -194,13 +220,25 @@ final class AuthController
         $codigo = trim((string) ($dados['codigo'] ?? ''));
         $senha = (string) ($dados['senha'] ?? '');
 
-        if ($email === '' || $codigo === '' || strlen($senha) < 6) {
-            Response::json(['erro' => 'Preencha o código recebido e uma senha com pelo menos 6 caracteres'], 422);
+        if ($email === '' || $codigo === '') {
+            Response::json(['erro' => 'Preencha o código recebido'], 422);
+            return;
+        }
+        // Mesma política do cadastro: antes aqui bastavam 6 caracteres, o
+        // que permitia contornar a exigência de senha forte pelo fluxo de
+        // "Esqueci minha senha".
+        $erroSenha = PasswordPolicy::validar($senha);
+        if ($erroSenha !== null) {
+            Response::json(['erro' => $erroSenha], 422);
             return;
         }
 
+        $chaveLimite = 'reset:' . $email;
+        RateLimit::requireNaoBloqueado($chaveLimite);
+
         $usuario = $this->usuarios->findByValidResetCode($email, $codigo);
         if ($usuario === null) {
+            RateLimit::registrarFalha($chaveLimite);
             Response::json(['erro' => 'Código inválido ou expirado'], 400);
             return;
         }
@@ -209,6 +247,7 @@ final class AuthController
             (int) $usuario['id_usuario'],
             password_hash($senha, PASSWORD_BCRYPT)
         );
+        RateLimit::limpar($chaveLimite);
 
         Response::json(['ok' => true]);
     }

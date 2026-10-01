@@ -1,7 +1,9 @@
 -- ============================================================
--- SISTEMA HYDRA - Schema do módulo de Cadastro de Usuário
--- e Permissões (Usuários + Loja)
+-- SISTEMA HYDRA - Schema completo do banco
 -- Banco: MySQL 8
+--
+-- Módulos: Loja e Usuários, Cargos e Permissões, Clientes, Produtos,
+-- Controle de Estoque, Vendas (PDV) e Movimentações Financeiras.
 --
 -- Telas cobertas por este schema:
 --   - Cadastro (Fig. 13)        -> INSERT em lojas + INSERT em usuarios (perfil = administrador)
@@ -333,6 +335,28 @@ CREATE INDEX idx_movimentacoes_financeiras_data     ON movimentacoes_financeiras
 --   sustentando a regra "a loja precisa ter ao menos um administrador
 --   ativo" (UsuarioRepository::countAdminsAtivos).
 -- ============================================================
+
+-- ============================================================
+-- Controle de tentativas de acesso
+--   Limita forca bruta no login e na redefinicao de senha. Sem isto,
+--   o codigo de 6 digitos da recuperacao (1 milhao de combinacoes)
+--   seria quebravel em minutos, porque nada impedia tentativas
+--   ilimitadas dentro da janela de validade.
+--
+-- "chave" identifica o alvo da contagem, no formato "<acao>:<alvo>"
+-- (ex.: "login:fulano@loja.com"). Nao ha FK para usuarios de
+-- proposito: tentativas contra e-mails inexistentes tambem contam,
+-- senao bastaria variar o e-mail para escapar do bloqueio.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS tentativas_acesso (
+    chave           VARCHAR(190) NOT NULL PRIMARY KEY,
+    tentativas      INT NOT NULL DEFAULT 0,
+    bloqueado_ate   DATETIME NULL,
+    atualizado_em   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE INDEX idx_tentativas_acesso_atualizado ON tentativas_acesso (atualizado_em);
+
 
 CREATE TABLE IF NOT EXISTS permissoes (
     id_permissao    INT AUTO_INCREMENT PRIMARY KEY,

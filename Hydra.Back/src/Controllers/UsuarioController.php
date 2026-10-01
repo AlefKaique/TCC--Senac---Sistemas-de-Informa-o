@@ -124,6 +124,17 @@ final class UsuarioController
             Response::json(['erro' => 'Preencha nome e e-mail'], 422);
             return;
         }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Response::json(['erro' => 'E-mail inválido'], 422);
+            return;
+        }
+        // "email" é UNIQUE no banco: sem esta checagem, informar um e-mail
+        // já usado estourava a constraint e virava um 500 genérico, em vez
+        // de dizer ao administrador o que estava errado.
+        if ($email !== $usuario['email'] && $this->usuarios->emailExists($email)) {
+            Response::json(['erro' => 'Já existe uma conta com este e-mail'], 409);
+            return;
+        }
         $cargo = $this->cargos->find($idCargo, $admin['id_loja']);
         if ($cargo === null) {
             Response::json(['erro' => 'Selecione um cargo válido'], 422);

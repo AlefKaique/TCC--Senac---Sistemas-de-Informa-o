@@ -32,7 +32,10 @@ final class PasswordPolicy
         if (!preg_match('/[^A-Za-z0-9]/', $senha)) {
             return 'A senha deve conter ao menos um caractere especial (ex.: ! @ # $ %)';
         }
-        if (strlen($senha) < self::MIN_LENGTH) {
+        // mb_strlen conta caracteres; strlen contaria bytes, e uma senha
+        // com acentos ("Caçula1!") somaria mais bytes do que caracteres,
+        // passando no mínimo com menos caracteres do que o pretendido.
+        if (mb_strlen($senha, 'UTF-8') < self::MIN_LENGTH) {
             return 'A senha deve ter pelo menos ' . self::MIN_LENGTH . ' caracteres';
         }
         return null;
