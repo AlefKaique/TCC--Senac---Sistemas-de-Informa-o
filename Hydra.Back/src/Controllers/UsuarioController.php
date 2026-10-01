@@ -5,6 +5,7 @@ namespace Hydra\Controllers;
 use Hydra\Repositories\CargoRepository;
 use Hydra\Repositories\UsuarioRepository;
 use Hydra\Support\Auth;
+use Hydra\Support\PasswordPolicy;
 use Hydra\Support\Request;
 use Hydra\Support\Response;
 
@@ -70,8 +71,9 @@ final class UsuarioController
             Response::json(['erro' => 'E-mail inválido'], 422);
             return;
         }
-        if (strlen($senha) < 6) {
-            Response::json(['erro' => 'A senha deve ter pelo menos 6 caracteres'], 422);
+        $erroSenha = PasswordPolicy::validar($senha);
+        if ($erroSenha !== null) {
+            Response::json(['erro' => $erroSenha], 422);
             return;
         }
 

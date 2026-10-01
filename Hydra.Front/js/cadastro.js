@@ -5,35 +5,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (!form) return;
 
+  function campoDe(input){
+    return input.closest('.field') || input.parentElement;
+  }
+
   function setError(input, message){
     input.style.borderColor = '#E24C4C';
-    let err = input.parentElement.querySelector('.field__error');
+    const campo = campoDe(input);
+    let err = campo.querySelector('.field__error');
     if (!err){
       err = document.createElement('span');
       err.className = 'field__error';
       err.style.color = '#E24C4C';
       err.style.fontSize = '0.78rem';
       err.style.marginTop = '2px';
-      input.parentElement.appendChild(err);
+      campo.appendChild(err);
     }
     err.textContent = message;
   }
 
   function clearError(input){
     input.style.borderColor = '';
-    const err = input.parentElement.querySelector('.field__error');
+    const err = campoDe(input).querySelector('.field__error');
     if (err) err.remove();
   }
 
-  // Mesma política aplicada no back-end (Hydra\Support\PasswordPolicy):
-  // mínimo de 8 caracteres, com maiúscula, minúscula, número e símbolo.
-  function validarSenhaForte(valor) {
-    if (valor.length < 8) return 'A senha deve ter pelo menos 8 caracteres.';
-    if (!/[a-z]/.test(valor)) return 'A senha deve conter ao menos uma letra minúscula.';
-    if (!/[A-Z]/.test(valor)) return 'A senha deve conter ao menos uma letra maiúscula.';
-    if (!/\d/.test(valor)) return 'A senha deve conter ao menos um número.';
-    if (!/[^A-Za-z0-9]/.test(valor)) return 'A senha deve conter ao menos um caractere especial (ex.: ! @ # $ %).';
-    return null;
+  // Checklist de senha ao vivo + botão de mostrar/ocultar senha (ver
+  // ../js/password-rules.js — mesmas regras aplicadas no back-end em
+  // Hydra\Support\PasswordPolicy::validar()).
+  if (window.HydraPasswordRules) {
+    window.HydraPasswordRules.ligarChecklist(senha, document.getElementById('senha-regras'));
+    window.HydraPasswordRules.ligarToggleSenha(senha, document.getElementById('senha-toggle'));
+    window.HydraPasswordRules.ligarToggleSenha(confirmarSenha, document.getElementById('confirmar-senha-toggle'));
   }
 
   [senha, confirmarSenha].forEach(input => {
@@ -44,7 +47,9 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     let valid = true;
 
-    const erroSenha = validarSenhaForte(senha.value);
+    const erroSenha = window.HydraPasswordRules
+      ? window.HydraPasswordRules.primeiraRegraFalha(senha.value)
+      : null;
     if (erroSenha) {
       setError(senha, erroSenha);
       valid = false;

@@ -251,7 +251,11 @@
         </div>
         <div class="hydro-form-group">
           <label for="hydroNewSenha">Senha inicial</label>
-          <input type="password" id="hydroNewSenha" placeholder="Mínimo de 6 caracteres" minlength="6">
+          <div class="hydro-pwd-field-wrap">
+            <input type="password" id="hydroNewSenha" placeholder="Digite a senha inicial">
+            <button type="button" class="hydro-pwd-toggle" id="hydroNewSenhaToggle"></button>
+          </div>
+          <div id="hydroNewSenhaRegras"></div>
         </div>
         <div class="hydro-form-group">
           <label for="hydroNewCargo">Cargo</label>
@@ -268,6 +272,17 @@
         <button class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroModalCancelBtn">Cancelar</button>
         <button class="hydro-btn hydro-btn-primary hydro-btn-sm" id="hydroModalSaveBtn">Cadastrar usuário</button>
       `,
+            onMount: () => {
+                if (!window.HydraPasswordRules) return;
+                window.HydraPasswordRules.ligarChecklist(
+                    document.getElementById('hydroNewSenha'),
+                    document.getElementById('hydroNewSenhaRegras')
+                );
+                window.HydraPasswordRules.ligarToggleSenha(
+                    document.getElementById('hydroNewSenha'),
+                    document.getElementById('hydroNewSenhaToggle')
+                );
+            },
         });
 
         document.getElementById('hydroModalCancelBtn').addEventListener('click', closeModal);
@@ -281,8 +296,11 @@
                 showToast('Preencha nome e e-mail');
                 return;
             }
-            if (senha.length < 6) {
-                showToast('A senha deve ter pelo menos 6 caracteres');
+            const erroSenha = window.HydraPasswordRules
+                ? window.HydraPasswordRules.primeiraRegraFalha(senha)
+                : null;
+            if (erroSenha) {
+                showToast(erroSenha);
                 return;
             }
             if (!idCargo) {
