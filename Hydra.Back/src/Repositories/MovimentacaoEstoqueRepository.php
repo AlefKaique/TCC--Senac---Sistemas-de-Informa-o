@@ -29,9 +29,11 @@ final class MovimentacaoEstoqueRepository
     public function listByProduto(int $idProduto, int $idLoja): array
     {
         $stmt = db()->prepare(
-            'SELECT * FROM movimentacoes_estoque
-             WHERE id_produto = :id_produto AND id_loja = :id_loja
-             ORDER BY data_movimentacao DESC'
+            'SELECT me.*, u.nome AS nome_usuario
+             FROM movimentacoes_estoque me
+             LEFT JOIN usuarios u ON u.id_usuario = me.id_usuario
+             WHERE me.id_produto = :id_produto AND me.id_loja = :id_loja
+             ORDER BY me.data_movimentacao DESC'
         );
         $stmt->execute(['id_produto' => $idProduto, 'id_loja' => $idLoja]);
         return $stmt->fetchAll();

@@ -6,6 +6,14 @@
    topbar, modal, toast, badges). Escopado em ".hydro-stock".
    =================================================================== */
 
+/* O atributo "hidden" precisa vencer as classes que definem "display"
+   (.hydro-cargo-form, .hydro-cargo-tabpanel, .hydro-cargo-danger-zone,
+   .hydro-badge). Sem isto, a regra de autor tem prioridade sobre o
+   [hidden] padrao do navegador e o elemento continua visivel. */
+[hidden] {
+    display: none !important;
+}
+
 .hydro-cargo-intro {
     max-width: 760px;
     color: var(--muted);
@@ -154,6 +162,106 @@
     display: flex;
     align-items: center;
     gap: 14px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.hydro-cargo-head-title {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.hydro-cargo-head-title strong {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--navy-900);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Desabilitado enquanto nao ha alteracao pendente: o botao continua em
+   tela para o usuario saber onde salvar, mas sem sugerir acao. */
+.hydro-cargo-editor-head .hydro-btn[disabled] {
+    opacity: .45;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* ============ Abas do editor ============ */
+.hydro-cargo-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-top: -8px;
+}
+
+.hydro-cargo-tab {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 14px;
+    border: none;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s ease, border-color .15s ease;
+}
+
+.hydro-cargo-tab:hover {
+    color: var(--ink);
+}
+
+.hydro-cargo-tab.hydro-active {
+    color: var(--navy-900);
+    border-bottom-color: var(--navy-active);
+}
+
+.hydro-cargo-tab-danger {
+    margin-left: auto;
+    color: var(--red);
+}
+
+.hydro-cargo-tab-danger:hover,
+.hydro-cargo-tab-danger.hydro-active {
+    color: var(--red);
+    border-bottom-color: var(--red);
+}
+
+.hydro-cargo-tab-count {
+    min-width: 20px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--bg);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--muted);
+    text-align: center;
+}
+
+.hydro-cargo-tab.hydro-active .hydro-cargo-tab-count {
+    background: var(--blue-bg);
+    color: var(--navy-900);
+}
+
+.hydro-cargo-tabpanel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.hydro-cargo-panel-hint {
+    font-size: 13px;
+    color: var(--muted);
+    max-width: 560px;
 }
 
 .hydro-cargo-dot-lg {
@@ -164,20 +272,9 @@
     box-shadow: 0 0 0 3px #fff, 0 0 0 4px var(--border);
 }
 
-.hydro-cargo-name-group {
-    flex: 1;
-    min-width: 0;
-}
-
-.hydro-cargo-name-group input {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--navy-900);
-}
 
 .hydro-cargo-system-tag {
     flex-shrink: 0;
-    margin-top: 20px;
 }
 
 .hydro-cargo-form textarea {
@@ -265,27 +362,6 @@
 }
 
 /* ============ Permissões ============ */
-.hydro-cargo-permissions {
-    padding-top: 6px;
-    border-top: 1px solid var(--border);
-}
-
-.hydro-cargo-permissions-head {
-    margin-bottom: 14px;
-}
-
-.hydro-cargo-permissions-head h3 {
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--navy-900);
-    margin-bottom: 4px;
-}
-
-.hydro-cargo-permissions-head p {
-    font-size: 13px;
-    color: var(--muted);
-    max-width: 560px;
-}
 
 .hydro-cargo-perm-group {
     margin-bottom: 20px;
@@ -465,8 +541,26 @@
         flex-wrap: wrap;
     }
 
-    .hydro-cargo-system-tag {
-        margin-top: 0;
+    /* Em telas estreitas o botao Salvar passa para a linha de baixo e
+       ocupa a largura toda, em vez de espremer o nome do cargo. */
+    .hydro-cargo-editor-head .hydro-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* As abas rolam na horizontal em vez de quebrar linha. */
+    .hydro-cargo-tabs {
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .hydro-cargo-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .hydro-cargo-tab {
+        flex-shrink: 0;
+        padding: 10px 12px;
     }
 
     .hydro-cargo-danger-zone {

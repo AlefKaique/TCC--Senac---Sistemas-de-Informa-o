@@ -119,6 +119,29 @@
         });
     }
 
+    /* ================= Abas do editor ================= */
+    function selectTab(name) {
+        document.querySelectorAll('.hydro-cargo-tab').forEach((tab) => {
+            const active = tab.dataset.tab === name;
+            tab.classList.toggle('hydro-active', active);
+            tab.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        document.querySelectorAll('.hydro-cargo-tabpanel').forEach((panel) => {
+            panel.hidden = panel.dataset.panel !== name;
+        });
+    }
+
+    document.querySelectorAll('.hydro-cargo-tab').forEach((tab) => {
+        tab.addEventListener('click', () => selectTab(tab.dataset.tab));
+    });
+
+    /* Mostra "marcadas/total" na aba Permissoes, para dar noção do alcance
+       do cargo sem precisar abrir a aba. */
+    function updatePermCount() {
+        document.getElementById('hydroCargoPermCount').textContent =
+            `${draft ? draft.permissoes.size : 0}/${catalogo.length}`;
+    }
+
     function renderPermGroups() {
         const container = document.getElementById('hydroCargoPermGroups');
         const groups = groupCatalogo();
@@ -144,9 +167,19 @@
             cb.addEventListener('change', () => {
                 if (cb.checked) draft.permissoes.add(cb.dataset.codigo);
                 else draft.permissoes.delete(cb.dataset.codigo);
+                updatePermCount();
                 checkDirty();
             });
         });
+    }
+
+    /* O cabecalho repete o nome do cargo porque o campo de texto vive na
+       aba "Dados": sem isso, quem esta na aba de permissoes perde a
+       referencia de qual cargo esta editando. */
+    function updateHeadName() {
+        const nome = (draft && draft.nome.trim()) || '';
+        document.getElementById('hydroCargoHeadName').textContent =
+            nome || (selectedId === 'new' ? 'Novo cargo' : 'Sem nome');
     }
 
     function showEditor(cargo) {
@@ -160,11 +193,19 @@
         document.getElementById('hydroCargoDescricao').value = draft.descricao;
         document.getElementById('hydroCargoSystemTag').hidden = !isSystem;
 
+        updateHeadName();
         updatePreviewDot();
         renderSwatches();
         renderPermGroups();
+        updatePermCount();
 
-        document.getElementById('hydroCargoDangerZone').hidden = isSystem || selectedId === 'new';
+        // Cargos de sistema e cargos ainda nao criados nao podem ser excluidos.
+        const podeExcluir = !isSystem && selectedId !== 'new';
+        document.getElementById('hydroCargoTabPerigo').hidden = !podeExcluir;
+
+        // Trocar de cargo sempre volta para a primeira aba; sem isso o
+        // editor abriria na aba "Excluir" de um cargo que nem a possui.
+        selectTab('dados');
     }
 
     /* ================= Estado "sujo" (alterações não salvas) ================= */
@@ -183,7 +224,11 @@
     }
 
     function checkDirty() {
-        document.getElementById('hydroCargoSavebar').classList.toggle('hydro-show', isDirty());
+        const dirty = isDirty();
+        // A barra flutuante so avisa e permite descartar; salvar fica no
+        // botao fixo do cabecalho do editor, sempre visivel.
+        document.getElementById('hydroCargoSavebar').classList.toggle('hydro-show', dirty);
+        document.getElementById('hydroCargoSaveBtn').disabled = !dirty;
     }
 
     /* ================= Seleção de cargo ================= */
@@ -325,6 +370,7 @@
     document.getElementById('hydroCargoNome').addEventListener('input', (e) => {
         if (!draft) return;
         draft.nome = e.target.value;
+        updateHeadName();
         checkDirty();
     });
     document.getElementById('hydroCargoDescricao').addEventListener('input', (e) => {

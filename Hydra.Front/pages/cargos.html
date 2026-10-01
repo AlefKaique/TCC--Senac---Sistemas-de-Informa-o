@@ -91,9 +91,7 @@
                 </header>
 
                 <p class="hydro-cargo-intro">
-                    Crie cargos e marque, com um clique, quais permissões cada um concede — assim como em um
-                    servidor do Discord. Todo usuário da equipe pertence a um cargo, e é o cargo que define o que
-                    ele pode ver e fazer no sistema.
+                    Cada usuário pertence a um cargo, e o cargo define o que ele pode ver e fazer no sistema.
                 </p>
 
                 <section class="hydro-cargo-layout">
@@ -116,46 +114,69 @@
                         </div>
 
                         <form id="hydroCargoForm" class="hydro-cargo-form" hidden novalidate>
-                            <div class="hydro-cargo-editor-head">
+                            <!-- Cabeçalho do editor: identidade do cargo e o botão Salvar,
+                                 que fica sempre em tela (desabilitado enquanto nada muda). -->
+                            <header class="hydro-cargo-editor-head">
                                 <span class="hydro-cargo-dot-lg" id="hydroCargoPreviewDot"></span>
-                                <div class="hydro-form-group hydro-cargo-name-group">
+                                <div class="hydro-cargo-head-title">
+                                    <strong id="hydroCargoHeadName">Novo cargo</strong>
+                                    <span class="hydro-badge hydro-badge-neutral hydro-cargo-system-tag" id="hydroCargoSystemTag" hidden>Cargo de sistema</span>
+                                </div>
+                                <button type="button" class="hydro-btn hydro-btn-primary hydro-btn-sm" id="hydroCargoSaveBtn" disabled>
+                                    Salvar alterações
+                                </button>
+                            </header>
+
+                            <!-- Abas: separam identidade, permissões e exclusão para
+                                 encurtar a rolagem do editor. -->
+                            <div class="hydro-cargo-tabs" role="tablist">
+                                <button type="button" class="hydro-cargo-tab hydro-active" role="tab" aria-selected="true"
+                                        aria-controls="hydroCargoPanelDados" data-tab="dados">Dados</button>
+                                <button type="button" class="hydro-cargo-tab" role="tab" aria-selected="false"
+                                        aria-controls="hydroCargoPanelPermissoes" data-tab="permissoes">
+                                    Permissões <span class="hydro-cargo-tab-count" id="hydroCargoPermCount">0</span>
+                                </button>
+                                <button type="button" class="hydro-cargo-tab hydro-cargo-tab-danger" role="tab" aria-selected="false"
+                                        aria-controls="hydroCargoPanelPerigo" data-tab="perigo" id="hydroCargoTabPerigo" hidden>Excluir</button>
+                            </div>
+
+                            <div class="hydro-cargo-tabpanel" id="hydroCargoPanelDados" role="tabpanel" data-panel="dados">
+                                <div class="hydro-form-group">
                                     <label for="hydroCargoNome">Nome do cargo</label>
                                     <input type="text" id="hydroCargoNome" maxlength="60" placeholder="Ex.: Supervisor de Loja">
                                 </div>
-                                <span class="hydro-badge hydro-badge-neutral hydro-cargo-system-tag" id="hydroCargoSystemTag" hidden>Cargo de sistema</span>
-                            </div>
 
-                            <div class="hydro-form-group">
-                                <label for="hydroCargoDescricao">Descrição (opcional)</label>
-                                <textarea id="hydroCargoDescricao" rows="2" maxlength="255" placeholder="Para que serve esse cargo?"></textarea>
-                            </div>
+                                <div class="hydro-form-group">
+                                    <label for="hydroCargoDescricao">Descrição (opcional)</label>
+                                    <textarea id="hydroCargoDescricao" rows="2" maxlength="255" placeholder="Para que serve esse cargo?"></textarea>
+                                </div>
 
-                            <div class="hydro-form-group">
-                                <label>Cor do cargo</label>
-                                <div class="hydro-cargo-color-row">
-                                    <div class="hydro-cargo-swatches" id="hydroCargoSwatches"></div>
-                                    <label class="hydro-cargo-custom-color" title="Escolher outra cor">
-                                        <input type="color" id="hydroCargoCorInput" value="#5865F2">
-                                    </label>
+                                <div class="hydro-form-group">
+                                    <label>Cor do cargo</label>
+                                    <div class="hydro-cargo-color-row">
+                                        <div class="hydro-cargo-swatches" id="hydroCargoSwatches"></div>
+                                        <label class="hydro-cargo-custom-color" title="Escolher outra cor">
+                                            <input type="color" id="hydroCargoCorInput" value="#5865F2">
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="hydro-cargo-permissions">
-                                <div class="hydro-cargo-permissions-head">
-                                    <h3>Permissões</h3>
-                                    <p>Marque o que esse cargo pode fazer no sistema. Usuários herdam exatamente as permissões do cargo escolhido.</p>
-                                </div>
+                            <div class="hydro-cargo-tabpanel" id="hydroCargoPanelPermissoes" role="tabpanel" data-panel="permissoes" hidden>
+                                <p class="hydro-cargo-panel-hint">Marque o que esse cargo pode fazer. Os usuários herdam exatamente o que estiver marcado aqui.</p>
                                 <div id="hydroCargoPermGroups"></div>
                             </div>
 
-                            <div class="hydro-cargo-danger-zone" id="hydroCargoDangerZone" hidden>
-                                <div>
-                                    <strong>Excluir cargo</strong>
-                                    <span>Os usuários deste cargo precisam ser movidos para outro cargo antes da exclusão.</span>
+                            <div class="hydro-cargo-tabpanel" id="hydroCargoPanelPerigo" role="tabpanel" data-panel="perigo" hidden>
+                                <div class="hydro-cargo-danger-zone" id="hydroCargoDangerZone">
+                                    <div>
+                                        <strong>Excluir cargo</strong>
+                                        <span>Os usuários deste cargo precisam ser movidos para outro cargo antes da exclusão.</span>
+                                    </div>
+                                    <button type="button" class="hydro-btn hydro-btn-danger hydro-btn-sm" id="hydroCargoDeleteBtn">
+                                        <i class="hydro-ic hydro-ic-trash"></i> Excluir cargo
+                                    </button>
                                 </div>
-                                <button type="button" class="hydro-btn hydro-btn-danger hydro-btn-sm" id="hydroCargoDeleteBtn">
-                                    <i class="hydro-ic hydro-ic-trash"></i> Excluir cargo
-                                </button>
                             </div>
                         </form>
                     </section>
@@ -168,7 +189,6 @@
             <span>Você tem alterações não salvas!</span>
             <div class="hydro-cargo-savebar-actions">
                 <button class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroCargoDiscardBtn">Descartar</button>
-                <button class="hydro-btn hydro-btn-primary hydro-btn-sm" id="hydroCargoSaveBtn">Salvar alterações</button>
             </div>
         </div>
 

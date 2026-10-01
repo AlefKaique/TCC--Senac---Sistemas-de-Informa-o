@@ -158,8 +158,39 @@
     color: var(--navy-900);
 }
 
+/* ============ Busca na linha de filtros ============
+   O campo de busca saiu da topbar e passou a viver junto de Cargo e
+   Status: tudo que restringe a lista fica reunido em um lugar so. A
+   altura acompanha a dos selects (.hydro-select-field usa o mesmo
+   padding vertical), e o .hydro-search herda a moldura ja existente. */
+.hydro-search-field .hydro-search {
+    width: 260px;
+}
+
 @media (max-width:720px) {
     .hydro-topbar-title {
         gap: 8px;
+    }
+
+    /* Sem largura fixa, os tres filtros empilham ocupando a linha toda. */
+    .hydro-filters {
+        width: 100%;
+    }
+
+    .hydro-filters .hydro-select-field {
+        width: 100%;
+    }
+
+    /* O CSS base esconde .hydro-search abaixo de 720px, porque la ela
+       era um enfeite da topbar. Aqui ela e um filtro de verdade, entao
+       precisa continuar visivel no celular. */
+    .hydro-search-field .hydro-search {
+        display: flex;
+    }
+
+    .hydro-search-field .hydro-search,
+    .hydro-filters .hydro-select-field select {
+        width: 100%;
+        min-width: 0;
     }
 }
