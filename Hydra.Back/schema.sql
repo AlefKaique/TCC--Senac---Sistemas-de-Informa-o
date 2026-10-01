@@ -291,6 +291,126 @@ CREATE INDEX idx_movimentacoes_financeiras_data     ON movimentacoes_financeiras
 
 
 -- ============================================================
+-- Módulo de Cargos e Permissões (estilo Discord)
+--   RF01/RN04/RN06/RN07 - substitui o antigo ENUM fixo "perfil" por um
+--   modelo de cargos configuráveis por loja: cada cargo tem um nome,
+--   uma cor (identidade visual, igual aos cargos do Discord) e um
+--   conjunto de permissões marcadas por checkbox na tela "Cargos".
+--
+--   "permissoes" é um catálogo GLOBAL (igual para todas as lojas) das
+--   ações que podem ser concedidas. "cargos" pertence a uma loja — cada
+--   loja nova ganha automaticamente 3 cargos de sistema (Administrador,
+--   Operador de Caixa e Estoquista) com as mesmas permissões que o
+--   ENUM "perfil" já garantia, então nenhuma loja existente perde
+--   acesso quando este módulo é instalado (ver CargoRepository::
+--   ensureDefaults(), chamado de forma preguiçosa no login). Cargos de
+--   sistema (cargo_sistema = 1) não podem ser excluídos; cargos
+--   personalizados podem ser livremente criados, editados e excluídos
+--   pelo Administrador (tela exclusiva, permissão "cargos.gerenciar").
+--
+--   usuarios.perfil é mantido (não removido) por compatibilidade: ele é
+--   recalculado automaticamente a partir das permissões do cargo
+--   atribuído (ver CargoRepository::nivelEquivalente()) e continua
+--   sustentando a regra "a loja precisa ter ao menos um administrador
+--   ativo" (UsuarioRepository::countAdminsAtivos).
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS permissoes (
+    id_permissao    INT AUTO_INCREMENT PRIMARY KEY,
+    codigo          VARCHAR(60)  NOT NULL UNIQUE,
+    nome            VARCHAR(100) NOT NULL,
+    descricao       VARCHAR(255) NULL,
+    categoria       VARCHAR(60)  NOT NULL,
+    ordem           INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS cargos (
+    id_cargo        INT AUTO_INCREMENT PRIMARY KEY,
+    id_loja         INT NOT NULL,
+    nome            VARCHAR(60)  NOT NULL,
+    descricao       VARCHAR(255) NULL,
+    cor             VARCHAR(7)   NOT NULL DEFAULT '#5865F2',
+    cargo_sistema   TINYINT(1)   NOT NULL DEFAULT 0,
+    data_criacao    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
+        ON DELETE CASCADE,
+
+    UNIQUE KEY uq_cargos_loja_nome (id_loja, nome)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE INDEX idx_cargos_id_loja ON cargos (id_loja);
+
+CREATE TABLE IF NOT EXISTS cargo_permissoes (
+    id_cargo        INT NOT NULL,
+    id_permissao    INT NOT NULL,
+
+    PRIMARY KEY (id_cargo, id_permissao),
+    FOREIGN KEY (id_cargo) REFERENCES cargos(id_cargo)
+        ON DELETE CASCADE,
+    FOREIGN KEY (id_permissao) REFERENCES permissoes(id_permissao)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Catálogo fixo de permissões — cada uma corresponde a uma verificação
+-- real no back-end (Hydra\Support\Auth::requirePermission), não é só
+-- texto decorativo na tela de Cargos.
+INSERT IGNORE INTO permissoes (codigo, nome, descricao, categoria, ordem) VALUES
+    ('produtos.gerenciar',      'Gerenciar Produtos',       'Cadastrar, editar e inativar produtos do catálogo',        'Produtos',       10),
+    ('produtos.editar_preco',   'Alterar Preços',           'Alterar preço de custo e de venda de um produto',          'Produtos',       11),
+    ('estoque.gerenciar',       'Gerenciar Estoque',        'Registrar entradas e saídas manuais de estoque',           'Estoque',        20),
+    ('vendas.registrar',        'Registrar Vendas',         'Operar o Caixa (PDV) e finalizar vendas',                  'Vendas (Caixa)', 30),
+    ('vendas.aplicar_desconto', 'Aplicar Desconto',         'Conceder desconto manual no valor total da venda',         'Vendas (Caixa)', 31),
+    ('usuarios.gerenciar',      'Gerenciar Usuários',       'Criar, editar, ativar/inativar e excluir usuários',        'Administração',  40),
+    ('cargos.gerenciar',        'Gerenciar Cargos',         'Criar, editar e excluir cargos e suas permissões',         'Administração',  41),
+    ('loja.configurar',         'Configurar Loja',          'Alterar os dados cadastrais da loja',                      'Administração',  42);
+
+-- usuarios.id_cargo — adicionado via checagem em information_schema (em
+-- vez de "ADD COLUMN IF NOT EXISTS") para funcionar em qualquer versão
+-- do MySQL 8, mantendo este arquivo seguro para ser executado de novo
+-- sobre um banco "hydra_db" já em uso (idempotente, como o resto deste
+-- arquivo).
+SET @coluna_id_cargo_existe = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuarios' AND COLUMN_NAME = 'id_cargo'
+);
+SET @sql_add_coluna = IF(
+    @coluna_id_cargo_existe = 0,
+    'ALTER TABLE usuarios ADD COLUMN id_cargo INT NULL AFTER perfil',
+    'SELECT 1'
+);
+PREPARE stmt_add_coluna FROM @sql_add_coluna;
+EXECUTE stmt_add_coluna;
+DEALLOCATE PREPARE stmt_add_coluna;
+
+SET @fk_usuarios_cargo_existe = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuarios' AND CONSTRAINT_NAME = 'fk_usuarios_cargo'
+);
+SET @sql_add_fk = IF(
+    @fk_usuarios_cargo_existe = 0,
+    'ALTER TABLE usuarios ADD CONSTRAINT fk_usuarios_cargo FOREIGN KEY (id_cargo) REFERENCES cargos(id_cargo) ON DELETE SET NULL',
+    'SELECT 1'
+);
+PREPARE stmt_add_fk FROM @sql_add_fk;
+EXECUTE stmt_add_fk;
+DEALLOCATE PREPARE stmt_add_fk;
+
+SET @idx_usuarios_id_cargo_existe = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuarios' AND INDEX_NAME = 'idx_usuarios_id_cargo'
+);
+SET @sql_add_idx = IF(
+    @idx_usuarios_id_cargo_existe = 0,
+    'CREATE INDEX idx_usuarios_id_cargo ON usuarios (id_cargo)',
+    'SELECT 1'
+);
+PREPARE stmt_add_idx FROM @sql_add_idx;
+EXECUTE stmt_add_idx;
+DEALLOCATE PREPARE stmt_add_idx;
+
+
+-- ============================================================
 -- Regras de negócio aplicadas neste modelo (referência ao TCC)
 --   RN01 - Venda com Estoque Insuficiente: validada antes de gravar
 --          os itens da venda
@@ -299,7 +419,9 @@ CREATE INDEX idx_movimentacoes_financeiras_data     ON movimentacoes_financeiras
 --          já vinculado a uma venda (produtos.status)
 --   RN04 - Restrição de Acesso: apenas perfil 'administrador'
 --          altera preços/descontos/relatórios financeiros e acessa
---          Gerenciar Usuários / Configurações da Loja
+--          Gerenciar Usuários / Configurações da Loja (a partir do
+--          módulo de Cargos, o que decide isso são as permissões do
+--          cargo do usuário — ver comentário acima de "permissoes")
 --   RN05 - Recuperação de Senha Segura: token com validade
 --          (reset_token_expira_em)
 --   RN06 - Acesso ao sistema: apenas usuários autenticados,

@@ -30,7 +30,7 @@ final class VendaController
     /** GET /api/vendas — histórico de vendas (RF10), com itens e pagamentos embutidos. */
     public function index(): void
     {
-        $user = Auth::requireVendaAccess();
+        $user = Auth::requirePermission('vendas.registrar');
         $vendas = $this->vendas->listByLoja($user['id_loja']);
         foreach ($vendas as &$venda) {
             $venda['itens'] = $this->vendas->listItensByVenda((int) $venda['id_venda']);
@@ -51,7 +51,7 @@ final class VendaController
      */
     public function store(): void
     {
-        $user = Auth::requireVendaAccess();
+        $user = Auth::requirePermission('vendas.registrar');
         $dados = Request::json();
 
         $itensEntrada = $dados['itens'] ?? [];
@@ -71,9 +71,11 @@ final class VendaController
             Response::json(['erro' => 'Desconto inválido'], 422);
             return;
         }
-        // RN04 — só o Administrador pode aplicar desconto no valor total da venda.
-        if ($user['perfil'] !== 'administrador' && (float) $descontoInformado > 0) {
-            Response::json(['erro' => 'Apenas o Administrador pode aplicar desconto na venda (RN04)'], 403);
+        // RN04 — só quem tem a permissão "Aplicar Desconto" (vendas.aplicar_desconto,
+        // concedida ao cargo Administrador por padrão) pode aplicar desconto no
+        // valor total da venda.
+        if (!Auth::can('vendas.aplicar_desconto') && (float) $descontoInformado > 0) {
+            Response::json(['erro' => 'Seu cargo não tem permissão para aplicar desconto na venda (RN04)'], 403);
             return;
         }
 

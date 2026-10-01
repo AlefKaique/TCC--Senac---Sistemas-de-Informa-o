@@ -2,12 +2,18 @@
 
 namespace Hydra\Support;
 
+use Hydra\Repositories\CargoRepository;
 use Hydra\Repositories\UsuarioRepository;
 
 /**
  * Sessão de autenticação (PHP session) + suporte ao "lembrar de mim"
  * via cookie de longa duração (remember_token, armazenado nas colunas
  * de usuarios previstas no modelo de dados).
+ *
+ * O controle de acesso é baseado em permissões do Cargo do usuário (ver
+ * módulo de Cargos no schema.sql e Hydra\Repositories\CargoRepository):
+ * no login, as permissões do cargo são carregadas na sessão e cada
+ * endpoint restrito chama requirePermission() com o código exigido.
  */
 final class Auth
 {
@@ -44,6 +50,10 @@ final class Auth
         $_SESSION['perfil'] = $usuario['perfil'];
         $_SESSION['nome'] = $usuario['nome'];
         $_SESSION['email'] = $usuario['email'];
+        $_SESSION['id_cargo'] = isset($usuario['id_cargo']) ? (int) $usuario['id_cargo'] : null;
+        $_SESSION['permissoes'] = $_SESSION['id_cargo'] !== null
+            ? (new CargoRepository())->permissoesDoCargo($_SESSION['id_cargo'])
+            : [];
     }
 
     public static function logout(): void
@@ -58,7 +68,7 @@ final class Auth
         return isset($_SESSION['id_usuario']);
     }
 
-    /** @return array{id_usuario:int,id_loja:int,perfil:string,nome:string,email:string}|null */
+    /** @return array{id_usuario:int,id_loja:int,perfil:string,nome:string,email:string,id_cargo:?int,permissoes:string[]}|null */
     public static function user(): ?array
     {
         if (!self::check()) {
@@ -70,6 +80,8 @@ final class Auth
             'perfil' => $_SESSION['perfil'],
             'nome' => $_SESSION['nome'],
             'email' => $_SESSION['email'],
+            'id_cargo' => $_SESSION['id_cargo'] ?? null,
+            'permissoes' => $_SESSION['permissoes'] ?? [],
         ];
     }
 
@@ -84,43 +96,25 @@ final class Auth
         return $user;
     }
 
-    /**
-     * RN04 — restringe o acesso às funcionalidades gerenciais ao perfil Administrador.
-     * Encerra a requisição com 403 se o usuário autenticado não for administrador.
-     */
-    public static function requireAdmin(): array
+    /** Permissões do cargo do usuário logado — ver módulo de Cargos (schema.sql). */
+    public static function can(string $codigo): bool
     {
-        $user = self::requireLogin();
-        if ($user['perfil'] !== 'administrador') {
-            Response::json(['erro' => 'Apenas o Administrador pode acessar este recurso (RN04)'], 403);
-            exit;
-        }
-        return $user;
+        return in_array($codigo, $_SESSION['permissoes'] ?? [], true);
     }
 
     /**
-     * RF02, RF03, RF05 — Gestão de Produtos e Controle de Estoque são
-     * acessíveis ao Estoquista e ao Administrador (que tem acesso completo
-     * às funções operacionais do sistema).
+     * Encerra a requisição com 403 se o usuário autenticado estiver sem
+     * sessão ou se o cargo dele não tiver a permissão exigida. Substitui
+     * as antigas verificações fixas por perfil (requireAdmin/
+     * requireEstoqueAccess/requireVendaAccess): agora cada cargo decide,
+     * por permissão marcada na tela "Cargos", o que seus usuários podem
+     * fazer.
      */
-    public static function requireEstoqueAccess(): array
+    public static function requirePermission(string $codigo): array
     {
         $user = self::requireLogin();
-        if (!in_array($user['perfil'], ['administrador', 'estoquista'], true)) {
-            Response::json(['erro' => 'Apenas Estoquista ou Administrador podem acessar este recurso (RF02/RF03)'], 403);
-            exit;
-        }
-        return $user;
-    }
-
-    /**
-     * RN07 — apenas Operador de Caixa ou Administrador podem registrar vendas.
-     */
-    public static function requireVendaAccess(): array
-    {
-        $user = self::requireLogin();
-        if (!in_array($user['perfil'], ['administrador', 'operador_caixa'], true)) {
-            Response::json(['erro' => 'Apenas Operador de Caixa ou Administrador podem registrar vendas (RN07)'], 403);
+        if (!self::can($codigo)) {
+            Response::json(['erro' => 'Seu cargo não tem permissão para acessar este recurso'], 403);
             exit;
         }
         return $user;

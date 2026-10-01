@@ -10,6 +10,7 @@
         financeiro: 'dashboard.html',
         equipe: 'gerenciar-usuarios.html',
         configuracoes: 'configuracoes-loja.html',
+        cargos: 'cargos.html',
     };
 
     function createModal() {

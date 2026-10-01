@@ -54,6 +54,8 @@
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
                         <li><a href="configuracoes-loja.html"><i
                                     class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span></a></li>
+                        <li><a href="cargos.html"><i
+                                    class="hydro-ic hydro-ic-shield"></i><span>Cargos</span></a></li>
                     </ul>
                 </div>
 
@@ -118,12 +120,9 @@
                 <section class="hydro-toolbar">
                     <div class="hydro-filters">
                         <label class="hydro-select-field">
-                            <span class="hydro-select-label">Perfil</span>
-                            <select id="hydroFilterPerfil">
-                                <option value="">Todos os perfis</option>
-                                <option value="Administrador">Administrador</option>
-                                <option value="Operador de Caixa">Operador de Caixa</option>
-                                <option value="Estoquista">Estoquista</option>
+                            <span class="hydro-select-label">Cargo</span>
+                            <select id="hydroFilterCargo">
+                                <option value="">Todos os cargos</option>
                             </select>
                         </label>
                         <label class="hydro-select-field">
@@ -136,6 +135,9 @@
                         </label>
                     </div>
                     <div class="hydro-toolbar-buttons">
+                        <a class="hydro-btn hydro-btn-outline" href="cargos.html">
+                            <i class="hydro-ic hydro-ic-shield"></i> Gerenciar cargos
+                        </a>
                         <button class="hydro-btn hydro-btn-primary" id="hydroBtnNovoUsuario">
                             <i class="hydro-ic hydro-ic-plus"></i> Novo usuário
                         </button>
@@ -148,7 +150,7 @@
                             <thead>
                                 <tr>
                                     <th>Usuário</th>
-                                    <th>Perfil</th>
+                                    <th>Cargo</th>
                                     <th>Loja</th>
                                     <th>Status</th>
                                     <th>Criado em</th>
