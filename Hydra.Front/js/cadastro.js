@@ -83,9 +83,11 @@ document.addEventListener('DOMContentLoaded', () => {
         },
       });
 
+      // O cadastro não abre sessão (ver AuthController::registro): o
+      // usuário entra pela tela de Login com a senha que acabou de criar.
       btn.textContent = 'Conta criada com sucesso!';
       setTimeout(() => {
-        window.location.href = 'controle-estoque.html';
+        window.location.href = 'login.html';
       }, 1200);
     } catch (err) {
       btn.disabled = false;

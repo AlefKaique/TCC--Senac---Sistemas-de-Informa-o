@@ -408,7 +408,6 @@ INSERT IGNORE INTO permissoes (codigo, nome, descricao, categoria, ordem) VALUES
     ('estoque.movimentar',      'Registrar Movimentações',  'Lançar entradas e saídas manuais de estoque',               'Estoque',        21),
     ('vendas.visualizar',       'Ver Vendas',               'Consultar o histórico de vendas da loja',                   'Vendas (Caixa)', 30),
     ('vendas.registrar',        'Registrar Vendas',         'Operar o Caixa (PDV) e finalizar vendas',                   'Vendas (Caixa)', 31),
-    ('vendas.aplicar_desconto', 'Aplicar Desconto',         'Conceder desconto manual no valor total da venda',          'Vendas (Caixa)', 32),
     ('usuarios.visualizar',     'Ver Usuários',             'Abrir a tela de Equipe e consultar os usuários da loja',    'Administração',  40),
     ('usuarios.criar',          'Criar Usuários',           'Cadastrar novos usuários na loja',                          'Administração',  41),
     ('usuarios.editar',         'Editar Usuários',          'Alterar dados, cargo e situação (ativo/inativo) de usuários','Administração', 42),
@@ -419,6 +418,14 @@ INSERT IGNORE INTO permissoes (codigo, nome, descricao, categoria, ordem) VALUES
     ('cargos.excluir',          'Excluir Cargos',           'Excluir cargos que não sejam cargos de sistema',            'Administração',  47),
     ('loja.visualizar',         'Ver Dados da Loja',        'Consultar os dados cadastrais da loja',                     'Administração',  48),
     ('loja.configurar',         'Alterar Dados da Loja',    'Alterar os dados cadastrais da loja',                       'Administração',  49);
+
+-- "vendas.aplicar_desconto" foi retirada do catálogo: o PDV não oferece
+-- campo de desconto, então a permissão só ocupava espaço na tela de
+-- Cargos. Em um banco que já a tenha, este DELETE a remove (as linhas
+-- em cargo_permissoes caem junto, por ON DELETE CASCADE). O mesmo é
+-- feito automaticamente em CargoRepository::ensureDefaults(), para não
+-- exigir que o schema seja reaplicado à mão em um banco já em uso.
+DELETE FROM permissoes WHERE codigo = 'vendas.aplicar_desconto';
 
 -- A chave estrangeira de usuarios.id_cargo é criada aqui, e não na
 -- declaração da tabela, porque "usuarios" vem antes de "cargos" neste

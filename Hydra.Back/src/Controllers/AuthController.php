@@ -92,8 +92,12 @@ final class AuthController
             return;
         }
 
+        // Não autentica automaticamente: depois do cadastro o usuário é
+        // levado à tela de Login para entrar com o e-mail e a senha que
+        // acabou de definir. Deixar a sessão aberta aqui deixava a conta
+        // logada em um navegador que nunca digitou a senha e pulava a
+        // confirmação de que ela foi memorizada corretamente.
         $usuario = $this->usuarios->find($idUsuario);
-        Auth::login($usuario);
 
         Response::json(['usuario' => $this->publicUser($usuario)], 201);
     }
