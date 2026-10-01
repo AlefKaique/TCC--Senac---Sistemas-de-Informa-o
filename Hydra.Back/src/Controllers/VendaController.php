@@ -71,13 +71,10 @@ final class VendaController
             Response::json(['erro' => 'Desconto inválido'], 422);
             return;
         }
-        // RN04 — só quem tem a permissão "Aplicar Desconto" (vendas.aplicar_desconto,
-        // concedida ao cargo Administrador por padrão) pode aplicar desconto no
-        // valor total da venda.
-        if (!Auth::can('vendas.aplicar_desconto') && (float) $descontoInformado > 0) {
-            Response::json(['erro' => 'Seu cargo não tem permissão para aplicar desconto na venda (RN04)'], 403);
-            return;
-        }
+        // O desconto não tem permissão própria: "vendas.aplicar_desconto"
+        // foi retirada do catálogo porque a tela do Caixa não oferece
+        // campo de desconto. Quem pode registrar a venda informa o
+        // desconto junto com ela, e o valor continua sendo validado acima.
 
         foreach ($pagamentosEntrada as $pagamento) {
             $forma = (string) ($pagamento['forma_pagamento'] ?? '');

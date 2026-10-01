@@ -8,24 +8,29 @@
     };
     const STATUS_LABEL = { ativo: 'Ativo', inativo: 'Inativo' };
 
-    // Permissões que tornam um cargo "administrativo" — esses cargos não
-    // aparecem no formulário de "Novo usuário" (mesma regra do back-end:
-    // o único administrador criado direto é o do onboarding; promover
-    // alguém depois é feito editando o usuário).
-    // Permissoes administrativas de escrita. Apenas visualizar a Equipe ou
-    // os Cargos nao torna o cargo administrativo - e preciso poder alterar.
-    const PERMISSOES_ADMINISTRATIVAS = [
-        'usuarios.criar', 'usuarios.editar', 'usuarios.excluir',
-        'cargos.criar', 'cargos.editar', 'cargos.excluir',
-        'loja.configurar',
-    ];
-
     let lojaAtual = null;
     let users = [];
     let cargosDisponiveis = [];
 
-    function cargoEhAdministrativo(cargo) {
-        return (cargo.permissoes || []).some((codigo) => PERMISSOES_ADMINISTRATIVAS.includes(codigo));
+    /**
+     * Opções do seletor de cargo, usadas tanto em "Novo usuário" quanto em
+     * "Editar usuário". Lista TODOS os cargos da loja, inclusive os
+     * administrativos e os criados na tela Cargos: antes o formulário de
+     * novo usuário escondia os cargos com permissão administrativa, o que
+     * deixava o seletor vazio em lojas cujos cargos personalizados eram
+     * todos administrativos. A restrição não protegia nada — editar o
+     * usuário logo depois já permitia atribuir o mesmo cargo.
+     *
+     * Quando ainda não há cargos carregados (ex.: a chamada à API falhou),
+     * mostra uma opção sem valor em vez de um seletor vazio e silencioso.
+     */
+    function opcoesCargoHtml(idCargoSelecionado) {
+        if (cargosDisponiveis.length === 0) {
+            return '<option value="">Nenhum cargo disponível — crie um na tela Cargos</option>';
+        }
+        return '<option value="">Selecione um cargo</option>' + cargosDisponiveis
+            .map((c) => `<option value="${c.id_cargo}" ${Number(idCargoSelecionado) === Number(c.id_cargo) ? 'selected' : ''}>${escapeHtml(c.nome)}</option>`)
+            .join('');
     }
 
     /* ================= State ================= */
@@ -245,7 +250,7 @@
             bodyHtml: `
         <div class="hydro-modal-info">
           <i class="hydro-ic hydro-ic-inventory"></i>
-          <span>Este usuário será vinculado automaticamente à loja <strong>${escapeHtml(lojaAtual ? lojaAtual.nome_loja : '')}</strong>, a mesma do administrador logado.</span>
+          <span>Este usuário será vinculado automaticamente ${lojaAtual ? `à loja <strong>${escapeHtml(lojaAtual.nome_loja)}</strong>` : 'à loja'}, a mesma do administrador logado.</span>
         </div>
         <div class="hydro-form-group">
           <label for="hydroNewName">Nome</label>
@@ -266,10 +271,7 @@
         <div class="hydro-form-group">
           <label for="hydroNewCargo">Cargo</label>
           <select id="hydroNewCargo">
-            ${cargosDisponiveis
-                .filter((c) => !cargoEhAdministrativo(c))
-                .map((c) => `<option value="${c.id_cargo}">${escapeHtml(c.nome)}</option>`)
-                .join('')}
+            ${opcoesCargoHtml(null)}
           </select>
           <span class="hydro-cargo-select-hint">As permissões do usuário vêm do cargo — crie ou ajuste cargos na tela <a href="cargos.html" target="_blank" rel="noopener">Cargos</a>.</span>
         </div>
@@ -350,9 +352,7 @@
         <div class="hydro-form-group">
           <label for="hydroEditUserCargo">Cargo</label>
           <select id="hydroEditUserCargo">
-            ${cargosDisponiveis
-                .map((c) => `<option value="${c.id_cargo}" ${u.id_cargo === c.id_cargo ? 'selected' : ''}>${escapeHtml(c.nome)}</option>`)
-                .join('')}
+            ${opcoesCargoHtml(u.id_cargo)}
           </select>
           <span class="hydro-cargo-select-hint">As permissões do usuário vêm do cargo — crie ou ajuste cargos na tela <a href="cargos.html" target="_blank" rel="noopener">Cargos</a>.</span>
         </div>
@@ -379,6 +379,10 @@
 
             if (!nome || !email) {
                 showToast('Preencha nome e e-mail');
+                return;
+            }
+            if (!idCargo) {
+                showToast('Selecione um cargo');
                 return;
             }
 
@@ -517,19 +521,27 @@
             return;
         }
 
-        try {
-            const [lojaRes, usersRes] = await Promise.all([
-                window.hydraApi('/loja'),
-                window.hydraApi('/usuarios'),
-            ]);
-            lojaAtual = lojaRes.loja;
-            users = usersRes.usuarios;
-            cargosDisponiveis = usersRes.cargos || [];
-            renderFiltroCargo();
-            renderStats();
-            renderTable();
-        } catch (err) {
-            showToast(err.message);
+        // As duas chamadas são independentes: GET /api/loja exige
+        // "loja.visualizar", que nem todo cargo com acesso à Equipe tem.
+        // Com Promise.all, um 403 ali derrubava também a lista de usuários
+        // e a de cargos, e o seletor de cargo abria vazio.
+        const [lojaRes, usersRes] = await Promise.allSettled([
+            window.hydraApi('/loja'),
+            window.hydraApi('/usuarios'),
+        ]);
+
+        if (lojaRes.status === 'fulfilled') {
+            lojaAtual = lojaRes.value.loja;
         }
+
+        if (usersRes.status === 'rejected') {
+            showToast(usersRes.reason.message);
+            return;
+        }
+        users = usersRes.value.usuarios;
+        cargosDisponiveis = usersRes.value.cargos || [];
+        renderFiltroCargo();
+        renderStats();
+        renderTable();
     })();
 })();

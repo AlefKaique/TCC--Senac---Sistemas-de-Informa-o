@@ -31,7 +31,6 @@ final class CargoRepository
             'estoque.movimentar',
             'vendas.visualizar',
             'vendas.registrar',
-            'vendas.aplicar_desconto',
             'usuarios.visualizar',
             'usuarios.criar',
             'usuarios.editar',
@@ -87,6 +86,8 @@ final class CargoRepository
      */
     public function ensureDefaults(int $idLoja): void
     {
+        $this->removerPermissoesAposentadas();
+
         $stmt = db()->prepare('SELECT COUNT(*) FROM cargos WHERE id_loja = :id_loja');
         $stmt->execute(['id_loja' => $idLoja]);
         $jaTemCargos = (int) $stmt->fetchColumn() > 0;
@@ -105,6 +106,26 @@ final class CargoRepository
         }
 
         $this->backfillUsuariosSemCargo($idLoja);
+    }
+
+    /**
+     * Permissões que saíram do catálogo depois de já terem sido gravadas
+     * em algum banco. Sem isto elas continuariam aparecendo como checkbox
+     * na tela de Cargos de quem não reaplicou o schema.sql — a mesma
+     * estratégia de migração preguiçosa usada pelos cargos de sistema.
+     *
+     * - "vendas.aplicar_desconto": o PDV não tem campo de desconto, então
+     *   a permissão nunca chegou a ser usada.
+     */
+    private const PERMISSOES_APOSENTADAS = ['vendas.aplicar_desconto'];
+
+    private function removerPermissoesAposentadas(): void
+    {
+        $marcadores = implode(',', array_fill(0, count(self::PERMISSOES_APOSENTADAS), '?'));
+        // As linhas correspondentes em cargo_permissoes somem junto, pelo
+        // ON DELETE CASCADE declarado no schema.
+        db()->prepare("DELETE FROM permissoes WHERE codigo IN ($marcadores)")
+            ->execute(self::PERMISSOES_APOSENTADAS);
     }
 
     /** Usuários antigos (criados antes deste módulo) ganham o cargo de sistema equivalente ao seu "perfil" atual. */

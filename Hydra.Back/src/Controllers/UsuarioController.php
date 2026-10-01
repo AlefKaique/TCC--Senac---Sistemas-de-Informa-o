@@ -48,10 +48,9 @@ final class UsuarioController
      * POST /api/usuarios
      * Novo usuário — vinculado automaticamente à loja do administrador
      * logado (id_loja), sem pedir "Nome da loja" novamente, e associado
-     * a um Cargo da tela "Cargos". O nível equivalente do cargo escolhido
-     * não pode ser "administrador": o único administrador criado
-     * diretamente é o do onboarding (Fig. 13) — promover alguém a um
-     * cargo administrativo é feito depois, editando o usuário.
+     * a um Cargo da tela "Cargos" — qualquer um dos cargos da loja, de
+     * sistema ou personalizado. O "perfil" legado é derivado das
+     * permissões desse cargo (CargoRepository::nivelEquivalente()).
      */
     public function store(): void
     {
@@ -82,11 +81,12 @@ final class UsuarioController
             Response::json(['erro' => 'Selecione um cargo válido'], 422);
             return;
         }
+        // Qualquer cargo da loja pode ser atribuído aqui, inclusive os
+        // administrativos: a recusa que existia antes só criava um desvio
+        // (cadastrar com outro cargo e editar em seguida), porque PUT
+        // /api/usuarios/{id} sempre aceitou o mesmo cargo. Quem chega até
+        // aqui já tem "usuarios.criar".
         $perfil = CargoRepository::nivelEquivalente($cargo['permissoes']);
-        if ($perfil === 'administrador') {
-            Response::json(['erro' => 'Não é possível criar um usuário com cargo administrativo por aqui — cadastre com outro cargo e promova depois, editando o usuário'], 422);
-            return;
-        }
         if ($this->usuarios->emailExists($email)) {
             Response::json(['erro' => 'Já existe uma conta com este e-mail'], 409);
             return;

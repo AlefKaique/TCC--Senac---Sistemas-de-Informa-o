@@ -44,7 +44,7 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | Método | Rota | Permissão exigida | Descrição |
 |--------|------|-------------------|-----------|
 | GET    | `/api/health`                        | pública | Verificação de saúde (usada pelo Render) |
-| POST   | `/api/auth/registro`                 | pública | Onboarding: cria loja + usuário administrador (Fig. 13) |
+| POST   | `/api/auth/registro`                 | pública | Onboarding: cria loja + usuário administrador (Fig. 13); não abre sessão — o front redireciona para o Login |
 | POST   | `/api/auth/login`                    | pública | Login (Fig. 14) |
 | POST   | `/api/auth/logout`                   | logado | Encerra a sessão |
 | GET    | `/api/auth/me`                       | logado | Usuário autenticado atual, com suas permissões |
@@ -66,7 +66,7 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | GET    | `/api/estoque/movimentacoes`         | `estoque.visualizar` | Movimentações da loja (Dashboard, RF06) |
 | POST   | `/api/estoque/movimentacoes`         | `estoque.movimentar` | Lança entrada ou saída manual (RF03/RF12) |
 | GET    | `/api/vendas`                        | `vendas.visualizar` | Histórico de vendas com itens e pagamentos |
-| POST   | `/api/vendas`                        | `vendas.registrar` | Finaliza venda (desconto exige `vendas.aplicar_desconto`) |
+| POST   | `/api/vendas`                        | `vendas.registrar` | Finaliza venda (itens, pagamentos e desconto) |
 | GET    | `/api/loja`                          | `loja.visualizar` | Dados da loja (Configurações da Loja) |
 | PUT    | `/api/loja`                          | `loja.configurar` | Atualiza dados da loja |
 
