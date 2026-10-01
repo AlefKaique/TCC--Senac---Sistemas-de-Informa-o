@@ -44,10 +44,10 @@ final class ProdutoRepository
         $stmt = db()->prepare(
             'INSERT INTO produtos
                 (id_loja, nome, descricao, codigo_barras, categoria, preco_custo, preco_venda,
-                 quantidade, estoque_minimo, unidade, validade)
+                 quantidade, estoque_minimo, unidade, lote, validade)
              VALUES
                 (:id_loja, :nome, :descricao, :codigo_barras, :categoria, :preco_custo, :preco_venda,
-                 :quantidade, :estoque_minimo, :unidade, :validade)'
+                 :quantidade, :estoque_minimo, :unidade, :lote, :validade)'
         );
         $stmt->execute([
             'id_loja' => $idLoja,
@@ -60,6 +60,7 @@ final class ProdutoRepository
             'quantidade' => $dados['quantidade'],
             'estoque_minimo' => $dados['estoque_minimo'],
             'unidade' => $dados['unidade'],
+            'lote' => $dados['lote'],
             'validade' => $dados['validade'],
         ]);
         return (int) db()->lastInsertId();
@@ -78,6 +79,7 @@ final class ProdutoRepository
                 preco_venda = :preco_venda,
                 estoque_minimo = :estoque_minimo,
                 unidade = :unidade,
+                lote = :lote,
                 validade = :validade,
                 status = :status
              WHERE id_produto = :id'
@@ -91,6 +93,7 @@ final class ProdutoRepository
             'preco_venda' => $dados['preco_venda'],
             'estoque_minimo' => $dados['estoque_minimo'],
             'unidade' => $dados['unidade'],
+            'lote' => $dados['lote'],
             'validade' => $dados['validade'],
             'status' => $dados['status'],
             'id' => $idProduto,

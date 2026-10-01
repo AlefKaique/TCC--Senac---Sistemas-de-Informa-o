@@ -609,6 +609,13 @@
     text-align: right;
 }
 
+/* ".hydro-stock thead th" (0,1,2) vence ".hydro-col-actions" (0,1,0) na
+   especificidade, entao o cabecalho ficava a esquerda enquanto os botoes
+   da coluna ficavam a direita. Esta regra empata a disputa. */
+.hydro-stock thead th.hydro-col-actions {
+    text-align: right;
+}
+
 .hydro-stock tbody td {
     padding: 14px 20px;
     border-bottom: 1px solid var(--border);
@@ -691,6 +698,38 @@
 .hydro-badge-critical {
     background: var(--red-bg);
     color: var(--red);
+}
+
+/* "Atencao" fica entre "Baixo" (ambar) e "Em estoque" (verde): o produto
+   ainda esta acima do minimo, so perto dele. O azul separa esse aviso
+   informativo do ambar, que sinaliza falta de verdade. */
+.hydro-badge-attention {
+    background: var(--blue-bg);
+    color: var(--blue);
+}
+
+.hydro-badge-neutral {
+    background: var(--bg);
+    color: var(--muted);
+}
+
+/* ============ Celula de validade ============
+   Data em cima, situacao (Valido / Vence em breve / Vencido) logo abaixo:
+   a coluna e estreita demais para os dois lado a lado sem quebrar. */
+.hydro-expiry-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+}
+
+.hydro-expiry-date {
+    white-space: nowrap;
+}
+
+.hydro-expiry-cell .hydro-badge {
+    padding: 3px 9px;
+    font-size: 11.5px;
 }
 
 .hydro-row-actions {
@@ -1175,6 +1214,11 @@
     .hydro-row-actions {
         justify-content: flex-end;
         width: 100%;
+    }
+
+    /* No layout de cartao o conteudo da celula vai para a direita. */
+    .hydro-expiry-cell {
+        align-items: flex-end;
     }
 
     .hydro-table-footer {

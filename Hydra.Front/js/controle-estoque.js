@@ -122,6 +122,7 @@
             price: Number(p.preco_venda),
             costPrice: p.preco_custo !== null ? Number(p.preco_custo) : 0,
             unit: p.unidade,
+            lote: p.lote || null,
             validade: p.validade,
             status: p.status,
         };
@@ -146,16 +147,24 @@
     };
 
     /* ================= Helpers ================= */
+    /* Faixa, em relação ao estoque mínimo, em que o produto ainda está
+       acima do mínimo mas perto o suficiente para merecer aviso. */
+    const ATTENTION_MARGIN = 1.2;
+
     function getStatus(product) {
         const { quantity, minStock } = product;
         if (quantity <= minStock * 0.4) return 'Crítico';
-        if (quantity <= minStock) return 'Baixo';
+        // "Baixo" vale só abaixo do mínimo; atingir o mínimo exato já
+        // conta como "Atenção", não como falta.
+        if (quantity < minStock) return 'Baixo';
+        if (quantity <= minStock * ATTENTION_MARGIN) return 'Atenção';
         return 'Em estoque';
     }
 
     function statusBadgeClass(status) {
         if (status === 'Crítico') return 'hydro-badge-critical';
         if (status === 'Baixo') return 'hydro-badge-low';
+        if (status === 'Atenção') return 'hydro-badge-attention';
         return 'hydro-badge-ok';
     }
 
@@ -230,7 +239,12 @@
     function renderStats() {
         const totalItens = products.reduce((sum, p) => sum + p.quantity, 0);
         const valorEstoque = products.reduce((sum, p) => sum + p.quantity * p.price, 0);
-        const baixoCount = products.filter((p) => getStatus(p) !== 'Em estoque').length;
+        // Conta apenas quem esta de fato abaixo do minimo. "Atencao" fica
+        // de fora: o produto ainda tem saldo acima do minimo, so esta perto.
+        const baixoCount = products.filter((p) => {
+            const status = getStatus(p);
+            return status === 'Baixo' || status === 'Crítico';
+        }).length;
         const vencendoCount = products.filter((p) => {
             const status = getExpiryStatus(p);
             return status === 'Vencido' || status === 'Vence em breve';
@@ -276,9 +290,17 @@
                 .map((p) => {
                     const status = getStatus(p);
                     const expiryStatus = getExpiryStatus(p);
+                    // O selo aparece sempre, inclusive em "Válido": sem ele,
+                    // uma data sozinha obriga a conferir o calendário de cabeça.
                     const expiryCell = p.validade
-                        ? `${formatDate(p.validade)}${expiryStatus !== 'Válido' ? ` <span class="hydro-badge ${expiryBadgeClass(expiryStatus)}">${expiryStatus}</span>` : ''}`
-                        : '<span class="hydro-text-muted">—</span>';
+                        ? `<div class="hydro-expiry-cell">
+                             <span class="hydro-expiry-date">${formatDate(p.validade)}</span>
+                             <span class="hydro-badge ${expiryBadgeClass(expiryStatus)}">${expiryStatus}</span>
+                           </div>`
+                        : `<div class="hydro-expiry-cell">
+                             <span class="hydro-text-muted">—</span>
+                             <span class="hydro-badge hydro-badge-neutral">Não vence</span>
+                           </div>`;
                     return `
           <tr data-id="${p.id}">
             <td class="hydro-product-cell-wrap" data-label="Produto">
@@ -291,6 +313,7 @@
               </div>
             </td>
             <td class="hydro-sku" data-label="Código de barras">${escapeHtml(p.sku)}</td>
+            <td data-label="Lote">${p.lote ? escapeHtml(p.lote) : '<span class="hydro-text-muted">—</span>'}</td>
             <td data-label="Categoria">${escapeHtml(p.category)}</td>
             <td class="hydro-qty" data-label="Quantidade">${p.quantity}</td>
             <td data-label="Estoque mínimo">${p.minStock}</td>
@@ -419,6 +442,7 @@
             bodyHtml: `
         <div class="hydro-detail-row"><span>Descrição</span><span>${escapeHtml(p.desc)}</span></div>
         <div class="hydro-detail-row"><span>Código de barras</span><span>${escapeHtml(p.sku)}</span></div>
+        <div class="hydro-detail-row"><span>Lote</span><span>${p.lote ? escapeHtml(p.lote) : '—'}</span></div>
         <div class="hydro-detail-row"><span>Categoria</span><span>${escapeHtml(p.category)}</span></div>
         <div class="hydro-detail-row"><span>Quantidade</span><span>${p.quantity} un.</span></div>
         <div class="hydro-detail-row"><span>Estoque mínimo</span><span>${p.minStock} un.</span></div>
@@ -537,6 +561,10 @@
                             preco_venda: salePrice,
                             estoque_minimo: minStock,
                             unidade: p.unit,
+                            // O modal de edicao ainda nao expoe o lote; reenviar o
+                            // valor atual evita que o PUT o apague (o backend trata
+                            // campo ausente como vazio).
+                            lote: p.lote,
                             validade,
                             status: p.status || 'ativo',
                         },

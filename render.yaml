@@ -18,8 +18,6 @@ services:
         sync: false
       - key: CORS_ALLOWED_ORIGIN
         value: "*"
-      - key: REMEMBER_ME_DAYS
-        value: "30"
       - key: BREVO_API_KEY
         sync: false
       - key: MAIL_FROM

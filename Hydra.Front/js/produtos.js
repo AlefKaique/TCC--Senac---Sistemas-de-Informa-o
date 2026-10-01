@@ -176,6 +176,7 @@
             // "Caixa" nunca é gravada como unidade do produto — quando
             // selecionada, o campo extra escolhe a unidade real.
             unidade: unidadeSelecionada === 'cx' ? unidadeCaixa : unidadeSelecionada,
+            lote: (fd.get('lote') || '').toString(),
             validade: (fd.get('validade') || '').toString(),
         };
     }
@@ -204,6 +205,7 @@
             quantity: Number(data.quantidade),
             minStock: data.estoqueMinimo ? Number(data.estoqueMinimo) : 0,
             unit: data.unidade,
+            lote: data.lote.trim() || null,
             validade: data.validade || null,
             image: imageDataUrl,
             criadoEm: new Date().toISOString(),
@@ -227,6 +229,7 @@
                 quantidade: Number(data.quantidade),
                 estoque_minimo: data.estoqueMinimo || 0,
                 unidade: data.unidade,
+                lote: data.lote.trim() || null,
                 validade: data.validade || null,
             },
         });

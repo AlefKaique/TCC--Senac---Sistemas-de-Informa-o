@@ -24,7 +24,7 @@ final class LojaController
     /** GET /api/loja */
     public function show(): void
     {
-        $admin = Auth::requirePermission('loja.configurar');
+        $admin = Auth::requirePermission('loja.visualizar');
         $loja = $this->lojas->find($admin['id_loja']);
         if ($loja === null) {
             Response::json(['erro' => 'Loja não encontrada'], 404);

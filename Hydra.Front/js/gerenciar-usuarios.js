@@ -12,7 +12,13 @@
     // aparecem no formulário de "Novo usuário" (mesma regra do back-end:
     // o único administrador criado direto é o do onboarding; promover
     // alguém depois é feito editando o usuário).
-    const PERMISSOES_ADMINISTRATIVAS = ['usuarios.gerenciar', 'cargos.gerenciar', 'loja.configurar'];
+    // Permissoes administrativas de escrita. Apenas visualizar a Equipe ou
+    // os Cargos nao torna o cargo administrativo - e preciso poder alterar.
+    const PERMISSOES_ADMINISTRATIVAS = [
+        'usuarios.criar', 'usuarios.editar', 'usuarios.excluir',
+        'cargos.criar', 'cargos.editar', 'cargos.excluir',
+        'loja.configurar',
+    ];
 
     let lojaAtual = null;
     let users = [];

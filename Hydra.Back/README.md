@@ -12,9 +12,11 @@ Recuperar senha (Fig. 15), Gerenciar Usuários e Configurações da Loja.
 ## Configuração
 
 1. Copie `.env.example` para `.env` e ajuste as credenciais do MySQL local.
-2. O banco `hydra_db` e as tabelas `lojas`/`usuarios` já devem existir —
-   veja `schema.sql` caso precise recriá-las em um banco novo (o script é
-   idempotente, usa `CREATE TABLE IF NOT EXISTS`).
+2. O banco `hydra_db` e suas tabelas já devem existir — execute
+   `schema.sql` para criá-las. O arquivo descreve o estado final do
+   modelo e espera um banco limpo: para reaplicá-lo, recrie o banco
+   antes (as linhas de `DROP DATABASE` / `CREATE DATABASE` estão
+   comentadas no cabeçalho dele).
 3. (Opcional) Preencha as variáveis `MAIL_*` no `.env` com um SMTP válido
    para o envio real do código da tela de Recuperar Senha. Sem isso, o
    código volta na resposta da API (`codigo_dev`) só para teste local.
@@ -49,10 +51,13 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | GET    | `/api/loja`                    | administrador        | Dados da loja (Configurações da Loja) |
 | PUT    | `/api/loja`                    | administrador        | Atualiza dados da loja |
 
-Autenticação é feita por sessão PHP (cookie `PHPSESSID`), com suporte a
-"lembrar de mim" via cookie `hydra_remember` (token de 30 dias por
-padrão, configurável em `REMEMBER_ME_DAYS`). O front-end precisa enviar
-`credentials: 'include'` nas chamadas `fetch`.
+Autenticação é feita por sessão PHP (cookie `PHPSESSID`), que expira ao
+fechar o navegador. Não há login persistente ("lembrar de mim"): o
+sistema roda em terminais de loja compartilhados, onde manter alguém
+logado por dias entregaria a conta do operador anterior a quem usasse a
+máquina depois, e falsearia a autoria gravada nas movimentações de
+estoque. O front-end precisa enviar `credentials: 'include'` nas
+chamadas `fetch`.
 
 ## Próximos módulos
 

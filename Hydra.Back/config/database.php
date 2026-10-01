@@ -22,6 +22,15 @@ function db(): PDO
     $user = Env::get('DB_USER', 'root');
     $pass = Env::get('DB_PASS', '');
 
+    // Fuso usado pelo sistema. Sem isto, CURRENT_TIMESTAMP (default de
+    // data_criacao e data_movimentacao) grava no fuso do servidor MySQL,
+    // que em hospedagem gerenciada costuma ser UTC - e o historico aparecia
+    // 3 horas adiantado para o usuario no Brasil. Usamos o deslocamento em
+    // vez do nome "America/Sao_Paulo" porque o nome exige as tabelas de
+    // fuso do MySQL carregadas, o que nem todo provedor faz. O Brasil nao
+    // adota mais horario de verao, entao -03:00 vale o ano todo.
+    $timezone = Env::get('APP_TIMEZONE_OFFSET', '-03:00');
+
     $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
 
     try {
@@ -30,6 +39,9 @@ function db(): PDO
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
         ]);
+
+        $stmt = $pdo->prepare('SET time_zone = :tz');
+        $stmt->execute(['tz' => $timezone]);
     } catch (PDOException $e) {
         // O motivo real (host recusando conexão, usuário/senha inválidos,
         // banco inexistente...) vai para o log de erro do servidor — no

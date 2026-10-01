@@ -9,7 +9,7 @@ use Hydra\Support\Response;
 
 /**
  * Tela "Cargos" (estilo Discord: cria o cargo, marca as permissões por
- * checkbox). Restrita a quem tem a permissão "cargos.gerenciar" — por
+ * checkbox). Restrita a quem tem as permissões de Cargos (cargos.*) — por
  * padrão, só o cargo "Administrador" a possui.
  */
 final class CargoController
@@ -24,7 +24,7 @@ final class CargoController
     /** GET /api/cargos — lista os cargos da loja + o catálogo de permissões disponíveis. */
     public function index(): void
     {
-        $user = Auth::requirePermission('cargos.gerenciar');
+        $user = Auth::requirePermission('cargos.visualizar');
         $this->cargos->ensureDefaults($user['id_loja']);
 
         Response::json([
@@ -36,7 +36,7 @@ final class CargoController
     /** POST /api/cargos */
     public function store(): void
     {
-        $user = Auth::requirePermission('cargos.gerenciar');
+        $user = Auth::requirePermission('cargos.criar');
         $dados = Request::json();
 
         $validado = $this->validar($dados, $user['id_loja']);
@@ -59,7 +59,7 @@ final class CargoController
     /** PUT /api/cargos/{id} */
     public function update(int $id): void
     {
-        $user = Auth::requirePermission('cargos.gerenciar');
+        $user = Auth::requirePermission('cargos.editar');
         $cargo = $this->cargos->find($id, $user['id_loja']);
         if ($cargo === null) {
             Response::json(['erro' => 'Cargo não encontrado'], 404);
@@ -77,11 +77,11 @@ final class CargoController
         // capaz de gerenciar usuários (ex.: tirar "Gerenciar Usuários"
         // do único cargo ativo que concedia essa permissão).
         if (
-            !in_array('usuarios.gerenciar', $validado['codigos'], true)
+            !in_array('usuarios.editar', $validado['codigos'], true)
             && $this->cargos->countUsuariosAtivos($id) > 0
-            && $this->cargos->countUsuariosAtivosComPermissaoExcetoCargo($user['id_loja'], 'usuarios.gerenciar', $id) === 0
+            && $this->cargos->countUsuariosAtivosComPermissaoExcetoCargo($user['id_loja'], 'usuarios.editar', $id) === 0
         ) {
-            Response::json(['erro' => 'A loja precisa manter pelo menos um cargo ativo com a permissão "Gerenciar Usuários"'], 422);
+            Response::json(['erro' => 'A loja precisa manter pelo menos um cargo ativo com a permissão "Editar Usuários"'], 422);
             return;
         }
 
@@ -97,7 +97,7 @@ final class CargoController
     /** DELETE /api/cargos/{id} */
     public function destroy(int $id): void
     {
-        $user = Auth::requirePermission('cargos.gerenciar');
+        $user = Auth::requirePermission('cargos.excluir');
         $cargo = $this->cargos->find($id, $user['id_loja']);
         if ($cargo === null) {
             Response::json(['erro' => 'Cargo não encontrado'], 404);

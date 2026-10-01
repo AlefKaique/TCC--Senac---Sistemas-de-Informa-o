@@ -76,10 +76,6 @@
                         <span class="hydro-breadcrumb-current">Novo Produto</span>
                     </div>
                     <div class="hydro-topbar-actions">
-                        <div class="hydro-search">
-                            <i class="hydro-ic hydro-ic-search"></i>
-                            <input type="text" id="hydroSearchInput" placeholder="Buscar">
-                        </div>
                         <button class="hydro-icon-btn" aria-label="Notificações">
                             <i class="hydro-ic hydro-ic-bell"></i>
                             <span class="hydro-notif-dot"></span>
@@ -172,6 +168,14 @@
                                 <label for="hydroProdExpiry">Data de validade</label>
                                 <input type="date" id="hydroProdExpiry" name="validade">
                                 <span class="hydro-field-hint">Deixe em branco se o produto não vencer</span>
+                            </div>
+                        </div>
+
+                        <div class="hydro-form-row">
+                            <div class="hydro-form-group">
+                                <label for="hydroProdLote">Lote</label>
+                                <input type="text" id="hydroProdLote" name="lote" maxlength="50" placeholder="Ex.: L2026-0042">
+                                <span class="hydro-field-hint">Opcional — identificação da remessa do fornecedor</span>
                             </div>
                         </div>
 

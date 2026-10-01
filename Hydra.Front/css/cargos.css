@@ -225,17 +225,6 @@
     border-bottom-color: var(--navy-active);
 }
 
-.hydro-cargo-tab-danger {
-    margin-left: auto;
-    color: var(--red);
-}
-
-.hydro-cargo-tab-danger:hover,
-.hydro-cargo-tab-danger.hydro-active {
-    color: var(--red);
-    border-bottom-color: var(--red);
-}
-
 .hydro-cargo-tab-count {
     min-width: 20px;
     padding: 1px 6px;
@@ -452,9 +441,10 @@
     justify-content: space-between;
     gap: 16px;
     padding: 16px;
-    border: 1px solid var(--red-bg);
+    border: 1px solid var(--red);
     background: var(--red-bg);
     border-radius: var(--radius-md);
+    margin-top: 8px;
 }
 
 .hydro-cargo-danger-zone div {

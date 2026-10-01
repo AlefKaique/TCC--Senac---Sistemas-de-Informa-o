@@ -200,11 +200,9 @@
         updatePermCount();
 
         // Cargos de sistema e cargos ainda nao criados nao podem ser excluidos.
-        const podeExcluir = !isSystem && selectedId !== 'new';
-        document.getElementById('hydroCargoTabPerigo').hidden = !podeExcluir;
+        document.getElementById('hydroCargoDangerZone').hidden = isSystem || selectedId === 'new';
 
-        // Trocar de cargo sempre volta para a primeira aba; sem isso o
-        // editor abriria na aba "Excluir" de um cargo que nem a possui.
+        // Trocar de cargo sempre volta para a primeira aba.
         selectTab('dados');
     }
 
@@ -422,7 +420,7 @@
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
             const permissoesUsuario = usuario.permissoes || [];
-            if (!permissoesUsuario.includes('cargos.gerenciar')) {
+            if (!permissoesUsuario.includes('cargos.visualizar')) {
                 window.location.href = 'controle-estoque.html';
                 return;
             }

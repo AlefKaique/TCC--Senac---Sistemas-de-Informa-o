@@ -308,6 +308,12 @@ html, body.signup-body{
   margin-top: -6px;
 }
 
+/* Sem o "Lembrar de mim", o link de recuperar senha e o unico item da
+   linha e encosta a direita. */
+.login__row--end{
+  justify-content: flex-end;
+}
+
 .checkbox--inline{
   margin-top: 0;
 }

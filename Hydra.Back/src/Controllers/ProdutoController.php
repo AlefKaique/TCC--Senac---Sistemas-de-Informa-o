@@ -26,7 +26,7 @@ final class ProdutoController
     /** GET /api/produtos */
     public function index(): void
     {
-        $user = Auth::requirePermission('produtos.gerenciar');
+        $user = Auth::requirePermission('produtos.visualizar');
         Response::json(['produtos' => $this->produtos->listByLoja($user['id_loja'])]);
     }
 
@@ -38,7 +38,7 @@ final class ProdutoController
      */
     public function store(): void
     {
-        $user = Auth::requirePermission('produtos.gerenciar');
+        $user = Auth::requirePermission('produtos.criar');
         $dados = Request::json();
 
         $validado = $this->validar($dados);
@@ -89,7 +89,7 @@ final class ProdutoController
      */
     public function update(int $id): void
     {
-        $user = Auth::requirePermission('produtos.gerenciar');
+        $user = Auth::requirePermission('produtos.editar');
         $produto = $this->produtos->findInLoja($id, $user['id_loja']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
@@ -145,7 +145,7 @@ final class ProdutoController
      */
     public function destroy(int $id): void
     {
-        $user = Auth::requirePermission('produtos.gerenciar');
+        $user = Auth::requirePermission('produtos.excluir');
         $produto = $this->produtos->findInLoja($id, $user['id_loja']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
@@ -165,7 +165,7 @@ final class ProdutoController
     /** GET /api/produtos/{id}/movimentacoes — RF10 */
     public function movimentacoes(int $id): void
     {
-        $user = Auth::requirePermission('produtos.gerenciar');
+        $user = Auth::requirePermission('estoque.visualizar');
         $produto = $this->produtos->findInLoja($id, $user['id_loja']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
@@ -185,6 +185,7 @@ final class ProdutoController
         $categoria = trim((string) ($dados['categoria'] ?? ''));
         $codigoBarras = trim((string) ($dados['codigo_barras'] ?? ''));
         $unidade = trim((string) ($dados['unidade'] ?? 'un')) ?: 'un';
+        $lote = trim((string) ($dados['lote'] ?? ''));
         $validade = trim((string) ($dados['validade'] ?? ''));
         $descricao = trim((string) ($dados['descricao'] ?? ''));
 
@@ -221,6 +222,7 @@ final class ProdutoController
                 'quantidade' => (float) $quantidade,
                 'estoque_minimo' => ($estoqueMinimo !== null && $estoqueMinimo !== '') ? (float) $estoqueMinimo : 0,
                 'unidade' => $unidade,
+                'lote' => $lote !== '' ? $lote : null,
                 'validade' => $validade !== '' ? $validade : null,
             ],
         ];
