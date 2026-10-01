@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
         body: {
           email: document.getElementById('email').value.trim(),
           senha: document.getElementById('senha').value,
-          lembrar: document.getElementById('lembrar').checked,
         },
       });
 

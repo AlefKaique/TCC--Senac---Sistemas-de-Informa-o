@@ -127,8 +127,8 @@
                                 </button>
                             </header>
 
-                            <!-- Abas: separam identidade, permissões e exclusão para
-                                 encurtar a rolagem do editor. -->
+                            <!-- Abas: separam identidade e permissões para encurtar
+                                 a rolagem do editor. -->
                             <div class="hydro-cargo-tabs" role="tablist">
                                 <button type="button" class="hydro-cargo-tab hydro-active" role="tab" aria-selected="true"
                                         aria-controls="hydroCargoPanelDados" data-tab="dados">Dados</button>
@@ -136,8 +136,6 @@
                                         aria-controls="hydroCargoPanelPermissoes" data-tab="permissoes">
                                     Permissões <span class="hydro-cargo-tab-count" id="hydroCargoPermCount">0</span>
                                 </button>
-                                <button type="button" class="hydro-cargo-tab hydro-cargo-tab-danger" role="tab" aria-selected="false"
-                                        aria-controls="hydroCargoPanelPerigo" data-tab="perigo" id="hydroCargoTabPerigo" hidden>Excluir</button>
                             </div>
 
                             <div class="hydro-cargo-tabpanel" id="hydroCargoPanelDados" role="tabpanel" data-panel="dados">
@@ -167,16 +165,17 @@
                                 <div id="hydroCargoPermGroups"></div>
                             </div>
 
-                            <div class="hydro-cargo-tabpanel" id="hydroCargoPanelPerigo" role="tabpanel" data-panel="perigo" hidden>
-                                <div class="hydro-cargo-danger-zone" id="hydroCargoDangerZone">
-                                    <div>
-                                        <strong>Excluir cargo</strong>
-                                        <span>Os usuários deste cargo precisam ser movidos para outro cargo antes da exclusão.</span>
-                                    </div>
-                                    <button type="button" class="hydro-btn hydro-btn-danger hydro-btn-sm" id="hydroCargoDeleteBtn">
-                                        <i class="hydro-ic hydro-ic-trash"></i> Excluir cargo
-                                    </button>
+                            <!-- Zona de exclusão: fica sempre ao final do editor, fora das
+                                 abas, destacada em vermelho. Oculta para cargos de sistema
+                                 e para um cargo que ainda não foi criado. -->
+                            <div class="hydro-cargo-danger-zone" id="hydroCargoDangerZone" hidden>
+                                <div>
+                                    <strong>Excluir cargo</strong>
+                                    <span>Os usuários deste cargo precisam ser movidos para outro cargo antes da exclusão.</span>
                                 </div>
+                                <button type="button" class="hydro-btn hydro-btn-danger hydro-btn-sm" id="hydroCargoDeleteBtn">
+                                    <i class="hydro-ic hydro-ic-trash"></i> Excluir cargo
+                                </button>
                             </div>
                         </form>
                     </section>

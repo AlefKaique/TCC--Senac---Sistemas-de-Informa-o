@@ -6,7 +6,6 @@ use Hydra\Repositories\CargoRepository;
 use Hydra\Repositories\LojaRepository;
 use Hydra\Repositories\UsuarioRepository;
 use Hydra\Support\Auth;
-use Hydra\Support\Env;
 use Hydra\Support\Mailer;
 use Hydra\Support\PasswordPolicy;
 use Hydra\Support\Request;
@@ -106,7 +105,6 @@ final class AuthController
         $dados = Request::json();
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
         $senha = (string) ($dados['senha'] ?? '');
-        $lembrar = (bool) ($dados['lembrar'] ?? false);
 
         $usuario = $email !== '' ? $this->usuarios->findByEmail($email) : null;
 
@@ -131,28 +129,12 @@ final class AuthController
         $this->usuarios->updateUltimoAcesso((int) $usuario['id_usuario']);
         Auth::login($usuario);
 
-        if ($lembrar) {
-            $token = bin2hex(random_bytes(32));
-            $this->usuarios->setRememberToken((int) $usuario['id_usuario'], $token);
-            $dias = (int) Env::get('REMEMBER_ME_DAYS', '30');
-            setcookie('hydra_remember', $token, [
-                'expires' => time() + $dias * 86400,
-                'path' => '/',
-                'httponly' => true,
-                'samesite' => 'Lax',
-            ]);
-        }
-
         Response::json(['usuario' => $this->publicUser($usuario)]);
     }
 
     /** POST /api/auth/logout */
     public function logout(): void
     {
-        $user = Auth::user();
-        if ($user !== null) {
-            $this->usuarios->setRememberToken($user['id_usuario'], null);
-        }
         Auth::logout();
         Response::json(['ok' => true]);
     }

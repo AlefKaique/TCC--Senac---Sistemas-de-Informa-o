@@ -30,7 +30,7 @@ final class VendaController
     /** GET /api/vendas — histórico de vendas (RF10), com itens e pagamentos embutidos. */
     public function index(): void
     {
-        $user = Auth::requirePermission('vendas.registrar');
+        $user = Auth::requirePermission('vendas.visualizar');
         $vendas = $this->vendas->listByLoja($user['id_loja']);
         foreach ($vendas as &$venda) {
             $venda['itens'] = $this->vendas->listItensByVenda((int) $venda['id_venda']);

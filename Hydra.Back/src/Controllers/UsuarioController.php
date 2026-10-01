@@ -11,7 +11,7 @@ use Hydra\Support\Response;
 
 /**
  * Tela "Gerenciar Usuários" (Equipe) — restrita a quem tem a permissão
- * "usuarios.gerenciar" (concedida ao cargo Administrador por padrão).
+ * de Usuários (usuarios.*), concedidas ao cargo Administrador por padrão.
  * Cada usuário é associado a um Cargo (ver tela "Cargos" e
  * CargoRepository) em vez de um "perfil" de texto livre; o "perfil"
  * legado continua sendo gravado, mas é apenas um reflexo automático das
@@ -31,12 +31,12 @@ final class UsuarioController
     /**
      * GET /api/usuarios
      * Devolve também os cargos da loja (id, nome, cor) para preencher o
-     * seletor de cargo da tela — sem exigir a permissão "cargos.gerenciar"
+     * seletor de cargo da tela — sem exigir a permissão "cargos.visualizar"
      * (que é só para a tela de administração de Cargos em si).
      */
     public function index(): void
     {
-        $admin = Auth::requirePermission('usuarios.gerenciar');
+        $admin = Auth::requirePermission('usuarios.visualizar');
         $this->cargos->ensureDefaults($admin['id_loja']);
         Response::json([
             'usuarios' => $this->usuarios->listByLoja($admin['id_loja']),
@@ -55,7 +55,7 @@ final class UsuarioController
      */
     public function store(): void
     {
-        $admin = Auth::requirePermission('usuarios.gerenciar');
+        $admin = Auth::requirePermission('usuarios.criar');
         $dados = Request::json();
 
         $nome = trim((string) ($dados['nome'] ?? ''));
@@ -107,7 +107,7 @@ final class UsuarioController
     /** PUT /api/usuarios/{id} */
     public function update(int $id): void
     {
-        $admin = Auth::requirePermission('usuarios.gerenciar');
+        $admin = Auth::requirePermission('usuarios.editar');
         $usuario = $this->usuarios->findInLoja($id, $admin['id_loja']);
         if ($usuario === null) {
             Response::json(['erro' => 'Usuário não encontrado'], 404);
@@ -156,7 +156,7 @@ final class UsuarioController
     /** DELETE /api/usuarios/{id} — RN21: a confirmação prévia é feita no front-end. */
     public function destroy(int $id): void
     {
-        $admin = Auth::requirePermission('usuarios.gerenciar');
+        $admin = Auth::requirePermission('usuarios.excluir');
         $usuario = $this->usuarios->findInLoja($id, $admin['id_loja']);
         if ($usuario === null) {
             Response::json(['erro' => 'Usuário não encontrado'], 404);

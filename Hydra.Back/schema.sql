@@ -10,8 +10,20 @@
 --   - Gerenciar Usuários        -> CRUD em usuarios (perfil = operador_caixa/estoquista)
 --   - Configurações da Loja     -> UPDATE em lojas
 --
--- Este arquivo é idempotente (CREATE TABLE IF NOT EXISTS) e reflete
--- exatamente o que já está aplicado no banco "hydra_db" local.
+-- Este arquivo é a VERSÃO DEFINITIVA do modelo: descreve o estado final
+-- do banco, sem blocos de migração incremental. Ele pressupõe um banco
+-- limpo — em um banco que já tenha as tabelas, "CREATE TABLE IF NOT
+-- EXISTS" apenas ignora as existentes (sem acrescentar colunas novas) e
+-- os "CREATE INDEX" falham por índice duplicado.
+--
+-- Para reaplicar do zero, recrie o banco antes de executar este arquivo:
+--
+--     DROP DATABASE IF EXISTS hydra_db;
+--     CREATE DATABASE hydra_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+--     USE hydra_db;
+--
+-- (as três linhas acima apagam todos os dados — por isso ficam como
+--  comentário, para serem executadas conscientemente)
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS lojas (
@@ -35,6 +47,14 @@ CREATE TABLE IF NOT EXISTS usuarios (
     email                   VARCHAR(100)  NOT NULL UNIQUE,
     senha                   VARCHAR(255)  NOT NULL,          -- hash (bcrypt), nunca texto puro
     perfil                  ENUM('administrador', 'operador_caixa', 'estoquista') NOT NULL,
+
+    -- Cargo do usuário: é ele que define as permissões efetivas (ver o
+    -- módulo de Cargos mais abaixo). "perfil" permanece como nível
+    -- equivalente derivado das permissões, usado pelas telas legadas.
+    -- A chave estrangeira é criada logo após a tabela "cargos", que é
+    -- declarada depois desta.
+    id_cargo                INT NULL,
+
     status                  ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo',
     data_criacao            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ultimo_acesso           DATETIME NULL,
@@ -43,17 +63,15 @@ CREATE TABLE IF NOT EXISTS usuarios (
     reset_token             VARCHAR(255) NULL,
     reset_token_expira_em   DATETIME NULL,
 
-    -- suporte ao "Lembrar de mim" da tela de Login
-    remember_token          VARCHAR(255) NULL,
-
     FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 -- Índices de apoio às consultas mais frequentes do módulo
-CREATE INDEX idx_usuarios_id_loja ON usuarios (id_loja);
-CREATE INDEX idx_usuarios_perfil  ON usuarios (perfil);
+CREATE INDEX idx_usuarios_id_loja  ON usuarios (id_loja);
+CREATE INDEX idx_usuarios_perfil   ON usuarios (perfil);
+CREATE INDEX idx_usuarios_id_cargo ON usuarios (id_cargo);
 
 
 -- ============================================================
@@ -119,6 +137,7 @@ CREATE TABLE IF NOT EXISTS produtos (
     quantidade      DECIMAL(10,3) NOT NULL DEFAULT 0,
     estoque_minimo  DECIMAL(10,3) NOT NULL DEFAULT 0,
     unidade         VARCHAR(10)  NOT NULL DEFAULT 'un',
+    lote            VARCHAR(50)  NULL,
     validade        DATE NULL,
     status          ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo',
     data_criacao    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -356,58 +375,34 @@ CREATE TABLE IF NOT EXISTS cargo_permissoes (
 -- real no back-end (Hydra\Support\Auth::requirePermission), não é só
 -- texto decorativo na tela de Cargos.
 INSERT IGNORE INTO permissoes (codigo, nome, descricao, categoria, ordem) VALUES
-    ('produtos.gerenciar',      'Gerenciar Produtos',       'Cadastrar, editar e inativar produtos do catálogo',        'Produtos',       10),
-    ('produtos.editar_preco',   'Alterar Preços',           'Alterar preço de custo e de venda de um produto',          'Produtos',       11),
-    ('estoque.gerenciar',       'Gerenciar Estoque',        'Registrar entradas e saídas manuais de estoque',           'Estoque',        20),
-    ('vendas.registrar',        'Registrar Vendas',         'Operar o Caixa (PDV) e finalizar vendas',                  'Vendas (Caixa)', 30),
-    ('vendas.aplicar_desconto', 'Aplicar Desconto',         'Conceder desconto manual no valor total da venda',         'Vendas (Caixa)', 31),
-    ('usuarios.gerenciar',      'Gerenciar Usuários',       'Criar, editar, ativar/inativar e excluir usuários',        'Administração',  40),
-    ('cargos.gerenciar',        'Gerenciar Cargos',         'Criar, editar e excluir cargos e suas permissões',         'Administração',  41),
-    ('loja.configurar',         'Configurar Loja',          'Alterar os dados cadastrais da loja',                      'Administração',  42);
+    ('produtos.visualizar',     'Ver Produtos',             'Abrir o catálogo e a tela de Controle de Estoque',          'Produtos',       10),
+    ('produtos.criar',          'Cadastrar Produtos',       'Incluir novos produtos no catálogo',                        'Produtos',       11),
+    ('produtos.editar',         'Editar Produtos',          'Alterar dados de um produto já cadastrado',                 'Produtos',       12),
+    ('produtos.editar_preco',   'Alterar Preços',           'Alterar preço de custo e de venda de um produto',           'Produtos',       13),
+    ('produtos.excluir',        'Excluir Produtos',         'Excluir ou inativar produtos do catálogo',                  'Produtos',       14),
+    ('estoque.visualizar',      'Ver Movimentações',        'Consultar o histórico de entradas e saídas de estoque',     'Estoque',        20),
+    ('estoque.movimentar',      'Registrar Movimentações',  'Lançar entradas e saídas manuais de estoque',               'Estoque',        21),
+    ('vendas.visualizar',       'Ver Vendas',               'Consultar o histórico de vendas da loja',                   'Vendas (Caixa)', 30),
+    ('vendas.registrar',        'Registrar Vendas',         'Operar o Caixa (PDV) e finalizar vendas',                   'Vendas (Caixa)', 31),
+    ('vendas.aplicar_desconto', 'Aplicar Desconto',         'Conceder desconto manual no valor total da venda',          'Vendas (Caixa)', 32),
+    ('usuarios.visualizar',     'Ver Usuários',             'Abrir a tela de Equipe e consultar os usuários da loja',    'Administração',  40),
+    ('usuarios.criar',          'Criar Usuários',           'Cadastrar novos usuários na loja',                          'Administração',  41),
+    ('usuarios.editar',         'Editar Usuários',          'Alterar dados, cargo e situação (ativo/inativo) de usuários','Administração', 42),
+    ('usuarios.excluir',        'Excluir Usuários',         'Remover usuários da loja',                                  'Administração',  43),
+    ('cargos.visualizar',       'Ver Cargos',               'Abrir a tela de Cargos e consultar suas permissões',        'Administração',  44),
+    ('cargos.criar',            'Criar Cargos',             'Criar novos cargos',                                        'Administração',  45),
+    ('cargos.editar',           'Editar Cargos',            'Alterar nome, cor e permissões de um cargo',                'Administração',  46),
+    ('cargos.excluir',          'Excluir Cargos',           'Excluir cargos que não sejam cargos de sistema',            'Administração',  47),
+    ('loja.visualizar',         'Ver Dados da Loja',        'Consultar os dados cadastrais da loja',                     'Administração',  48),
+    ('loja.configurar',         'Alterar Dados da Loja',    'Alterar os dados cadastrais da loja',                       'Administração',  49);
 
--- usuarios.id_cargo — adicionado via checagem em information_schema (em
--- vez de "ADD COLUMN IF NOT EXISTS") para funcionar em qualquer versão
--- do MySQL 8, mantendo este arquivo seguro para ser executado de novo
--- sobre um banco "hydra_db" já em uso (idempotente, como o resto deste
--- arquivo).
-SET @coluna_id_cargo_existe = (
-    SELECT COUNT(*) FROM information_schema.COLUMNS
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuarios' AND COLUMN_NAME = 'id_cargo'
-);
-SET @sql_add_coluna = IF(
-    @coluna_id_cargo_existe = 0,
-    'ALTER TABLE usuarios ADD COLUMN id_cargo INT NULL AFTER perfil',
-    'SELECT 1'
-);
-PREPARE stmt_add_coluna FROM @sql_add_coluna;
-EXECUTE stmt_add_coluna;
-DEALLOCATE PREPARE stmt_add_coluna;
-
-SET @fk_usuarios_cargo_existe = (
-    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuarios' AND CONSTRAINT_NAME = 'fk_usuarios_cargo'
-);
-SET @sql_add_fk = IF(
-    @fk_usuarios_cargo_existe = 0,
-    'ALTER TABLE usuarios ADD CONSTRAINT fk_usuarios_cargo FOREIGN KEY (id_cargo) REFERENCES cargos(id_cargo) ON DELETE SET NULL',
-    'SELECT 1'
-);
-PREPARE stmt_add_fk FROM @sql_add_fk;
-EXECUTE stmt_add_fk;
-DEALLOCATE PREPARE stmt_add_fk;
-
-SET @idx_usuarios_id_cargo_existe = (
-    SELECT COUNT(*) FROM information_schema.STATISTICS
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuarios' AND INDEX_NAME = 'idx_usuarios_id_cargo'
-);
-SET @sql_add_idx = IF(
-    @idx_usuarios_id_cargo_existe = 0,
-    'CREATE INDEX idx_usuarios_id_cargo ON usuarios (id_cargo)',
-    'SELECT 1'
-);
-PREPARE stmt_add_idx FROM @sql_add_idx;
-EXECUTE stmt_add_idx;
-DEALLOCATE PREPARE stmt_add_idx;
+-- A chave estrangeira de usuarios.id_cargo é criada aqui, e não na
+-- declaração da tabela, porque "usuarios" vem antes de "cargos" neste
+-- arquivo (a ordem acompanha a narrativa dos módulos do TCC).
+ALTER TABLE usuarios
+    ADD CONSTRAINT fk_usuarios_cargo
+    FOREIGN KEY (id_cargo) REFERENCES cargos(id_cargo)
+    ON DELETE SET NULL;
 
 
 -- ============================================================

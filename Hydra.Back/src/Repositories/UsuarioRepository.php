@@ -148,17 +148,4 @@ final class UsuarioRepository
         $stmt->execute(['senha' => $senhaHash, 'id' => $idUsuario]);
     }
 
-    public function setRememberToken(int $idUsuario, ?string $token): void
-    {
-        $stmt = db()->prepare('UPDATE usuarios SET remember_token = :token WHERE id_usuario = :id');
-        $stmt->execute(['token' => $token, 'id' => $idUsuario]);
-    }
-
-    public function findByRememberToken(string $token): ?array
-    {
-        $stmt = db()->prepare('SELECT * FROM usuarios WHERE remember_token = :token');
-        $stmt->execute(['token' => $token]);
-        $row = $stmt->fetch();
-        return $row ?: null;
-    }
 }

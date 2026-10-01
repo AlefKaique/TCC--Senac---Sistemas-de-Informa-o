@@ -119,9 +119,12 @@ da raiz para servir o frontend e a API PHP no mesmo Web Service.
   do Render (Environment). Sem elas, a API tenta conectar em `127.0.0.1`
   como `root` — não existe MySQL dentro do container, então toda chamada
   responde "Falha ao conectar ao banco de dados".
-4. Execute `schema.sql` nesse banco antes de testar o cadastro. Rode de novo
-  a cada atualização do arquivo: ele é idempotente e traz as tabelas novas
-  (ex.: o módulo de Cargos e Permissões) sem apagar os dados existentes.
+4. Execute `schema.sql` nesse banco antes de testar o cadastro. O arquivo
+  descreve o estado **final** do modelo e pressupõe um banco limpo — ele
+  não migra um banco antigo. Para aplicar uma versão nova do schema,
+  recrie o banco primeiro (`DROP DATABASE hydra_db; CREATE DATABASE
+  hydra_db ...`, como indicado no cabeçalho do próprio arquivo) e execute
+  tudo de novo. **Isso apaga os dados existentes.**
 5. O endereço público do sistema será a raiz do serviço; o Render verificará
   automaticamente `/api/health`.
 

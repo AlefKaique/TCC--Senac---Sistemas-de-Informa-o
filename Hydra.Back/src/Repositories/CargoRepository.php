@@ -22,21 +22,40 @@ final class CargoRepository
      */
     private const PERMISSOES_SISTEMA = [
         'administrador' => [
-            'produtos.gerenciar',
+            'produtos.visualizar',
+            'produtos.criar',
+            'produtos.editar',
             'produtos.editar_preco',
-            'estoque.gerenciar',
+            'produtos.excluir',
+            'estoque.visualizar',
+            'estoque.movimentar',
+            'vendas.visualizar',
             'vendas.registrar',
             'vendas.aplicar_desconto',
-            'usuarios.gerenciar',
-            'cargos.gerenciar',
+            'usuarios.visualizar',
+            'usuarios.criar',
+            'usuarios.editar',
+            'usuarios.excluir',
+            'cargos.visualizar',
+            'cargos.criar',
+            'cargos.editar',
+            'cargos.excluir',
+            'loja.visualizar',
             'loja.configurar',
         ],
         'operador_caixa' => [
+            // Precisa enxergar o catálogo para montar a venda no PDV.
+            'produtos.visualizar',
+            'vendas.visualizar',
             'vendas.registrar',
         ],
         'estoquista' => [
-            'produtos.gerenciar',
-            'estoque.gerenciar',
+            'produtos.visualizar',
+            'produtos.criar',
+            'produtos.editar',
+            'produtos.excluir',
+            'estoque.visualizar',
+            'estoque.movimentar',
         ],
     ];
 
@@ -267,17 +286,24 @@ final class CargoRepository
      */
     public static function nivelEquivalente(array $codigos): string
     {
-        if (
-            in_array('usuarios.gerenciar', $codigos, true)
-            || in_array('cargos.gerenciar', $codigos, true)
-            || in_array('loja.configurar', $codigos, true)
-        ) {
+        // Qualquer permissao administrativa de escrita caracteriza o nivel
+        // "administrador"; apenas ver a tela de Equipe ou de Cargos nao.
+        $administrativas = [
+            'usuarios.criar', 'usuarios.editar', 'usuarios.excluir',
+            'cargos.criar', 'cargos.editar', 'cargos.excluir',
+            'loja.configurar',
+        ];
+        if (array_intersect($administrativas, $codigos) !== []) {
             return 'administrador';
         }
         if (in_array('vendas.registrar', $codigos, true)) {
             return 'operador_caixa';
         }
-        if (in_array('produtos.gerenciar', $codigos, true) || in_array('estoque.gerenciar', $codigos, true)) {
+        $deEstoque = [
+            'produtos.criar', 'produtos.editar', 'produtos.excluir',
+            'estoque.movimentar',
+        ];
+        if (array_intersect($deEstoque, $codigos) !== []) {
             return 'estoquista';
         }
         return 'operador_caixa';

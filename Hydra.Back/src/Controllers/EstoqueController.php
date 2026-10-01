@@ -27,14 +27,14 @@ final class EstoqueController
     /** GET /api/estoque/movimentacoes — usado pelo Dashboard (RF06). */
     public function index(): void
     {
-        $user = Auth::requirePermission('estoque.gerenciar');
+        $user = Auth::requirePermission('estoque.visualizar');
         Response::json(['movimentacoes' => $this->movimentacoes->listByLoja($user['id_loja'])]);
     }
 
     /** POST /api/estoque/movimentacoes */
     public function store(): void
     {
-        $user = Auth::requirePermission('estoque.gerenciar');
+        $user = Auth::requirePermission('estoque.movimentar');
         $dados = Request::json();
 
         $idProduto = (int) ($dados['id_produto'] ?? 0);

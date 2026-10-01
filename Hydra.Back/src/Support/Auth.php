@@ -3,12 +3,15 @@
 namespace Hydra\Support;
 
 use Hydra\Repositories\CargoRepository;
-use Hydra\Repositories\UsuarioRepository;
 
 /**
- * Sessão de autenticação (PHP session) + suporte ao "lembrar de mim"
- * via cookie de longa duração (remember_token, armazenado nas colunas
- * de usuarios previstas no modelo de dados).
+ * Sessão de autenticação (PHP session).
+ *
+ * Não existe login persistente ("lembrar de mim"): a sessão morre ao
+ * fechar o navegador. O sistema roda em terminais de loja compartilhados,
+ * onde manter alguém logado por dias entregaria a conta do operador
+ * anterior a quem sentasse depois - e falsearia a autoria registrada em
+ * movimentacoes_estoque.id_usuario.
  *
  * O controle de acesso é baseado em permissões do Cargo do usuário (ver
  * módulo de Cargos no schema.sql e Hydra\Repositories\CargoRepository):
@@ -21,24 +24,18 @@ final class Auth
     {
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_set_cookie_params([
+                // lifetime 0 = o cookie morre junto com o navegador.
                 'lifetime' => 0,
                 'path' => '/',
+                // Fora do alcance de JavaScript, para que um XSS não consiga
+                // ler o identificador de sessão.
+                'httponly' => true,
+                // Só exige HTTPS quando a requisição já chegou por HTTPS, para
+                // não quebrar o desenvolvimento local em http://localhost.
+                'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
                 'samesite' => 'Lax',
             ]);
             session_start();
-        }
-
-        // Sessão expirada mas existe cookie "lembrar de mim" -> restaura login.
-        if (!isset($_SESSION['id_usuario']) && !empty($_COOKIE['hydra_remember'])) {
-            self::resumeFromRememberCookie($_COOKIE['hydra_remember']);
-        }
-    }
-
-    private static function resumeFromRememberCookie(string $token): void
-    {
-        $usuario = (new UsuarioRepository())->findByRememberToken($token);
-        if ($usuario !== null) {
-            self::login($usuario);
         }
     }
 
@@ -60,7 +57,6 @@ final class Auth
     {
         $_SESSION = [];
         session_destroy();
-        setcookie('hydra_remember', '', time() - 3600, '/');
     }
 
     public static function check(): bool
