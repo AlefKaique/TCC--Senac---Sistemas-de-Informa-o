@@ -100,7 +100,7 @@ Clique no terminal correspondente e aperte `Ctrl+C`.
 | "Failed to fetch" no navegador | O backend (porta 8080) não está rodando — volte ao passo 2. |
 | Login funciona, a tela abre e volta pro login sozinha | Front e back usando hostnames diferentes (`127.0.0.1` de um lado, `localhost` do outro) — troque tudo para `localhost`, veja o aviso no passo 4. |
 | Login não persiste / sessão cai a cada request | A página foi aberta como `file://` em vez de `http://` — sirva pelo Live Server ou `php -S`. |
-| "Falha ao conectar ao banco de dados" | MySQL não está rodando, ou `Hydra.Back/.env` tem credenciais erradas. |
+| "Falha ao conectar ao banco de dados" | MySQL não está rodando, ou `Hydra.Back/.env` tem credenciais erradas. O motivo exato é gravado no log de erro do PHP (no Render, aba **Logs** do serviço); defina `APP_DEBUG=true` para ver esse motivo na própria resposta da API. |
 | CORS bloqueando a requisição | Confirme que `CORS_ALLOWED_ORIGIN` em `Hydra.Back/.env` está como `*` (padrão) durante o desenvolvimento. |
 
 ## Publicar no Render
@@ -114,7 +114,14 @@ da raiz para servir o frontend e a API PHP no mesmo Web Service.
   e contexto `.`. Não informe `yarn start` como Start Command.
 3. Crie um banco MySQL externo e informe no serviço as variáveis `DB_HOST`,
   `DB_USER` e `DB_PASS`. Mantenha `DB_PORT=3306` e `DB_NAME=hydra_db`.
-4. Execute `schema.sql` nesse banco antes de testar o cadastro.
+  Essas três variáveis estão como `sync: false` no `render.yaml`, ou seja,
+  **não** vêm do repositório: precisam ser preenchidas na própria dashboard
+  do Render (Environment). Sem elas, a API tenta conectar em `127.0.0.1`
+  como `root` — não existe MySQL dentro do container, então toda chamada
+  responde "Falha ao conectar ao banco de dados".
+4. Execute `schema.sql` nesse banco antes de testar o cadastro. Rode de novo
+  a cada atualização do arquivo: ele é idempotente e traz as tabelas novas
+  (ex.: o módulo de Cargos e Permissões) sem apagar os dados existentes.
 5. O endereço público do sistema será a raiz do serviço; o Render verificará
   automaticamente `/api/health`.
 

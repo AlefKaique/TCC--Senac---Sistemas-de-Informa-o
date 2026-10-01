@@ -31,7 +31,27 @@ function db(): PDO
             PDO::ATTR_EMULATE_PREPARES => false,
         ]);
     } catch (PDOException $e) {
-        \Hydra\Support\Response::json(['erro' => 'Falha ao conectar ao banco de dados'], 500);
+        // O motivo real (host recusando conexão, usuário/senha inválidos,
+        // banco inexistente...) vai para o log de erro do servidor — no
+        // Render, aparece na aba "Logs" do serviço. A senha nunca é
+        // registrada. Para ver o motivo direto na resposta da API durante
+        // uma investigação, defina APP_DEBUG=true nas variáveis de ambiente.
+        error_log(sprintf(
+            '[Hydra] Falha ao conectar ao MySQL (host=%s porta=%s banco=%s usuario=%s): %s',
+            $host,
+            $port,
+            $name,
+            $user,
+            $e->getMessage()
+        ));
+
+        $resposta = ['erro' => 'Falha ao conectar ao banco de dados'];
+        if (Env::get('APP_DEBUG', 'false') === 'true') {
+            $resposta['detalhe'] = $e->getMessage();
+            $resposta['conexao'] = "host={$host} porta={$port} banco={$name} usuario={$user}";
+        }
+
+        \Hydra\Support\Response::json($resposta, 500);
         exit;
     }
 
