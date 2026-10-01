@@ -1,0 +1,495 @@
+/* ===================================================================
+   Tela "Cargos" — estilo Discord: lista de cargos à esquerda (com a
+   "bolinha" colorida de identidade visual) e, à direita, o editor com
+   nome, cor e as permissões marcadas por checkbox. Complementa
+   controle-estoque.css + gerenciar-usuarios.css (shell padrão: sidebar,
+   topbar, modal, toast, badges). Escopado em ".hydro-stock".
+   =================================================================== */
+
+.hydro-cargo-intro {
+    max-width: 760px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.55;
+    margin-bottom: 22px;
+}
+
+/* ============ Layout em duas colunas ============ */
+.hydro-cargo-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.hydro-cargo-list-panel,
+.hydro-cargo-editor {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+}
+
+.hydro-cargo-list-panel {
+    width: 300px;
+    flex-shrink: 0;
+    padding: 18px;
+    position: sticky;
+    top: 20px;
+}
+
+.hydro-cargo-list-header {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 14px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.hydro-cargo-list-header .hydro-btn {
+    width: 100%;
+    justify-content: center;
+}
+
+.hydro-cargo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.hydro-cargo-list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 10px;
+    border: none;
+    background: transparent;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    text-align: left;
+    transition: background .15s ease;
+}
+
+.hydro-cargo-list-item:hover {
+    background: var(--bg);
+}
+
+.hydro-cargo-list-item.hydro-active {
+    background: var(--blue-bg);
+    color: var(--navy-900);
+}
+
+.hydro-cargo-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--border);
+}
+
+.hydro-cargo-list-item-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hydro-cargo-list-item-count {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted-soft);
+    flex-shrink: 0;
+}
+
+.hydro-cargo-list-item .hydro-ic-lock {
+    width: 13px;
+    height: 13px;
+    color: var(--muted-soft);
+    flex-shrink: 0;
+}
+
+/* ============ Editor ============ */
+.hydro-cargo-editor {
+    flex: 1;
+    min-width: 0;
+    padding: 26px 28px 32px;
+}
+
+.hydro-cargo-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 360px;
+    color: var(--muted-soft);
+    text-align: center;
+}
+
+.hydro-cargo-empty .hydro-ic {
+    width: 40px;
+    height: 40px;
+}
+
+.hydro-cargo-empty p {
+    max-width: 280px;
+    font-size: 14px;
+}
+
+.hydro-cargo-form {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.hydro-cargo-editor-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.hydro-cargo-dot-lg {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px #fff, 0 0 0 4px var(--border);
+}
+
+.hydro-cargo-name-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.hydro-cargo-name-group input {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy-900);
+}
+
+.hydro-cargo-system-tag {
+    flex-shrink: 0;
+    margin-top: 20px;
+}
+
+.hydro-cargo-form textarea {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--ink);
+    outline: none;
+    resize: vertical;
+}
+
+.hydro-cargo-form textarea:focus {
+    border-color: var(--navy-active);
+}
+
+/* ============ Cor do cargo ============ */
+.hydro-cargo-color-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.hydro-cargo-swatches {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.hydro-cargo-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    padding: 0;
+    cursor: pointer;
+    position: relative;
+    transition: transform .1s ease;
+}
+
+.hydro-cargo-swatch:hover {
+    transform: scale(1.08);
+}
+
+.hydro-cargo-swatch.hydro-is-selected {
+    border-color: var(--navy-900);
+    box-shadow: 0 0 0 2px #fff inset;
+}
+
+.hydro-cargo-swatch.hydro-is-selected::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fff;
+    mix-blend-mode: difference;
+}
+
+.hydro-cargo-custom-color {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: block;
+    position: relative;
+    cursor: pointer;
+    background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+    box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--border);
+}
+
+.hydro-cargo-custom-color input[type="color"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+}
+
+/* ============ Permissões ============ */
+.hydro-cargo-permissions {
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+}
+
+.hydro-cargo-permissions-head {
+    margin-bottom: 14px;
+}
+
+.hydro-cargo-permissions-head h3 {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--navy-900);
+    margin-bottom: 4px;
+}
+
+.hydro-cargo-permissions-head p {
+    font-size: 13px;
+    color: var(--muted);
+    max-width: 560px;
+}
+
+.hydro-cargo-perm-group {
+    margin-bottom: 20px;
+}
+
+.hydro-cargo-perm-group-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted-soft);
+    margin-bottom: 8px;
+}
+
+.hydro-cargo-perm-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--border);
+}
+
+.hydro-cargo-perm-row:last-child {
+    border-bottom: none;
+}
+
+.hydro-cargo-perm-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hydro-cargo-perm-copy strong {
+    font-size: 14px;
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.hydro-cargo-perm-copy span {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.4;
+}
+
+/* Checkbox customizado — quadrado com cantos arredondados (RF pedido:
+   marcar permissões por checkbox, não pela chave/toggle usual do Discord) */
+.hydro-cargo-checkbox {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    margin-top: 2px;
+    appearance: none;
+    -webkit-appearance: none;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    position: relative;
+    transition: background .15s, border-color .15s;
+}
+
+.hydro-cargo-checkbox:hover {
+    border-color: var(--muted-soft);
+}
+
+.hydro-cargo-checkbox:checked {
+    background: var(--navy-active);
+    border-color: var(--navy-active);
+}
+
+.hydro-cargo-checkbox:checked::after {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* ============ Zona de exclusão ============ */
+.hydro-cargo-danger-zone {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid var(--red-bg);
+    background: var(--red-bg);
+    border-radius: var(--radius-md);
+}
+
+.hydro-cargo-danger-zone div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hydro-cargo-danger-zone strong {
+    font-size: 14px;
+    color: var(--red);
+}
+
+.hydro-cargo-danger-zone span {
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.hydro-cargo-danger-zone .hydro-btn {
+    flex-shrink: 0;
+}
+
+/* ============ Barra de alterações não salvas ============ */
+.hydro-cargo-savebar {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translate(-50%, 140%);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: var(--navy-900);
+    color: #fff;
+    padding: 14px 16px 14px 20px;
+    border-radius: 14px;
+    box-shadow: var(--shadow-pop);
+    font-size: 13.5px;
+    font-weight: 600;
+    z-index: 70;
+    transition: transform .22s ease;
+}
+
+.hydro-cargo-savebar.hydro-show {
+    transform: translate(-50%, 0);
+}
+
+.hydro-cargo-savebar-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.hydro-cargo-savebar .hydro-btn-outline {
+    background: transparent;
+    color: #fff;
+    border-color: rgba(255, 255, 255, .3);
+}
+
+.hydro-cargo-savebar .hydro-btn-outline:hover {
+    background: rgba(255, 255, 255, .1);
+}
+
+/* ============ Responsivo ============ */
+@media (max-width: 980px) {
+    .hydro-cargo-layout {
+        flex-direction: column;
+    }
+
+    .hydro-cargo-list-panel {
+        width: 100%;
+        position: static;
+    }
+
+    .hydro-cargo-list {
+        max-height: 280px;
+    }
+}
+
+@media (max-width: 640px) {
+    .hydro-cargo-editor {
+        padding: 20px;
+    }
+
+    .hydro-cargo-editor-head {
+        flex-wrap: wrap;
+    }
+
+    .hydro-cargo-system-tag {
+        margin-top: 0;
+    }
+
+    .hydro-cargo-danger-zone {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .hydro-cargo-savebar {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        transform: translateY(140%);
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .hydro-cargo-savebar.hydro-show {
+        transform: translateY(0);
+    }
+
+    .hydro-cargo-savebar-actions {
+        justify-content: center;
+    }
+}

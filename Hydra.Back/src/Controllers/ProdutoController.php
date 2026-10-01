@@ -26,7 +26,7 @@ final class ProdutoController
     /** GET /api/produtos */
     public function index(): void
     {
-        $user = Auth::requireEstoqueAccess();
+        $user = Auth::requirePermission('produtos.gerenciar');
         Response::json(['produtos' => $this->produtos->listByLoja($user['id_loja'])]);
     }
 
@@ -38,7 +38,7 @@ final class ProdutoController
      */
     public function store(): void
     {
-        $user = Auth::requireEstoqueAccess();
+        $user = Auth::requirePermission('produtos.gerenciar');
         $dados = Request::json();
 
         $validado = $this->validar($dados);
@@ -89,7 +89,7 @@ final class ProdutoController
      */
     public function update(int $id): void
     {
-        $user = Auth::requireEstoqueAccess();
+        $user = Auth::requirePermission('produtos.gerenciar');
         $produto = $this->produtos->findInLoja($id, $user['id_loja']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
@@ -111,15 +111,16 @@ final class ProdutoController
         }
         $campos['status'] = $status;
 
-        // RN04 — só o Administrador pode alterar preços de produtos.
-        // Estoquista pode editar os demais campos normalmente, desde que
-        // reenvie os preços atuais sem modificá-los.
+        // RN04 — só quem tem a permissão "Alterar Preços" (produtos.editar_preco,
+        // concedida ao cargo Administrador por padrão) pode alterar preços de
+        // produtos. Quem não tem pode editar os demais campos normalmente,
+        // desde que reenvie os preços atuais sem modificá-los.
         $precoCustoAtual = $produto['preco_custo'] !== null ? (float) $produto['preco_custo'] : null;
         $precoVendaMudou = abs($campos['preco_venda'] - (float) $produto['preco_venda']) > 0.001;
         $precoCustoMudou = $campos['preco_custo'] !== $precoCustoAtual
             && abs(($campos['preco_custo'] ?? 0) - ($precoCustoAtual ?? 0)) > 0.001;
-        if ($user['perfil'] !== 'administrador' && ($precoVendaMudou || $precoCustoMudou)) {
-            Response::json(['erro' => 'Apenas o Administrador pode alterar preços de produtos (RN04)'], 403);
+        if (!Auth::can('produtos.editar_preco') && ($precoVendaMudou || $precoCustoMudou)) {
+            Response::json(['erro' => 'Seu cargo não tem permissão para alterar preços de produtos (RN04)'], 403);
             return;
         }
 
@@ -144,7 +145,7 @@ final class ProdutoController
      */
     public function destroy(int $id): void
     {
-        $user = Auth::requireEstoqueAccess();
+        $user = Auth::requirePermission('produtos.gerenciar');
         $produto = $this->produtos->findInLoja($id, $user['id_loja']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
@@ -164,7 +165,7 @@ final class ProdutoController
     /** GET /api/produtos/{id}/movimentacoes — RF10 */
     public function movimentacoes(int $id): void
     {
-        $user = Auth::requireEstoqueAccess();
+        $user = Auth::requirePermission('produtos.gerenciar');
         $produto = $this->produtos->findInLoja($id, $user['id_loja']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);

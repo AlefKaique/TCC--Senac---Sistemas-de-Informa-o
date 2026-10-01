@@ -11,11 +11,11 @@ final class UsuarioRepository
         return (bool) $stmt->fetchColumn();
     }
 
-    public function create(int $idLoja, string $nome, string $email, string $senhaHash, string $perfil): int
+    public function create(int $idLoja, string $nome, string $email, string $senhaHash, string $perfil, ?int $idCargo = null): int
     {
         $stmt = db()->prepare(
-            'INSERT INTO usuarios (id_loja, nome, email, senha, perfil)
-             VALUES (:id_loja, :nome, :email, :senha, :perfil)'
+            'INSERT INTO usuarios (id_loja, nome, email, senha, perfil, id_cargo)
+             VALUES (:id_loja, :nome, :email, :senha, :perfil, :id_cargo)'
         );
         $stmt->execute([
             'id_loja' => $idLoja,
@@ -23,6 +23,7 @@ final class UsuarioRepository
             'email' => $email,
             'senha' => $senhaHash,
             'perfil' => $perfil,
+            'id_cargo' => $idCargo,
         ]);
         return (int) db()->lastInsertId();
     }
@@ -47,8 +48,11 @@ final class UsuarioRepository
     public function findPublic(int $idUsuario): ?array
     {
         $stmt = db()->prepare(
-            'SELECT id_usuario, id_loja, nome, email, perfil, status, data_criacao, ultimo_acesso
-             FROM usuarios WHERE id_usuario = :id'
+            'SELECT u.id_usuario, u.id_loja, u.nome, u.email, u.perfil, u.status, u.data_criacao, u.ultimo_acesso,
+                    u.id_cargo, c.nome AS cargo_nome, c.cor AS cargo_cor
+             FROM usuarios u
+             LEFT JOIN cargos c ON c.id_cargo = u.id_cargo
+             WHERE u.id_usuario = :id'
         );
         $stmt->execute(['id' => $idUsuario]);
         $row = $stmt->fetch();
@@ -67,8 +71,11 @@ final class UsuarioRepository
     public function listByLoja(int $idLoja): array
     {
         $stmt = db()->prepare(
-            'SELECT id_usuario, nome, email, perfil, status, data_criacao, ultimo_acesso
-             FROM usuarios WHERE id_loja = :id_loja ORDER BY data_criacao ASC'
+            'SELECT u.id_usuario, u.nome, u.email, u.perfil, u.status, u.data_criacao, u.ultimo_acesso,
+                    u.id_cargo, c.nome AS cargo_nome, c.cor AS cargo_cor
+             FROM usuarios u
+             LEFT JOIN cargos c ON c.id_cargo = u.id_cargo
+             WHERE u.id_loja = :id_loja ORDER BY u.data_criacao ASC'
         );
         $stmt->execute(['id_loja' => $idLoja]);
         return $stmt->fetchAll();
@@ -94,7 +101,7 @@ final class UsuarioRepository
     public function update(int $idUsuario, array $dados): void
     {
         $stmt = db()->prepare(
-            'UPDATE usuarios SET nome = :nome, email = :email, perfil = :perfil, status = :status
+            'UPDATE usuarios SET nome = :nome, email = :email, perfil = :perfil, status = :status, id_cargo = :id_cargo
              WHERE id_usuario = :id'
         );
         $stmt->execute([
@@ -102,6 +109,7 @@ final class UsuarioRepository
             'email' => $dados['email'],
             'perfil' => $dados['perfil'],
             'status' => $dados['status'],
+            'id_cargo' => $dados['id_cargo'] ?? null,
             'id' => $idUsuario,
         ]);
     }

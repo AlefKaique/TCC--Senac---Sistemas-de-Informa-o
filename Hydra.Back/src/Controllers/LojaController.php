@@ -24,7 +24,7 @@ final class LojaController
     /** GET /api/loja */
     public function show(): void
     {
-        $admin = Auth::requireAdmin();
+        $admin = Auth::requirePermission('loja.configurar');
         $loja = $this->lojas->find($admin['id_loja']);
         if ($loja === null) {
             Response::json(['erro' => 'Loja não encontrada'], 404);
@@ -36,7 +36,7 @@ final class LojaController
     /** PUT /api/loja */
     public function update(): void
     {
-        $admin = Auth::requireAdmin();
+        $admin = Auth::requirePermission('loja.configurar');
         $dados = Request::json();
 
         $nomeLoja = trim((string) ($dados['nome_loja'] ?? ''));

@@ -2,46 +2,65 @@
 
 namespace Hydra\Controllers;
 
+use Hydra\Repositories\CargoRepository;
 use Hydra\Repositories\UsuarioRepository;
 use Hydra\Support\Auth;
 use Hydra\Support\Request;
 use Hydra\Support\Response;
 
 /**
- * Tela "Gerenciar Usuários" (Equipe) — RN04: somente Administrador.
+ * Tela "Gerenciar Usuários" (Equipe) — restrita a quem tem a permissão
+ * "usuarios.gerenciar" (concedida ao cargo Administrador por padrão).
+ * Cada usuário é associado a um Cargo (ver tela "Cargos" e
+ * CargoRepository) em vez de um "perfil" de texto livre; o "perfil"
+ * legado continua sendo gravado, mas é apenas um reflexo automático das
+ * permissões do cargo escolhido (ver CargoRepository::nivelEquivalente()).
  */
 final class UsuarioController
 {
     private UsuarioRepository $usuarios;
+    private CargoRepository $cargos;
 
     public function __construct()
     {
         $this->usuarios = new UsuarioRepository();
+        $this->cargos = new CargoRepository();
     }
 
-    /** GET /api/usuarios */
+    /**
+     * GET /api/usuarios
+     * Devolve também os cargos da loja (id, nome, cor) para preencher o
+     * seletor de cargo da tela — sem exigir a permissão "cargos.gerenciar"
+     * (que é só para a tela de administração de Cargos em si).
+     */
     public function index(): void
     {
-        $admin = Auth::requireAdmin();
-        Response::json(['usuarios' => $this->usuarios->listByLoja($admin['id_loja'])]);
+        $admin = Auth::requirePermission('usuarios.gerenciar');
+        $this->cargos->ensureDefaults($admin['id_loja']);
+        Response::json([
+            'usuarios' => $this->usuarios->listByLoja($admin['id_loja']),
+            'cargos' => $this->cargos->listByLoja($admin['id_loja']),
+        ]);
     }
 
     /**
      * POST /api/usuarios
      * Novo usuário — vinculado automaticamente à loja do administrador
-     * logado (id_loja), sem pedir "Nome da loja" novamente. Perfil
-     * restrito a operador_caixa/estoquista: o único administrador
-     * criado diretamente é o do onboarding (Fig. 13).
+     * logado (id_loja), sem pedir "Nome da loja" novamente, e associado
+     * a um Cargo da tela "Cargos". O nível equivalente do cargo escolhido
+     * não pode ser "administrador": o único administrador criado
+     * diretamente é o do onboarding (Fig. 13) — promover alguém a um
+     * cargo administrativo é feito depois, editando o usuário.
      */
     public function store(): void
     {
-        $admin = Auth::requireAdmin();
+        $admin = Auth::requirePermission('usuarios.gerenciar');
         $dados = Request::json();
 
         $nome = trim((string) ($dados['nome'] ?? ''));
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
         $senha = (string) ($dados['senha'] ?? '');
-        $perfil = (string) ($dados['perfil'] ?? '');
+        $idCargo = (int) ($dados['id_cargo'] ?? 0);
 
         if ($nome === '' || $email === '') {
             Response::json(['erro' => 'Preencha nome e e-mail'], 422);
@@ -55,8 +74,15 @@ final class UsuarioController
             Response::json(['erro' => 'A senha deve ter pelo menos 6 caracteres'], 422);
             return;
         }
-        if (!in_array($perfil, ['operador_caixa', 'estoquista'], true)) {
-            Response::json(['erro' => 'Perfil inválido — escolha Operador de Caixa ou Estoquista'], 422);
+
+        $cargo = $this->cargos->find($idCargo, $admin['id_loja']);
+        if ($cargo === null) {
+            Response::json(['erro' => 'Selecione um cargo válido'], 422);
+            return;
+        }
+        $perfil = CargoRepository::nivelEquivalente($cargo['permissoes']);
+        if ($perfil === 'administrador') {
+            Response::json(['erro' => 'Não é possível criar um usuário com cargo administrativo por aqui — cadastre com outro cargo e promova depois, editando o usuário'], 422);
             return;
         }
         if ($this->usuarios->emailExists($email)) {
@@ -69,7 +95,8 @@ final class UsuarioController
             $nome,
             $email,
             password_hash($senha, PASSWORD_BCRYPT),
-            $perfil
+            $perfil,
+            $idCargo
         );
 
         Response::json(['usuario' => $this->usuarios->findPublic($id)], 201);
@@ -78,7 +105,7 @@ final class UsuarioController
     /** PUT /api/usuarios/{id} */
     public function update(int $id): void
     {
-        $admin = Auth::requireAdmin();
+        $admin = Auth::requirePermission('usuarios.gerenciar');
         $usuario = $this->usuarios->findInLoja($id, $admin['id_loja']);
         if ($usuario === null) {
             Response::json(['erro' => 'Usuário não encontrado'], 404);
@@ -88,21 +115,23 @@ final class UsuarioController
         $dados = Request::json();
         $nome = trim((string) ($dados['nome'] ?? ''));
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
-        $perfil = (string) ($dados['perfil'] ?? '');
+        $idCargo = (int) ($dados['id_cargo'] ?? 0);
         $status = (string) ($dados['status'] ?? '');
 
         if ($nome === '' || $email === '') {
             Response::json(['erro' => 'Preencha nome e e-mail'], 422);
             return;
         }
-        if (!in_array($perfil, ['administrador', 'operador_caixa', 'estoquista'], true)) {
-            Response::json(['erro' => 'Perfil inválido'], 422);
+        $cargo = $this->cargos->find($idCargo, $admin['id_loja']);
+        if ($cargo === null) {
+            Response::json(['erro' => 'Selecione um cargo válido'], 422);
             return;
         }
         if (!in_array($status, ['ativo', 'inativo'], true)) {
             Response::json(['erro' => 'Status inválido'], 422);
             return;
         }
+        $perfil = CargoRepository::nivelEquivalente($cargo['permissoes']);
 
         // Evita que a loja fique sem nenhum administrador ativo.
         $perdendoAdmin = $usuario['perfil'] === 'administrador'
@@ -112,14 +141,20 @@ final class UsuarioController
             return;
         }
 
-        $this->usuarios->update($id, compact('nome', 'email', 'perfil', 'status'));
+        $this->usuarios->update($id, [
+            'nome' => $nome,
+            'email' => $email,
+            'perfil' => $perfil,
+            'status' => $status,
+            'id_cargo' => $idCargo,
+        ]);
         Response::json(['usuario' => $this->usuarios->findPublic($id)]);
     }
 
     /** DELETE /api/usuarios/{id} — RN21: a confirmação prévia é feita no front-end. */
     public function destroy(int $id): void
     {
-        $admin = Auth::requireAdmin();
+        $admin = Auth::requirePermission('usuarios.gerenciar');
         $usuario = $this->usuarios->findInLoja($id, $admin['id_loja']);
         if ($usuario === null) {
             Response::json(['erro' => 'Usuário não encontrado'], 404);

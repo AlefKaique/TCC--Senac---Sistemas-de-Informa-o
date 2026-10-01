@@ -786,6 +786,7 @@
                 document.getElementById('hydroMenuAdminLabel').style.display = 'none';
                 document.getElementById('hydroLiEquipe').style.display = 'none';
                 document.getElementById('hydroLiConfig').style.display = 'none';
+                document.getElementById('hydroLiCargos').style.display = 'none';
             }
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.

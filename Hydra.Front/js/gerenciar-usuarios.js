@@ -8,13 +8,24 @@
     };
     const STATUS_LABEL = { ativo: 'Ativo', inativo: 'Inativo' };
 
+    // Permissões que tornam um cargo "administrativo" — esses cargos não
+    // aparecem no formulário de "Novo usuário" (mesma regra do back-end:
+    // o único administrador criado direto é o do onboarding; promover
+    // alguém depois é feito editando o usuário).
+    const PERMISSOES_ADMINISTRATIVAS = ['usuarios.gerenciar', 'cargos.gerenciar', 'loja.configurar'];
+
     let lojaAtual = null;
     let users = [];
+    let cargosDisponiveis = [];
+
+    function cargoEhAdministrativo(cargo) {
+        return (cargo.permissoes || []).some((codigo) => PERMISSOES_ADMINISTRATIVAS.includes(codigo));
+    }
 
     /* ================= State ================= */
     const state = {
         search: '',
-        perfil: '',
+        cargo: '',
         status: '',
         page: 1,
         pageSize: 5,
@@ -44,10 +55,10 @@
         return status === 'ativo' ? 'hydro-badge-ok' : 'hydro-badge-neutral';
     }
 
-    function perfilBadgeClass(perfil) {
-        if (perfil === 'administrador') return 'hydro-badge-critical';
-        if (perfil === 'operador_caixa') return 'hydro-badge-low';
-        return 'hydro-badge-ok';
+    function cargoCellHtml(u) {
+        const cor = u.cargo_cor || '#93a0c9';
+        const nome = u.cargo_nome || PERFIL_LABEL[u.perfil] || '—';
+        return `<span class="hydro-user-cargo"><span class="hydro-user-cargo-dot" style="background:${cor}"></span>${escapeHtml(nome)}</span>`;
     }
 
     function getFilteredUsers() {
@@ -56,9 +67,9 @@
                 !state.search ||
                 u.nome.toLowerCase().includes(state.search) ||
                 u.email.toLowerCase().includes(state.search);
-            const matchesPerfil = !state.perfil || u.perfil === state.perfil;
+            const matchesCargo = !state.cargo || String(u.id_cargo) === state.cargo;
             const matchesStatus = !state.status || u.status === state.status;
-            return matchesSearch && matchesPerfil && matchesStatus;
+            return matchesSearch && matchesCargo && matchesStatus;
         });
     }
 
@@ -100,7 +111,7 @@
                 </div>
               </div>
             </td>
-            <td data-label="Perfil"><span class="hydro-badge ${perfilBadgeClass(u.perfil)}">${PERFIL_LABEL[u.perfil]}</span></td>
+            <td data-label="Cargo">${cargoCellHtml(u)}</td>
             <td data-label="Loja">${escapeHtml(lojaAtual ? lojaAtual.nome_loja : '')}</td>
             <td data-label="Status"><span class="hydro-badge ${statusBadgeClass(u.status)}">${STATUS_LABEL[u.status]}</span></td>
             <td data-label="Criado em">${formatDate(u.data_criacao)}</td>
@@ -184,7 +195,7 @@
         try {
             const { usuario } = await window.hydraApi(`/usuarios/${id}`, {
                 method: 'PUT',
-                body: { nome: u.nome, email: u.email, perfil: u.perfil, status: novoStatus },
+                body: { nome: u.nome, email: u.email, id_cargo: u.id_cargo, status: novoStatus },
             });
             Object.assign(u, usuario);
             renderStats();
@@ -243,11 +254,14 @@
           <input type="password" id="hydroNewSenha" placeholder="Mínimo de 6 caracteres" minlength="6">
         </div>
         <div class="hydro-form-group">
-          <label for="hydroNewPerfil">Perfil</label>
-          <select id="hydroNewPerfil">
-            <option value="operador_caixa">Operador de Caixa</option>
-            <option value="estoquista">Estoquista</option>
+          <label for="hydroNewCargo">Cargo</label>
+          <select id="hydroNewCargo">
+            ${cargosDisponiveis
+                .filter((c) => !cargoEhAdministrativo(c))
+                .map((c) => `<option value="${c.id_cargo}">${escapeHtml(c.nome)}</option>`)
+                .join('')}
           </select>
+          <span class="hydro-cargo-select-hint">As permissões do usuário vêm do cargo — crie ou ajuste cargos na tela <a href="cargos.html" target="_blank" rel="noopener">Cargos</a>.</span>
         </div>
       `,
             footerHtml: `
@@ -261,7 +275,7 @@
             const nome = document.getElementById('hydroNewName').value.trim();
             const email = document.getElementById('hydroNewEmail').value.trim();
             const senha = document.getElementById('hydroNewSenha').value;
-            const perfil = document.getElementById('hydroNewPerfil').value;
+            const idCargo = Number(document.getElementById('hydroNewCargo').value);
 
             if (!nome || !email) {
                 showToast('Preencha nome e e-mail');
@@ -271,11 +285,15 @@
                 showToast('A senha deve ter pelo menos 6 caracteres');
                 return;
             }
+            if (!idCargo) {
+                showToast('Selecione um cargo');
+                return;
+            }
 
             try {
                 const { usuario } = await window.hydraApi('/usuarios', {
                     method: 'POST',
-                    body: { nome, email, senha, perfil },
+                    body: { nome, email, senha, id_cargo: idCargo },
                 });
                 users.push(usuario);
                 closeModal();
@@ -306,12 +324,13 @@
           <input type="email" id="hydroEditUserEmail" value="${escapeHtml(u.email)}">
         </div>
         <div class="hydro-form-group">
-          <label for="hydroEditUserPerfil">Perfil</label>
-          <select id="hydroEditUserPerfil">
-            <option value="administrador" ${u.perfil === 'administrador' ? 'selected' : ''}>Administrador</option>
-            <option value="operador_caixa" ${u.perfil === 'operador_caixa' ? 'selected' : ''}>Operador de Caixa</option>
-            <option value="estoquista" ${u.perfil === 'estoquista' ? 'selected' : ''}>Estoquista</option>
+          <label for="hydroEditUserCargo">Cargo</label>
+          <select id="hydroEditUserCargo">
+            ${cargosDisponiveis
+                .map((c) => `<option value="${c.id_cargo}" ${u.id_cargo === c.id_cargo ? 'selected' : ''}>${escapeHtml(c.nome)}</option>`)
+                .join('')}
           </select>
+          <span class="hydro-cargo-select-hint">As permissões do usuário vêm do cargo — crie ou ajuste cargos na tela <a href="cargos.html" target="_blank" rel="noopener">Cargos</a>.</span>
         </div>
         <div class="hydro-form-group">
           <label for="hydroEditUserStatus">Status</label>
@@ -331,7 +350,7 @@
         document.getElementById('hydroModalSaveBtn').addEventListener('click', async () => {
             const nome = document.getElementById('hydroEditUserName').value.trim();
             const email = document.getElementById('hydroEditUserEmail').value.trim();
-            const perfil = document.getElementById('hydroEditUserPerfil').value;
+            const idCargo = Number(document.getElementById('hydroEditUserCargo').value);
             const status = document.getElementById('hydroEditUserStatus').value;
 
             if (!nome || !email) {
@@ -342,7 +361,7 @@
             try {
                 const { usuario } = await window.hydraApi(`/usuarios/${id}`, {
                     method: 'PUT',
-                    body: { nome, email, perfil, status },
+                    body: { nome, email, id_cargo: idCargo, status },
                 });
                 Object.assign(u, usuario);
                 closeModal();
@@ -402,11 +421,19 @@
         renderTable();
     });
 
-    document.getElementById('hydroFilterPerfil').addEventListener('change', (e) => {
-        state.perfil = e.target.value;
+    document.getElementById('hydroFilterCargo').addEventListener('change', (e) => {
+        state.cargo = e.target.value;
         state.page = 1;
         renderTable();
     });
+
+    function renderFiltroCargo() {
+        const select = document.getElementById('hydroFilterCargo');
+        const atual = select.value;
+        select.innerHTML = '<option value="">Todos os cargos</option>' +
+            cargosDisponiveis.map((c) => `<option value="${c.id_cargo}">${escapeHtml(c.nome)}</option>`).join('');
+        select.value = atual;
+    }
 
     document.getElementById('hydroFilterStatusUser').addEventListener('change', (e) => {
         state.status = e.target.value;
@@ -471,6 +498,8 @@
             ]);
             lojaAtual = lojaRes.loja;
             users = usersRes.usuarios;
+            cargosDisponiveis = usersRes.cargos || [];
+            renderFiltroCargo();
             renderStats();
             renderTable();
         } catch (err) {

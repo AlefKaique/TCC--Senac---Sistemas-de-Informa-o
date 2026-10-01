@@ -2,6 +2,7 @@
 
 namespace Hydra\Controllers;
 
+use Hydra\Repositories\CargoRepository;
 use Hydra\Repositories\LojaRepository;
 use Hydra\Repositories\UsuarioRepository;
 use Hydra\Support\Auth;
@@ -18,11 +19,13 @@ final class AuthController
 {
     private UsuarioRepository $usuarios;
     private LojaRepository $lojas;
+    private CargoRepository $cargos;
 
     public function __construct()
     {
         $this->usuarios = new UsuarioRepository();
         $this->lojas = new LojaRepository();
+        $this->cargos = new CargoRepository();
     }
 
     /**
@@ -62,12 +65,24 @@ final class AuthController
         $pdo->beginTransaction();
         try {
             $idLoja = $this->lojas->create($nomeLoja);
+            // Cria os 3 cargos de sistema da loja (Administrador, Operador
+            // de Caixa, Estoquista) antes do primeiro usuário, para já
+            // vinculá-lo ao cargo Administrador.
+            $this->cargos->ensureDefaults($idLoja);
+            $idCargoAdmin = null;
+            foreach ($this->cargos->listByLoja($idLoja) as $cargo) {
+                if ($cargo['nome'] === 'Administrador') {
+                    $idCargoAdmin = (int) $cargo['id_cargo'];
+                    break;
+                }
+            }
             $idUsuario = $this->usuarios->create(
                 $idLoja,
                 $nome,
                 $email,
                 password_hash($senha, PASSWORD_BCRYPT),
-                'administrador'
+                'administrador',
+                $idCargoAdmin
             );
             $pdo->commit();
         } catch (\Throwable $e) {
@@ -102,6 +117,15 @@ final class AuthController
         if ($usuario['status'] !== 'ativo') {
             Response::json(['erro' => 'Este usuário está inativo. Fale com o administrador da loja.'], 403);
             return;
+        }
+
+        // Lojas criadas antes do módulo de Cargos ainda não têm cargos —
+        // cria os 3 de sistema e associa quem estiver sem cargo (ver
+        // CargoRepository::ensureDefaults). Idempotente: nas próximas
+        // chamadas não faz nada.
+        $this->cargos->ensureDefaults((int) $usuario['id_loja']);
+        if ($usuario['id_cargo'] === null) {
+            $usuario = $this->usuarios->findByEmail($email);
         }
 
         $this->usuarios->updateUltimoAcesso((int) $usuario['id_usuario']);
@@ -230,6 +254,10 @@ final class AuthController
             'nome' => $usuario['nome'],
             'email' => $usuario['email'],
             'perfil' => $usuario['perfil'],
+            'id_cargo' => isset($usuario['id_cargo']) ? (int) $usuario['id_cargo'] : null,
+            'permissoes' => !empty($usuario['id_cargo'])
+                ? $this->cargos->permissoesDoCargo((int) $usuario['id_cargo'])
+                : [],
         ];
     }
 }

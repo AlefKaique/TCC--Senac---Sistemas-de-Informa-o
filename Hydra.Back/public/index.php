@@ -23,6 +23,7 @@ spl_autoload_register(function (string $class): void {
 require __DIR__ . '/../config/database.php';
 
 use Hydra\Controllers\AuthController;
+use Hydra\Controllers\CargoController;
 use Hydra\Controllers\EstoqueController;
 use Hydra\Controllers\LojaController;
 use Hydra\Controllers\ProdutoController;
@@ -86,6 +87,11 @@ $routes = [
 
     ['GET', '#^/api/loja$#', fn () => (new LojaController())->show()],
     ['PUT', '#^/api/loja$#', fn () => (new LojaController())->update()],
+
+    ['GET', '#^/api/cargos$#', fn () => (new CargoController())->index()],
+    ['POST', '#^/api/cargos$#', fn () => (new CargoController())->store()],
+    ['PUT', '#^/api/cargos/(\d+)$#', fn ($id) => (new CargoController())->update((int) $id)],
+    ['DELETE', '#^/api/cargos/(\d+)$#', fn ($id) => (new CargoController())->destroy((int) $id)],
 
     ['GET', '#^/api/produtos$#', fn () => (new ProdutoController())->index()],
     ['POST', '#^/api/produtos$#', fn () => (new ProdutoController())->store()],

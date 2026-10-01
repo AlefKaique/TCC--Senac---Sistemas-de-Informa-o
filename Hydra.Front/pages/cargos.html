@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydra · Cargos</title>
+    <link rel="icon" type="image/png" href="../img/logo-hydra.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/controle-estoque.css">
+    <link rel="stylesheet" href="../css/gerenciar-usuarios.css">
+    <link rel="stylesheet" href="../css/cargos.css">
+    <link rel="stylesheet" href="../css/public-demo.css">
+    <link rel="stylesheet" href="../css/font-size.css">
+</head>
+
+<body>
+
+    <!-- Tudo isolado dentro de .hydro-stock para não colidir com o CSS/JS do restante do sistema -->
+    <div class="hydro-stock">
+
+        <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+        </button>
+        <div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+
+        <div class="hydro-app">
+
+            <!-- Sidebar -->
+            <aside class="hydro-sidebar" id="hydroSidebar">
+                <a class="hydro-brand" href="controle-estoque.html" aria-label="Ir para o início">
+                    <img src="../img/logo-hydra.png" alt="Hydra PDV">
+                </a>
+
+                <nav class="hydro-menu">
+                    <p class="hydro-menu-label">Menu</p>
+                    <ul>
+                        <li><a href="controle-estoque.html"><i
+                                    class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
+                        <li><a href="caixa.html"><i class="hydro-ic hydro-ic-drawer"></i><span>Vendas</span></a>
+                        </li>
+                        <li><a href="dashboard.html"><i
+                                    class="hydro-ic hydro-ic-home"></i><span>Relatório</span></a></li>
+                    </ul>
+                </nav>
+
+                <div class="hydro-menu hydro-menu-admin">
+                    <p class="hydro-menu-label"><span class="hydro-menu-restricted">Admin</span></p>
+                    <ul>
+                        <li><a href="gerenciar-usuarios.html"><i
+                                    class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
+                        <li><a href="configuracoes-loja.html"><i
+                                    class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span></a></li>
+                        <li><a href="#" class="hydro-active" data-view="cargos"><i
+                                    class="hydro-ic hydro-ic-shield"></i><span>Cargos</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="hydro-menu hydro-menu-bottom">
+                    <p class="hydro-menu-label">Geral</p>
+                    <ul>
+                        <li><a href="#" data-view="sair"><i class="hydro-ic hydro-ic-exit"></i><span>Sair</span></a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Main -->
+            <main class="hydro-main">
+                <header class="hydro-topbar">
+                    <div class="hydro-topbar-title">
+                        <h1>Cargos</h1>
+                        <span class="hydro-restricted-badge"><i class="hydro-ic hydro-ic-lock"></i> Apenas Administrador</span>
+                    </div>
+                    <div class="hydro-topbar-actions">
+                        <a class="hydro-icon-btn" href="gerenciar-usuarios.html" aria-label="Equipe"><i
+                                class="hydro-ic hydro-ic-users"></i></a>
+                        <button class="hydro-icon-btn" aria-label="Notificações">
+                            <i class="hydro-ic hydro-ic-bell"></i>
+                            <span class="hydro-notif-dot"></span>
+                        </button>
+                        <div class="hydro-user">
+                            <img class="hydro-avatar" src="https://i.pravatar.cc/64?img=13" alt="Foto do usuário">
+                            <span class="hydro-user-name" id="hydroUserName"></span>
+                        </div>
+                    </div>
+                </header>
+
+                <p class="hydro-cargo-intro">
+                    Crie cargos e marque, com um clique, quais permissões cada um concede — assim como em um
+                    servidor do Discord. Todo usuário da equipe pertence a um cargo, e é o cargo que define o que
+                    ele pode ver e fazer no sistema.
+                </p>
+
+                <section class="hydro-cargo-layout">
+                    <!-- Coluna esquerda: lista de cargos -->
+                    <aside class="hydro-cargo-list-panel">
+                        <div class="hydro-cargo-list-header">
+                            <span>Cargos — <strong id="hydroCargoCount">0</strong></span>
+                            <button class="hydro-btn hydro-btn-primary hydro-btn-sm" id="hydroBtnNovoCargo">
+                                <i class="hydro-ic hydro-ic-plus"></i> Criar Cargo
+                            </button>
+                        </div>
+                        <ul class="hydro-cargo-list" id="hydroCargoList"></ul>
+                    </aside>
+
+                    <!-- Coluna direita: editor do cargo selecionado -->
+                    <section class="hydro-cargo-editor" id="hydroCargoEditor">
+                        <div class="hydro-cargo-empty" id="hydroCargoEmpty">
+                            <i class="hydro-ic hydro-ic-shield"></i>
+                            <p>Selecione um cargo à esquerda ou crie um novo para começar.</p>
+                        </div>
+
+                        <form id="hydroCargoForm" class="hydro-cargo-form" hidden novalidate>
+                            <div class="hydro-cargo-editor-head">
+                                <span class="hydro-cargo-dot-lg" id="hydroCargoPreviewDot"></span>
+                                <div class="hydro-form-group hydro-cargo-name-group">
+                                    <label for="hydroCargoNome">Nome do cargo</label>
+                                    <input type="text" id="hydroCargoNome" maxlength="60" placeholder="Ex.: Supervisor de Loja">
+                                </div>
+                                <span class="hydro-badge hydro-badge-neutral hydro-cargo-system-tag" id="hydroCargoSystemTag" hidden>Cargo de sistema</span>
+                            </div>
+
+                            <div class="hydro-form-group">
+                                <label for="hydroCargoDescricao">Descrição (opcional)</label>
+                                <textarea id="hydroCargoDescricao" rows="2" maxlength="255" placeholder="Para que serve esse cargo?"></textarea>
+                            </div>
+
+                            <div class="hydro-form-group">
+                                <label>Cor do cargo</label>
+                                <div class="hydro-cargo-color-row">
+                                    <div class="hydro-cargo-swatches" id="hydroCargoSwatches"></div>
+                                    <label class="hydro-cargo-custom-color" title="Escolher outra cor">
+                                        <input type="color" id="hydroCargoCorInput" value="#5865F2">
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="hydro-cargo-permissions">
+                                <div class="hydro-cargo-permissions-head">
+                                    <h3>Permissões</h3>
+                                    <p>Marque o que esse cargo pode fazer no sistema. Usuários herdam exatamente as permissões do cargo escolhido.</p>
+                                </div>
+                                <div id="hydroCargoPermGroups"></div>
+                            </div>
+
+                            <div class="hydro-cargo-danger-zone" id="hydroCargoDangerZone" hidden>
+                                <div>
+                                    <strong>Excluir cargo</strong>
+                                    <span>Os usuários deste cargo precisam ser movidos para outro cargo antes da exclusão.</span>
+                                </div>
+                                <button type="button" class="hydro-btn hydro-btn-danger hydro-btn-sm" id="hydroCargoDeleteBtn">
+                                    <i class="hydro-ic hydro-ic-trash"></i> Excluir cargo
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                </section>
+            </main>
+        </div>
+
+        <!-- Barra de alterações não salvas (estilo Discord) -->
+        <div class="hydro-cargo-savebar" id="hydroCargoSavebar">
+            <span>Você tem alterações não salvas!</span>
+            <div class="hydro-cargo-savebar-actions">
+                <button class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroCargoDiscardBtn">Descartar</button>
+                <button class="hydro-btn hydro-btn-primary hydro-btn-sm" id="hydroCargoSaveBtn">Salvar alterações</button>
+            </div>
+        </div>
+
+        <!-- Modal (confirmação de exclusão) -->
+        <div class="hydro-modal-overlay" id="hydroModalOverlay">
+            <div class="hydro-modal" role="dialog" aria-modal="true">
+                <div class="hydro-modal-header">
+                    <h2 id="hydroModalTitle">Título</h2>
+                    <button class="hydro-modal-close" id="hydroModalClose" aria-label="Fechar">&times;</button>
+                </div>
+                <div class="hydro-modal-body" id="hydroModalBody"></div>
+                <div class="hydro-modal-footer" id="hydroModalFooter"></div>
+            </div>
+        </div>
+
+        <div class="hydro-toast" id="hydroToast"></div>
+
+    </div>
+
+    <div class="accessibility-widget">
+        <button id="font-plus" data-font-action="increase">A+</button>
+        <button id="font-minus" data-font-action="decrease">A−</button>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/public-demo.js"></script>
+    <script src="../js/font-size.js"></script>
+    <script src="../js/cargos.js"></script>
+</body>
+
+</html>
