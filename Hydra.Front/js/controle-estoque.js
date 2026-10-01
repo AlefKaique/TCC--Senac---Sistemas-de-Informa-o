@@ -192,6 +192,16 @@
         return `${d}/${m}/${y}${hm ? ' ' + hm : ''}`;
     }
 
+    /* A coluna "quantidade" é DECIMAL(10,3) no banco, então o MySQL devolve
+       "20.000" para 20 unidades. Normaliza para o padrão pt-BR, descartando
+       casas decimais vazias, e acrescenta a unidade do produto. */
+    function formatQuantity(value, unit) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return String(value);
+        const text = n.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+        return unit ? `${text} ${unit}` : text;
+    }
+
     function formatCurrency(value) {
         return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
@@ -280,7 +290,7 @@
                 </div>
               </div>
             </td>
-            <td class="hydro-sku" data-label="SKU">${escapeHtml(p.sku)}</td>
+            <td class="hydro-sku" data-label="Código de barras">${escapeHtml(p.sku)}</td>
             <td data-label="Categoria">${escapeHtml(p.category)}</td>
             <td class="hydro-qty" data-label="Quantidade">${p.quantity}</td>
             <td data-label="Estoque mínimo">${p.minStock}</td>
@@ -386,7 +396,8 @@
         modalOverlay.classList.remove('hydro-show');
     }
 
-    document.getElementById('hydroModalClose').addEventListener('click', closeModal);
+    // O "x" do cabeçalho foi removido: cada modal fecha pelo botão
+    // "Fechar"/"Cancelar" do rodapé, pelo Esc ou clicando fora.
     modalOverlay.addEventListener('click', (e) => {
         if (e.target === modalOverlay) closeModal();
     });
@@ -407,7 +418,7 @@
             title: p.name,
             bodyHtml: `
         <div class="hydro-detail-row"><span>Descrição</span><span>${escapeHtml(p.desc)}</span></div>
-        <div class="hydro-detail-row"><span>SKU</span><span>${escapeHtml(p.sku)}</span></div>
+        <div class="hydro-detail-row"><span>Código de barras</span><span>${escapeHtml(p.sku)}</span></div>
         <div class="hydro-detail-row"><span>Categoria</span><span>${escapeHtml(p.category)}</span></div>
         <div class="hydro-detail-row"><span>Quantidade</span><span>${p.quantity} un.</span></div>
         <div class="hydro-detail-row"><span>Estoque mínimo</span><span>${p.minStock} un.</span></div>
@@ -586,10 +597,16 @@
                 .map((m) => {
                     const tipoLabel = m.tipo === 'entrada' ? 'Entrada' : 'Saída';
                     const origemLabel = ORIGEM_LABELS[m.origem] || m.origem;
+                    // id_usuario é anulável (ON DELETE SET NULL no schema), então o
+                    // nome pode vir vazio em movimentações de usuários já removidos.
+                    const usuarioLabel = m.nome_usuario || 'Usuário removido';
                     return `
-          <div class="hydro-detail-row">
-            <span>${formatDateTime(m.data_movimentacao)} · ${escapeHtml(origemLabel)}</span>
-            <span class="hydro-badge ${m.tipo === 'entrada' ? 'hydro-badge-ok' : 'hydro-badge-critical'}">${tipoLabel} · ${m.quantidade}</span>
+          <div class="hydro-detail-row hydro-mov-row">
+            <span class="hydro-mov-info">
+              <strong class="hydro-mov-when">${formatDateTime(m.data_movimentacao)}</strong>
+              <span class="hydro-mov-meta">${escapeHtml(origemLabel)} · ${escapeHtml(usuarioLabel)}</span>
+            </span>
+            <span class="hydro-badge ${m.tipo === 'entrada' ? 'hydro-badge-ok' : 'hydro-badge-critical'}">${tipoLabel} · ${formatQuantity(m.quantidade, p.unit)}</span>
           </div>`;
                 })
                 .join('');

@@ -980,6 +980,34 @@
     color: var(--navy-900);
 }
 
+/* ---- Linhas do histórico de movimentações ----
+   Duas linhas à esquerda (data/hora + origem e usuário) e o badge de
+   entrada/saída à direita. As regras genéricas de .hydro-detail-row
+   deixariam o texto secundário em negrito, então são sobrescritas aqui. */
+.hydro-detail-row.hydro-mov-row {
+    align-items: center;
+    gap: 12px;
+}
+
+.hydro-detail-row .hydro-mov-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.hydro-detail-row .hydro-mov-when {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--navy-900);
+}
+
+.hydro-detail-row .hydro-mov-meta {
+    font-size: 12.5px;
+    font-weight: 400;
+    color: var(--muted);
+}
+
 .hydro-btn-sm {
     padding: 9px 16px;
     font-size: 13.5px;

@@ -77,10 +77,6 @@
                         <span class="hydro-restricted-badge"><i class="hydro-ic hydro-ic-lock"></i> Apenas Administrador</span>
                     </div>
                     <div class="hydro-topbar-actions">
-                        <div class="hydro-search">
-                            <i class="hydro-ic hydro-ic-search"></i>
-                            <input type="text" id="hydroUserSearchInput" placeholder="Buscar por nome ou e-mail">
-                        </div>
                         <a class="hydro-icon-btn" href="configuracoes-loja.html" aria-label="Configuração Loja"><i
                             class="hydro-ic hydro-ic-gear"></i></a>
                         <button class="hydro-icon-btn" aria-label="Notificações">
@@ -120,6 +116,13 @@
 
                 <section class="hydro-toolbar">
                     <div class="hydro-filters">
+                        <label class="hydro-select-field hydro-search-field">
+                            <span class="hydro-select-label">Buscar</span>
+                            <span class="hydro-search">
+                                <i class="hydro-ic hydro-ic-search"></i>
+                                <input type="text" id="hydroUserSearchInput" placeholder="Nome ou e-mail">
+                            </span>
+                        </label>
                         <label class="hydro-select-field">
                             <span class="hydro-select-label">Cargo</span>
                             <select id="hydroFilterCargo">

@@ -478,6 +478,14 @@
     gap: 6px;
 }
 
+/* Garante que o atributo "hidden" sempre vença, mesmo em elementos cuja
+   classe define "display" (ex.: .hydro-form-group) — sem isso, a regra de
+   classe (autor) tem prioridade sobre o [hidden] padrão do navegador e
+   o elemento continua visível. */
+[hidden] {
+    display: none !important;
+}
+
 .hydro-form-group label {
     font-size: 13px;
     font-weight: 600;
