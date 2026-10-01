@@ -3,6 +3,7 @@
 namespace Hydra\Support;
 
 use Hydra\Repositories\CargoRepository;
+use Hydra\Repositories\UsuarioRepository;
 
 /**
  * Sessão de autenticação (PHP session).
@@ -42,6 +43,13 @@ final class Auth
     /** @param array<string,mixed> $usuario */
     public static function login(array $usuario): void
     {
+        // Troca o identificador de sessão ao autenticar. Sem isso, um
+        // PHPSESSID que o atacante tenha conseguido fixar no navegador da
+        // vítima continuaria valendo depois do login dela (session fixation).
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
+
         $_SESSION['id_usuario'] = (int) $usuario['id_usuario'];
         $_SESSION['id_loja'] = (int) $usuario['id_loja'];
         $_SESSION['perfil'] = $usuario['perfil'];
@@ -81,7 +89,15 @@ final class Auth
         ];
     }
 
-    /** Encerra a requisição com 401 se não houver sessão válida. */
+    /**
+     * Encerra a requisição com 401 se não houver sessão válida.
+     *
+     * Revalida o usuário no banco a cada requisição. Antes, status,
+     * cargo e permissões eram lidos uma única vez no login e congelavam
+     * na sessão: inativar um funcionário, movê-lo de cargo ou remover
+     * uma permissão não tinha efeito nenhum enquanto a sessão dele
+     * existisse. O custo é uma consulta por requisição.
+     */
     public static function requireLogin(): array
     {
         $user = self::user();
@@ -89,7 +105,25 @@ final class Auth
             Response::json(['erro' => 'Não autenticado'], 401);
             exit;
         }
-        return $user;
+
+        $atual = (new UsuarioRepository())->find($user['id_usuario']);
+        if ($atual === null || $atual['status'] !== 'ativo') {
+            self::logout();
+            Response::json(['erro' => 'Sua conta foi desativada ou removida. Faça login novamente.'], 401);
+            exit;
+        }
+
+        // Reespelha cargo e permissões, para que mudanças feitas na tela
+        // de Cargos valham na próxima requisição, sem precisar relogar.
+        $_SESSION['perfil'] = $atual['perfil'];
+        $_SESSION['nome'] = $atual['nome'];
+        $_SESSION['email'] = $atual['email'];
+        $_SESSION['id_cargo'] = $atual['id_cargo'] !== null ? (int) $atual['id_cargo'] : null;
+        $_SESSION['permissoes'] = $_SESSION['id_cargo'] !== null
+            ? (new CargoRepository())->permissoesDoCargo($_SESSION['id_cargo'])
+            : [];
+
+        return self::user();
     }
 
     /** Permissões do cargo do usuário logado — ver módulo de Cargos (schema.sql). */

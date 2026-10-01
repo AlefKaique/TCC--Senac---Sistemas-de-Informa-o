@@ -112,6 +112,31 @@ final class ProdutoRepository
         $stmt->execute(['delta' => $delta, 'id' => $idProduto]);
     }
 
+    /**
+     * Baixa do estoque que so acontece se houver saldo, verificado pelo
+     * proprio UPDATE. Retorna false quando nao havia saldo suficiente.
+     *
+     * Conferir o saldo antes e abater depois (duas instrucoes separadas)
+     * abre uma janela entre a leitura e a escrita: duas vendas
+     * simultaneas do mesmo produto passavam ambas pela verificacao e o
+     * estoque terminava negativo. Aqui a condicao viaja junto do UPDATE,
+     * que o InnoDB executa travando a linha.
+     */
+    public function baixarQuantidadeSeHouver(int $idProduto, float $quantidade): bool
+    {
+        $stmt = db()->prepare(
+            'UPDATE produtos
+                SET quantidade = quantidade - :quantidade
+              WHERE id_produto = :id AND quantidade >= :minimo'
+        );
+        $stmt->execute([
+            'quantidade' => $quantidade,
+            'id' => $idProduto,
+            'minimo' => $quantidade,
+        ]);
+        return $stmt->rowCount() === 1;
+    }
+
     public function inativar(int $idProduto): void
     {
         $stmt = db()->prepare("UPDATE produtos SET status = 'inativo' WHERE id_produto = :id");

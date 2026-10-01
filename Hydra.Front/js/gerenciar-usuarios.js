@@ -506,10 +506,12 @@
             const { usuario } = await window.hydraApi('/auth/me');
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
-            if (usuario.perfil !== 'administrador') {
+            // Mesma permissao que a API exige em GET /api/usuarios.
+            if (!(usuario.permissoes || []).includes('usuarios.visualizar')) {
                 window.location.href = 'controle-estoque.html';
                 return;
             }
+            window.hydraAplicarMenuPorPermissao(usuario);
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém a tela estática, sem carregar dados reais.
             return;

@@ -134,7 +134,8 @@
     let usingRealApi = false;
     // Perfil do usuário autenticado (null para o visitante da demo pública).
     // RN04: só o Administrador pode alterar preços de produtos.
-    let usuarioPerfil = null;
+    // Permissoes do usuario autenticado (vazio para o visitante da demo).
+    let usuarioPermissoes = [];
 
     /* ================= State ================= */
     const state = {
@@ -465,8 +466,12 @@
         // RN04 — só o Administrador pode alterar preços de produtos; para os
         // demais perfis (Estoquista), os campos de preço nem aparecem no
         // formulário de edição.
-        const isAdmin = usuarioPerfil === 'administrador';
-        const priceFieldsHtml = isAdmin
+        // RN04 - quem edita preco e quem tem "produtos.editar_preco", a
+        // mesma permissao que o back-end exige; antes a tela olhava o
+        // perfil legado e escondia o campo de um cargo que tinha a
+        // permissao, ou mostrava para um que nao tinha.
+        const podeEditarPreco = usuarioPermissoes.includes('produtos.editar_preco');
+        const priceFieldsHtml = podeEditarPreco
             ? `
         <div class="hydro-form-group">
           <label for="hydroEditCostPrice">Preço de custo (R$)</label>
@@ -522,7 +527,7 @@
             const quantity = Math.max(0, Number(document.getElementById('hydroEditQuantity').value) || 0);
             const minStock = Math.max(0, Number(document.getElementById('hydroEditMin').value) || 0);
             const validade = document.getElementById('hydroEditValidade').value || null;
-            // Só existem no formulário quando usuarioPerfil === 'administrador' (RN04).
+            // Só existem no formulário para quem tem produtos.editar_preco (RN04).
             const costPriceInput = document.getElementById('hydroEditCostPrice');
             const salePriceInput = document.getElementById('hydroEditSalePrice');
             const costPrice = costPriceInput ? Number(costPriceInput.value) || 0 : p.costPrice || 0;
@@ -824,15 +829,10 @@
 
         try {
             const { usuario } = await window.hydraApi('/auth/me');
-            usuarioPerfil = usuario.perfil;
+            usuarioPermissoes = usuario.permissoes || [];
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
-            if (usuario.perfil !== 'administrador') {
-                document.getElementById('hydroMenuAdminLabel').style.display = 'none';
-                document.getElementById('hydroLiEquipe').style.display = 'none';
-                document.getElementById('hydroLiConfig').style.display = 'none';
-                document.getElementById('hydroLiCargos').style.display = 'none';
-            }
+            window.hydraAplicarMenuPorPermissao(usuario);
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
             products = seedProducts();

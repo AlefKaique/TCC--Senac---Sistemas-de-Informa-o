@@ -7,11 +7,7 @@
             const { usuario } = await window.hydraApi('/auth/me');
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
-            if (usuario.perfil !== 'administrador') {
-                document.getElementById('hydroLiEquipe').style.display = 'none';
-                document.getElementById('hydroLiConfig').style.display = 'none';
-                document.getElementById('hydroLiCargos').style.display = 'none';
-            }
+            window.hydraAplicarMenuPorPermissao(usuario);
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
         }

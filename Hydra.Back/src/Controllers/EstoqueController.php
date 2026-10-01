@@ -62,17 +62,25 @@ final class EstoqueController
         }
 
         $quantidade = (float) $quantidade;
+        // Pré-checagem apenas para devolver um erro claro; quem realmente
+        // garante o saldo é o UPDATE condicional dentro da transação.
         if ($tipo === 'saida' && $quantidade > (float) $produto['quantidade']) {
             Response::json(['erro' => 'Quantidade maior que o estoque disponível'], 422);
             return;
         }
 
-        $delta = $tipo === 'entrada' ? $quantidade : -$quantidade;
-
         $pdo = db();
         $pdo->beginTransaction();
         try {
-            $this->produtos->ajustarQuantidade($idProduto, $delta);
+            if ($tipo === 'saida') {
+                if (!$this->produtos->baixarQuantidadeSeHouver($idProduto, $quantidade)) {
+                    $pdo->rollBack();
+                    Response::json(['erro' => 'Quantidade maior que o estoque disponível'], 422);
+                    return;
+                }
+            } else {
+                $this->produtos->ajustarQuantidade($idProduto, $quantidade);
+            }
             $this->movimentacoes->create(
                 $user['id_loja'],
                 $idProduto,

@@ -1,17 +1,23 @@
 (function () {
     'use strict';
 
+    /* Todo texto vindo do banco (nome/descricao de produto, por exemplo)
+       passa por aqui antes de ir para innerHTML. Sem isso, um produto
+       cadastrado com HTML no nome executaria script na sessao de quem
+       abrisse esta tela. Mesma funcao usada em controle-estoque.js. */
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str == null ? '' : str;
+        return div.innerHTML;
+    }
+
     (async function guardAdminMenu() {
         if (!window.hydraApi) return;
         try {
             const { usuario } = await window.hydraApi('/auth/me');
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
-            if (usuario.perfil !== 'administrador') {
-                document.getElementById('hydroLiEquipe').style.display = 'none';
-                document.getElementById('hydroLiConfig').style.display = 'none';
-                document.getElementById('hydroLiCargos').style.display = 'none';
-            }
+            window.hydraAplicarMenuPorPermissao(usuario);
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
         }
@@ -325,8 +331,8 @@
                     const outOfStock = p.quantity <= 0;
                     const priceLabel = outOfStock ? 'sem estoque' : isWeightUnit(p.unit) ? `${money(p.price)}/kg` : money(p.price);
                     return `<button type="button" class="hydro-suggestion" data-product-id="${p.id}" ${outOfStock ? 'disabled' : ''}>
-                        <span class="hydro-suggestion-name">${p.name}</span>
-                        <span class="hydro-suggestion-meta">${p.sku} · ${priceLabel}</span>
+                        <span class="hydro-suggestion-name">${escapeHtml(p.name)}</span>
+                        <span class="hydro-suggestion-meta">${escapeHtml(p.sku)} · ${priceLabel}</span>
                     </button>`;
                 })
                 .join('');
@@ -508,10 +514,10 @@
                 return `
                 <tr>
                     <td data-label="Item"><div class="hydro-item-thumb"><i class="hydro-ic hydro-ic-package"></i></div></td>
-                    <td data-label="Código" class="hydro-item-code">${product.sku}</td>
+                    <td data-label="Código" class="hydro-item-code">${escapeHtml(product.sku)}</td>
                     <td data-label="Descrição">
-                        <p class="hydro-item-name">${product.name}</p>
-                        <p class="hydro-item-desc">${product.desc || product.category}</p>
+                        <p class="hydro-item-name">${escapeHtml(product.name)}</p>
+                        <p class="hydro-item-desc">${escapeHtml(product.desc || product.category)}</p>
                     </td>
                     <td data-label="Qtd">${qtyCell}</td>
                     <td data-label="Unitário" class="hydro-item-unit">${weighty ? `${money(product.price)}/kg` : money(product.price)}</td>
@@ -694,9 +700,9 @@
                 <tr>
                     <td data-label="Data/Hora">${when}</td>
                     <td data-label="Pedido">#${sale.orderId}</td>
-                    <td data-label="Cliente">${sale.clienteId || '—'}</td>
+                    <td data-label="Cliente">${escapeHtml(sale.clienteId || '—')}</td>
                     <td data-label="Itens">${itemCount} ${itemCount === 1 ? 'item' : 'itens'}</td>
-                    <td data-label="Pagamento">${PAYMENT_LABELS[sale.payment] || sale.payment || '—'}</td>
+                    <td data-label="Pagamento">${escapeHtml(PAYMENT_LABELS[sale.payment] || sale.payment || '—')}</td>
                     <td data-label="Total" class="hydro-item-total">${money(sale.total)}</td>
                     <td data-label="Ações">
                         <button type="button" class="hydro-item-remove" data-view-sale="${sale.id}" aria-label="Ver detalhes da venda">
@@ -746,7 +752,7 @@
                 const unitLabel = weighty ? `${money(it.price)}/kg` : money(it.price);
                 return `
                 <tr>
-                    <td data-label="Produto">${it.name}</td>
+                    <td data-label="Produto">${escapeHtml(it.name)}</td>
                     <td data-label="Qtd">${qtyLabel}</td>
                     <td data-label="Unitário">${unitLabel}</td>
                     <td data-label="Total" class="hydro-item-total">${money(it.qty * it.price)}</td>

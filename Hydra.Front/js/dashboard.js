@@ -1,18 +1,30 @@
 (function () {
     'use strict';
 
-    // RN04 — "visualizar os relatórios financeiros do dashboard" é
-    // restrito ao Administrador. Operador de Caixa/Estoquista autenticados
-    // são redirecionados; visitante da demo pública continua vendo a tela
-    // (sem dados reais, ver init() abaixo).
-    (async function guardAdminOnly() {
+    /* Todo texto vindo do banco (nome/descricao de produto, por exemplo)
+       passa por aqui antes de ir para innerHTML. Sem isso, um produto
+       cadastrado com HTML no nome executaria script na sessao de quem
+       abrisse esta tela. Mesma funcao usada em controle-estoque.js. */
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str == null ? '' : str;
+        return div.innerHTML;
+    }
+
+    // RN04 — os indicadores financeiros do painel vem do historico de
+    // vendas, entao a tela exige a mesma permissao que a API exige em
+    // GET /api/vendas. Antes a checagem era pelo perfil legado, que
+    // divergia do que o back-end realmente autoriza. Visitante da demo
+    // publica continua vendo a tela (sem dados reais, ver init() abaixo).
+    (async function guardRelatorios() {
         if (!window.hydraApi) return;
         try {
             const { usuario } = await window.hydraApi('/auth/me');
-            if (usuario.perfil !== 'administrador') {
+            if (!(usuario.permissoes || []).includes('vendas.visualizar')) {
                 window.location.href = 'controle-estoque.html';
                 return;
             }
+            window.hydraAplicarMenuPorPermissao(usuario);
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
         } catch (err) {
@@ -271,7 +283,7 @@
                     return `
                 <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="5" fill="${fill}" fill-opacity="${opacity}" />
                 <text x="${(x + barW / 2).toFixed(1)}" y="${(y - 6).toFixed(1)}" font-size="11" font-weight="700" fill="var(--navy-900)" text-anchor="middle">${item.qty}</text>
-                <text x="${(x + barW / 2).toFixed(1)}" y="${height - 20}" font-size="10" fill="var(--muted-soft)" text-anchor="middle">${shortName(item.name)}</text>`;
+                <text x="${(x + barW / 2).toFixed(1)}" y="${height - 20}" font-size="10" fill="var(--muted-soft)" text-anchor="middle">${escapeHtml(shortName(item.name))}</text>`;
                 })
                 .join('');
 
@@ -315,8 +327,8 @@
                     const meta = STATUS_META[statusKey];
                     return `
                 <tr>
-                    <td class="hydro-alert-product">${product.name}</td>
-                    <td class="hydro-alert-sku">${product.sku || '—'}</td>
+                    <td class="hydro-alert-product">${escapeHtml(product.name)}</td>
+                    <td class="hydro-alert-sku">${escapeHtml(product.sku || '—')}</td>
                     <td><span class="hydro-alert-qty ${meta.qty}">${product.quantity}</span></td>
                     <td>${product.minStock}</td>
                     <td><span class="hydro-badge ${meta.badge}">${meta.label}</span></td>
@@ -355,8 +367,8 @@
                     const meta = EXPIRY_STATUS_META[statusKey];
                     return `
                 <tr>
-                    <td class="hydro-alert-product">${product.name}</td>
-                    <td class="hydro-alert-sku">${product.sku || '—'}</td>
+                    <td class="hydro-alert-product">${escapeHtml(product.name)}</td>
+                    <td class="hydro-alert-sku">${escapeHtml(product.sku || '—')}</td>
                     <td><span class="hydro-alert-qty ${meta.qty}">${product.quantity}</span></td>
                     <td>${formatDate(product.validade)}</td>
                     <td><span class="hydro-badge ${meta.badge}">${meta.label}</span></td>

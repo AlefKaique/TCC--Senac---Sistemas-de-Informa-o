@@ -31,6 +31,13 @@ function db(): PDO
     // adota mais horario de verao, entao -03:00 vale o ano todo.
     $timezone = Env::get('APP_TIMEZONE_OFFSET', '-03:00');
 
+    // O PHP precisa usar o MESMO fuso do MySQL. A imagem oficial do PHP
+    // nao define date.timezone e assume UTC; com o MySQL em -03:00, um
+    // prazo calculado no PHP (reset_token_expira_em) e comparado com
+    // NOW() do banco ficava 3 horas mais longo do que o pretendido - o
+    // codigo de recuperacao de senha durava ~3h15 em vez de 15 minutos.
+    date_default_timezone_set(Env::get('APP_TIMEZONE', 'America/Sao_Paulo'));
+
     $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
 
     try {
