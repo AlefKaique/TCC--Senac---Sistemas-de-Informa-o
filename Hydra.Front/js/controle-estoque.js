@@ -71,7 +71,6 @@
         const list = [];
         let seq = 1;
         Object.keys(CATALOG).forEach((category) => {
-            const prefix = category.slice(0, 2).toUpperCase();
             CATALOG[category].forEach(([name, desc]) => {
                 // pseudo-aleatório determinístico baseado no índice, para um resultado plausível
                 const r = (seq * 37) % 100;
@@ -94,7 +93,6 @@
                     id: seq,
                     name,
                     desc,
-                    sku: `${prefix}-${(1000 + seq)}-${String(seq % 30).padStart(2, '0')}`,
                     category,
                     quantity,
                     minStock,
@@ -114,8 +112,6 @@
             id: p.id_produto,
             name: p.nome,
             desc: p.descricao || '',
-            sku: p.codigo_barras || `PRD-${p.id_produto}`,
-            codigoBarras: p.codigo_barras || null,
             category: p.categoria,
             quantity: Number(p.quantidade),
             minStock: Number(p.estoque_minimo),
@@ -194,6 +190,31 @@
         return `${d}/${m}/${y}`;
     }
 
+    /* Data de hoje em YYYY-MM-DD no fuso local. toISOString() não serve
+       aqui: é UTC, então em UTC-3 depois das 21h devolveria o dia seguinte
+       e recusaria um produto que vence hoje. (O toIsoDate acima é só para
+       as datas do catálogo de demonstração.) */
+    function todayIso() {
+        const d = new Date();
+        const mes = String(d.getMonth() + 1).padStart(2, '0');
+        const dia = String(d.getDate()).padStart(2, '0');
+        return `${d.getFullYear()}-${mes}-${dia}`;
+    }
+
+    /* Mesma normalização do cadastro (produtos.js): colapsa espaços, corta
+       no tamanho da coluna e reaproveita a grafia de uma categoria já usada
+       na loja, para "bebidas" e " Bebidas " não virarem duas opções no
+       filtro. Duplicada de propósito — o projeto não tem bundler e cada
+       tela carrega seu próprio script. */
+    function normalizeCategory(value, existing) {
+        const cleaned = String(value || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+        if (!cleaned) return '';
+        const hit = (existing || []).find(
+            (c) => c.toLocaleLowerCase('pt-BR') === cleaned.toLocaleLowerCase('pt-BR')
+        );
+        return hit || cleaned.charAt(0).toLocaleUpperCase('pt-BR') + cleaned.slice(1);
+    }
+
     // Formata "YYYY-MM-DD HH:MM:SS" (retorno do MySQL) como "DD/MM/AAAA HH:MM".
     function formatDateTime(datetime) {
         const [datePart, timePart] = String(datetime).split(' ');
@@ -225,10 +246,7 @@
     function getFilteredProducts() {
         return products.filter((p) => {
             const status = getStatus(p);
-            const matchesSearch =
-                !state.search ||
-                p.name.toLowerCase().includes(state.search) ||
-                p.sku.toLowerCase().includes(state.search);
+            const matchesSearch = !state.search || p.name.toLowerCase().includes(state.search);
             const matchesCategory = !state.category || p.category === state.category;
             const matchesStatus = !state.status || status === state.status;
             const matchesValidade = !state.validade || getExpiryStatus(p) === state.validade;
@@ -313,7 +331,6 @@
                 </div>
               </div>
             </td>
-            <td class="hydro-sku" data-label="Código de barras">${escapeHtml(p.sku)}</td>
             <td data-label="Lote">${p.lote ? escapeHtml(p.lote) : '<span class="hydro-text-muted">—</span>'}</td>
             <td data-label="Categoria">${escapeHtml(p.category)}</td>
             <td class="hydro-qty" data-label="Quantidade">${p.quantity}</td>
@@ -442,7 +459,6 @@
             title: p.name,
             bodyHtml: `
         <div class="hydro-detail-row"><span>Descrição</span><span>${escapeHtml(p.desc)}</span></div>
-        <div class="hydro-detail-row"><span>Código de barras</span><span>${escapeHtml(p.sku)}</span></div>
         <div class="hydro-detail-row"><span>Lote</span><span>${p.lote ? escapeHtml(p.lote) : '—'}</span></div>
         <div class="hydro-detail-row"><span>Categoria</span><span>${escapeHtml(p.category)}</span></div>
         <div class="hydro-detail-row"><span>Quantidade</span><span>${p.quantity} un.</span></div>
@@ -496,9 +512,11 @@
         </div>
         <div class="hydro-form-group">
           <label for="hydroEditCategory">Categoria</label>
-          <select id="hydroEditCategory">
-            ${categories.map((c) => `<option value="${escapeHtml(c)}" ${c === p.category ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}
-          </select>
+          <input type="text" id="hydroEditCategory" list="hydroEditCategoryList" maxlength="60"
+                 autocomplete="off" value="${escapeHtml(p.category)}">
+          <datalist id="hydroEditCategoryList">
+            ${categories.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('')}
+          </datalist>
         </div>${priceFieldsHtml}
         <div class="hydro-form-group">
           <label for="hydroEditQuantity">Quantidade</label>
@@ -510,7 +528,8 @@
         </div>
         <div class="hydro-form-group">
           <label for="hydroEditValidade">Data de validade</label>
-          <input type="date" id="hydroEditValidade" value="${p.validade || ''}">
+          <input type="date" id="hydroEditValidade" value="${p.validade || ''}"
+                 min="${p.validade && p.validade < todayIso() ? p.validade : todayIso()}">
         </div>
       `,
             footerHtml: `
@@ -523,7 +542,7 @@
         document.getElementById('hydroModalSaveBtn').addEventListener('click', async () => {
             const name = document.getElementById('hydroEditName').value.trim();
             const desc = document.getElementById('hydroEditDesc').value.trim();
-            const category = document.getElementById('hydroEditCategory').value;
+            const category = normalizeCategory(document.getElementById('hydroEditCategory').value, categories);
             const quantity = Math.max(0, Number(document.getElementById('hydroEditQuantity').value) || 0);
             const minStock = Math.max(0, Number(document.getElementById('hydroEditMin').value) || 0);
             const validade = document.getElementById('hydroEditValidade').value || null;
@@ -537,8 +556,21 @@
                 showToast('Informe o nome do produto');
                 return;
             }
+            // A categoria virou campo livre (antes era um <select>, que nunca
+            // podia ficar vazio) — sem esta guarda o usuário só veria a
+            // mensagem genérica do back-end.
+            if (!category) {
+                showToast('Informe a categoria do produto');
+                return;
+            }
             if (salePriceInput && salePrice <= 0) {
                 showToast('Informe um preço de venda válido');
+                return;
+            }
+            // Mesma regra do cadastro, mas só quando a data muda: um produto
+            // que venceu na prateleira continua editável (RF19).
+            if (validade && validade !== p.validade && validade < todayIso()) {
+                showToast('A data de validade informada já passou');
                 return;
             }
 
@@ -560,7 +592,6 @@
                         body: {
                             nome: name,
                             descricao: desc,
-                            codigo_barras: p.codigoBarras,
                             categoria: category,
                             preco_custo: costPrice || null,
                             preco_venda: salePrice,
@@ -769,11 +800,21 @@
     }
 
     /* ================= Wiring: filters, search, buttons ================= */
-    document.getElementById('hydroSearchInput').addEventListener('input', (e) => {
+    const searchInputEl = document.getElementById('hydroSearchInput');
+
+    searchInputEl.addEventListener('input', (e) => {
         state.search = e.target.value.trim().toLowerCase();
         state.page = 1;
         renderTable();
     });
+
+    /* O Dashboard manda o termo pela URL (?busca=) ao clicar em "Ver produto"
+       nos alertas de estoque e validade — aqui a tela já abre filtrada. */
+    const buscaDaUrl = new URLSearchParams(window.location.search).get('busca');
+    if (buscaDaUrl) {
+        searchInputEl.value = buscaDaUrl;
+        state.search = buscaDaUrl.trim().toLowerCase();
+    }
 
     document.getElementById('hydroFilterCategoria').addEventListener('change', (e) => {
         state.category = e.target.value;

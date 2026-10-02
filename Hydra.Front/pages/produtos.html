@@ -47,7 +47,7 @@
                 </nav>
 
                 <div class="hydro-menu hydro-menu-admin">
-                    <p class="hydro-menu-label"><span class="hydro-menu-restricted">Admin</span></p>
+                    <p class="hydro-menu-label" id="hydroMenuAdminLabel"><span class="hydro-menu-restricted">Admin</span></p>
                     <ul>
                         <li id="hydroLiEquipe"><a href="gerenciar-usuarios.html"><i
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
@@ -104,19 +104,11 @@
 
                         <div class="hydro-form-row">
                             <div class="hydro-form-group">
-                                <label for="hydroProdBarcode">Código de barras</label>
-                                <input type="text" id="hydroProdBarcode" name="codigoBarras" placeholder="Ex.: 7891000100103" inputmode="numeric" maxlength="20">
-                            </div>
-                            <div class="hydro-form-group">
                                 <label for="hydroProdCategory">Categoria</label>
-                                <select id="hydroProdCategory" name="categoria" required>
-                                    <option value="" selected disabled>Selecione</option>
-                                    <option value="alimentos">Alimentos</option>
-                                    <option value="bebidas">Bebidas</option>
-                                    <option value="limpeza">Limpeza</option>
-                                    <option value="higiene">Higiene e beleza</option>
-                                    <option value="outros">Outros</option>
-                                </select>
+                                <input type="text" id="hydroProdCategory" name="categoria" list="hydroCategoryList"
+                                    placeholder="Ex.: Bebidas" maxlength="60" autocomplete="off" required>
+                                <datalist id="hydroCategoryList"></datalist>
+                                <span class="hydro-field-hint">Escolha uma categoria já usada na loja ou digite uma nova</span>
                                 <span class="hydro-field-error" data-error-for="hydroProdCategory"></span>
                             </div>
                         </div>
@@ -168,6 +160,7 @@
                                 <label for="hydroProdExpiry">Data de validade</label>
                                 <input type="date" id="hydroProdExpiry" name="validade">
                                 <span class="hydro-field-hint">Deixe em branco se o produto não vencer</span>
+                                <span class="hydro-field-error" data-error-for="hydroProdExpiry"></span>
                             </div>
                         </div>
 

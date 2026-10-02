@@ -127,6 +127,13 @@ da raiz para servir o frontend e a API PHP no mesmo Web Service.
   recrie o banco primeiro (`DROP DATABASE hydra_db; CREATE DATABASE
   hydra_db ...`, como indicado no cabeçalho do próprio arquivo) e execute
   tudo de novo. **Isso apaga os dados existentes.**
+
+  Se o banco já estava em uso antes da remoção do código de barras e você
+  quer **preservar os dados** em vez de recriá-lo, rode só os dois
+  comandos documentados no comentário acima da tabela `produtos` em
+  `schema.sql`, na ordem indicada lá (primeiro o `DROP INDEX`, depois o
+  `DROP COLUMN` — inverter a ordem passaria a permitir apenas um produto
+  por loja).
 5. O endereço público do sistema será a raiz do serviço; o Render verificará
   automaticamente `/api/health`.
 

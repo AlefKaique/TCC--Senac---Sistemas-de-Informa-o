@@ -47,7 +47,7 @@
                 </nav>
 
                 <div class="hydro-menu hydro-menu-admin">
-                    <p class="hydro-menu-label"><span class="hydro-menu-restricted">Admin</span></p>
+                    <p class="hydro-menu-label" id="hydroMenuAdminLabel"><span class="hydro-menu-restricted">Admin</span></p>
                     <ul>
                         <li id="hydroLiEquipe"><a href="gerenciar-usuarios.html"><i
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
@@ -92,15 +92,28 @@
                 <!-- Subtela: Nova Venda (PDV) -->
                 <div id="hydroSaleView">
 
-                <!-- Busca / leitura de código de barras -->
+                <!-- Busca de produto (filtra a vitrine de produtos em estoque) -->
                 <div class="hydro-scan-bar">
-                    <i class="hydro-ic hydro-ic-barcode"></i>
+                    <i class="hydro-ic hydro-ic-search"></i>
                     <input type="text" id="hydroProductSearch" autocomplete="off"
-                        placeholder="Digite o código de barras ou nome do produto...">
-                    <div class="hydro-scan-suggestions" id="hydroSuggestions"></div>
+                        placeholder="Buscar produto pelo nome...">
                 </div>
 
                 <div class="hydro-pos-layout">
+
+                  <div class="hydro-pos-main">
+
+                    <!-- Produtos em estoque: a vitrine da venda -->
+                    <section class="hydro-catalog-panel">
+                        <div class="hydro-catalog-toolbar">
+                            <p class="hydro-order-section-label">Produtos em estoque</p>
+                            <select id="hydroCatalogCategory" aria-label="Filtrar por categoria">
+                                <option value="">Todas as categorias</option>
+                            </select>
+                        </div>
+                        <div class="hydro-catalog-grid" id="hydroCatalogGrid"></div>
+                        <p class="hydro-catalog-empty" id="hydroCatalogEmpty" hidden>Nenhum produto encontrado para esta busca.</p>
+                    </section>
 
                     <!-- Itens do pedido -->
                     <section class="hydro-items-panel">
@@ -109,7 +122,6 @@
                                 <thead>
                                     <tr>
                                         <th class="hydro-col-thumb">Item</th>
-                                        <th>Código</th>
                                         <th>Descrição</th>
                                         <th>Qtd</th>
                                         <th>Unitário</th>
@@ -120,24 +132,23 @@
                                 <tbody id="hydroOrderItems"></tbody>
                             </table>
                             <div class="hydro-items-empty" id="hydroOrderEmpty">
-                                <i class="hydro-ic hydro-ic-barcode"></i>
+                                <i class="hydro-ic hydro-ic-package"></i>
                                 <p class="hydro-items-empty-title">Nenhum item adicionado</p>
-                                <p class="hydro-items-empty-desc">Escaneie o código de barras ou pesquise um produto para começar a venda.</p>
+                                <p class="hydro-items-empty-desc">Clique em um produto da lista acima para começar a venda.</p>
                             </div>
                         </div>
                     </section>
+
+                  </div>
 
                     <!-- Resumo do pedido -->
                     <aside class="hydro-order-card" id="hydroOrderCard">
                         <div class="hydro-order-header">
                             <div>
                                 <h2 id="hydroOrderTitle">Pedido #0000</h2>
-                                <p id="hydroOrderClient">Cliente ID #—</p>
+                                <p id="hydroOrderClient">Operador: —</p>
                             </div>
                             <div class="hydro-order-header-actions">
-                                <button class="hydro-icon-btn hydro-icon-btn-sm" id="hydroEditClientBtn" aria-label="Editar cliente">
-                                    <i class="hydro-ic hydro-ic-pencil"></i>
-                                </button>
                                 <button class="hydro-icon-btn hydro-icon-btn-sm hydro-icon-btn-danger" id="hydroClearOrderBtn" aria-label="Cancelar pedido">
                                     <i class="hydro-ic hydro-ic-trash"></i>
                                 </button>
@@ -208,7 +219,7 @@
                     <div class="hydro-scan-bar">
                         <i class="hydro-ic hydro-ic-search"></i>
                         <input type="text" id="hydroHistorySearch" autocomplete="off"
-                            placeholder="Buscar por número do pedido ou cliente...">
+                            placeholder="Buscar por número do pedido ou usuário...">
                     </div>
 
                     <section class="hydro-items-panel">
@@ -218,7 +229,7 @@
                                     <tr>
                                         <th>Data/Hora</th>
                                         <th>Pedido</th>
-                                        <th>Cliente</th>
+                                        <th>Usuário</th>
                                         <th>Itens</th>
                                         <th>Pagamento</th>
                                         <th>Total</th>
@@ -228,7 +239,7 @@
                                 <tbody id="hydroHistoryBody"></tbody>
                             </table>
                             <div class="hydro-items-empty">
-                                <i class="hydro-ic hydro-ic-barcode"></i>
+                                <i class="hydro-ic hydro-ic-package"></i>
                                 <p class="hydro-items-empty-title">Nenhuma venda encontrada</p>
                                 <p class="hydro-items-empty-desc">As vendas finalizadas no Caixa aparecem aqui.</p>
                             </div>
@@ -295,8 +306,8 @@
 
                 <div class="hydro-sale-detail-meta">
                     <div>
-                        <span>Cliente</span>
-                        <strong id="hydroSaleDetailClient">—</strong>
+                        <span>Usuário</span>
+                        <strong id="hydroSaleDetailUser">—</strong>
                     </div>
                     <div>
                         <span>Forma de pagamento</span>

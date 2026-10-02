@@ -114,12 +114,6 @@ final class UsuarioRepository
         ]);
     }
 
-    public function delete(int $idUsuario): void
-    {
-        $stmt = db()->prepare('DELETE FROM usuarios WHERE id_usuario = :id');
-        $stmt->execute(['id' => $idUsuario]);
-    }
-
     public function setResetToken(int $idUsuario, string $token, string $expiraEm): void
     {
         $stmt = db()->prepare(

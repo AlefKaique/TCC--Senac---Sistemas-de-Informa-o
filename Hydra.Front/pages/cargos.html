@@ -49,13 +49,13 @@
                 </nav>
 
                 <div class="hydro-menu hydro-menu-admin">
-                    <p class="hydro-menu-label"><span class="hydro-menu-restricted">Admin</span></p>
+                    <p class="hydro-menu-label" id="hydroMenuAdminLabel"><span class="hydro-menu-restricted">Admin</span></p>
                     <ul>
-                        <li><a href="gerenciar-usuarios.html"><i
+                        <li id="hydroLiEquipe"><a href="gerenciar-usuarios.html"><i
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
-                        <li><a href="configuracoes-loja.html"><i
+                        <li id="hydroLiConfig"><a href="configuracoes-loja.html"><i
                                     class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span></a></li>
-                        <li><a href="#" class="hydro-active" data-view="cargos"><i
+                        <li id="hydroLiCargos"><a href="#" class="hydro-active" data-view="cargos"><i
                                     class="hydro-ic hydro-ic-shield"></i><span>Cargos</span></a></li>
                     </ul>
                 </div>
@@ -76,9 +76,9 @@
                         <h1>Cargos</h1>
                         <span class="hydro-restricted-badge"><i class="hydro-ic hydro-ic-lock"></i> Apenas Administrador</span>
                     </div>
+                    <!-- Navegação entre telas é do menu lateral; o atalho de
+                         ícone para Equipe que ficava aqui foi removido. -->
                     <div class="hydro-topbar-actions">
-                        <a class="hydro-icon-btn" href="gerenciar-usuarios.html" aria-label="Equipe"><i
-                                class="hydro-ic hydro-ic-users"></i></a>
                         <button class="hydro-icon-btn" aria-label="Notificações">
                             <i class="hydro-ic hydro-ic-bell"></i>
                             <span class="hydro-notif-dot"></span>
@@ -127,18 +127,10 @@
                                 </button>
                             </header>
 
-                            <!-- Abas: separam identidade e permissões para encurtar
-                                 a rolagem do editor. -->
-                            <div class="hydro-cargo-tabs" role="tablist">
-                                <button type="button" class="hydro-cargo-tab hydro-active" role="tab" aria-selected="true"
-                                        aria-controls="hydroCargoPanelDados" data-tab="dados">Dados</button>
-                                <button type="button" class="hydro-cargo-tab" role="tab" aria-selected="false"
-                                        aria-controls="hydroCargoPanelPermissoes" data-tab="permissoes">
-                                    Permissões <span class="hydro-cargo-tab-count" id="hydroCargoPermCount">0</span>
-                                </button>
-                            </div>
-
-                            <div class="hydro-cargo-tabpanel" id="hydroCargoPanelDados" role="tabpanel" data-panel="dados">
+                            <!-- Um painel só, sem abas: com 5 permissões, a
+                                 identidade do cargo e o que ele pode fazer
+                                 cabem na mesma tela. -->
+                            <div class="hydro-cargo-body">
                                 <div class="hydro-form-group">
                                     <label for="hydroCargoNome">Nome do cargo</label>
                                     <input type="text" id="hydroCargoNome" maxlength="60" placeholder="Ex.: Supervisor de Loja">
@@ -150,19 +142,19 @@
                                 </div>
 
                                 <div class="hydro-form-group">
-                                    <label>Cor do cargo</label>
+                                    <label for="hydroCargoCorInput">Cor do cargo</label>
                                     <div class="hydro-cargo-color-row">
-                                        <div class="hydro-cargo-swatches" id="hydroCargoSwatches"></div>
-                                        <label class="hydro-cargo-custom-color" title="Escolher outra cor">
+                                        <label class="hydro-cargo-custom-color" title="Escolher a cor do cargo">
                                             <input type="color" id="hydroCargoCorInput" value="#5865F2">
                                         </label>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="hydro-cargo-tabpanel" id="hydroCargoPanelPermissoes" role="tabpanel" data-panel="permissoes" hidden>
-                                <p class="hydro-cargo-panel-hint">Marque o que esse cargo pode fazer. Os usuários herdam exatamente o que estiver marcado aqui.</p>
-                                <div id="hydroCargoPermGroups"></div>
+                                <div class="hydro-form-group">
+                                    <label>Permissões</label>
+                                    <p class="hydro-cargo-panel-hint">Marque o que esse cargo pode fazer. Os usuários herdam exatamente o que estiver marcado aqui.</p>
+                                    <div class="hydro-cargo-perm-list" id="hydroCargoPermList"></div>
+                                </div>
                             </div>
 
                             <!-- Zona de exclusão: fica sempre ao final do editor, fora das
@@ -196,7 +188,6 @@
             <div class="hydro-modal" role="dialog" aria-modal="true">
                 <div class="hydro-modal-header">
                     <h2 id="hydroModalTitle">Título</h2>
-                    <button class="hydro-modal-close" id="hydroModalClose" aria-label="Fechar">&times;</button>
                 </div>
                 <div class="hydro-modal-body" id="hydroModalBody"></div>
                 <div class="hydro-modal-footer" id="hydroModalFooter"></div>

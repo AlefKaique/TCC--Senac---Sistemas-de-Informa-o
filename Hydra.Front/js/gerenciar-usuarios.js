@@ -126,11 +126,15 @@
             <td data-label="Loja">${escapeHtml(lojaAtual ? lojaAtual.nome_loja : '')}</td>
             <td data-label="Status"><span class="hydro-badge ${statusBadgeClass(u.status)}">${STATUS_LABEL[u.status]}</span></td>
             <td data-label="Criado em">${formatDate(u.data_criacao)}</td>
+            <!-- Só editar. Funcionário não se exclui: as vendas e as
+                 movimentações de estoque gravam quem fez cada lançamento, e
+                 apagar o usuário apagaria a autoria do histórico da loja.
+                 Para revogar o acesso de quem saiu, o campo Status fica no
+                 modal de edição — um caminho menos acidental que um botão
+                 de ligar/desligar em cada linha da tabela. -->
             <td class="hydro-col-actions" data-label="Ações">
               <div class="hydro-row-actions">
                 <button class="hydro-action-btn hydro-action-edit" title="Editar usuário" data-id="${u.id_usuario}"><i class="hydro-ic hydro-ic-pencil"></i></button>
-                <button class="hydro-action-btn hydro-action-toggle" title="${u.status === 'ativo' ? 'Desativar usuário' : 'Ativar usuário'}" data-id="${u.id_usuario}"><i class="hydro-ic hydro-ic-power"></i></button>
-                <button class="hydro-action-btn hydro-action-delete" title="Excluir usuário" data-id="${u.id_usuario}"><i class="hydro-ic hydro-ic-trash"></i></button>
               </div>
             </td>
           </tr>`)
@@ -191,30 +195,6 @@
         document.querySelectorAll('.hydro-action-edit').forEach((btn) =>
             btn.addEventListener('click', () => openEditModal(Number(btn.dataset.id)))
         );
-        document.querySelectorAll('.hydro-action-toggle').forEach((btn) =>
-            btn.addEventListener('click', () => toggleStatus(Number(btn.dataset.id)))
-        );
-        document.querySelectorAll('.hydro-action-delete').forEach((btn) =>
-            btn.addEventListener('click', () => openDeleteModal(Number(btn.dataset.id)))
-        );
-    }
-
-    async function toggleStatus(id) {
-        const u = users.find((x) => x.id_usuario === id);
-        if (!u) return;
-        const novoStatus = u.status === 'ativo' ? 'inativo' : 'ativo';
-        try {
-            const { usuario } = await window.hydraApi(`/usuarios/${id}`, {
-                method: 'PUT',
-                body: { nome: u.nome, email: u.email, id_cargo: u.id_cargo, status: novoStatus },
-            });
-            Object.assign(u, usuario);
-            renderStats();
-            renderTable();
-            showToast(novoStatus === 'ativo' ? `"${u.nome}" foi ativado` : `"${u.nome}" foi desativado`);
-        } catch (err) {
-            showToast(err.message);
-        }
     }
 
     /* ================= Modal engine ================= */
@@ -235,7 +215,8 @@
         modalOverlay.classList.remove('hydro-show');
     }
 
-    document.getElementById('hydroModalClose').addEventListener('click', closeModal);
+    // O "x" do cabeçalho foi removido: cada modal fecha pelo botão
+    // "Fechar"/"Cancelar" do rodapé, pelo Esc ou clicando fora.
     modalOverlay.addEventListener('click', (e) => {
         if (e.target === modalOverlay) closeModal();
     });
@@ -402,35 +383,9 @@
         });
     }
 
-    /* ---- Excluir usuário (RN21: exige confirmação prévia) ---- */
-    function openDeleteModal(id) {
-        const u = users.find((x) => x.id_usuario === id);
-        if (!u) return;
-
-        openModal({
-            title: 'Confirmar exclusão',
-            bodyHtml: `<p>Tem certeza de que deseja excluir o usuário <strong>${escapeHtml(u.nome)}</strong>? Essa ação não pode ser desfeita.</p>`,
-            footerHtml: `
-        <button class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroModalCancelBtn">Cancelar</button>
-        <button class="hydro-btn hydro-btn-danger hydro-btn-sm" id="hydroModalConfirmBtn">Excluir</button>
-      `,
-        });
-
-        document.getElementById('hydroModalCancelBtn').addEventListener('click', closeModal);
-        document.getElementById('hydroModalConfirmBtn').addEventListener('click', async () => {
-            try {
-                await window.hydraApi(`/usuarios/${id}`, { method: 'DELETE' });
-                users = users.filter((x) => x.id_usuario !== id);
-                closeModal();
-                renderStats();
-                renderTable();
-                showToast(`Usuário "${u.nome}" removido`);
-            } catch (err) {
-                closeModal();
-                showToast(err.message);
-            }
-        });
-    }
+    /* Não existe modal de exclusão de usuário, e nem endpoint: a API não
+       tem mais DELETE /api/usuarios/{id}. Funcionário que sai da loja é
+       desativado pelo campo Status do modal de edição acima. */
 
     /* ================= Toast ================= */
     let toastTimer = null;
@@ -511,7 +466,7 @@
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
             // Mesma permissao que a API exige em GET /api/usuarios.
-            if (!(usuario.permissoes || []).includes('usuarios.visualizar')) {
+            if (!(usuario.permissoes || []).includes('equipe.gerenciar')) {
                 window.location.href = 'controle-estoque.html';
                 return;
             }
@@ -522,7 +477,7 @@
         }
 
         // As duas chamadas são independentes: GET /api/loja exige
-        // "loja.visualizar", que nem todo cargo com acesso à Equipe tem.
+        // "loja.configurar", que nem todo cargo com acesso à Equipe tem.
         // Com Promise.all, um 403 ali derrubava também a lista de usuários
         // e a de cargos, e o seletor de cargo abria vazio.
         const [lojaRes, usersRes] = await Promise.allSettled([

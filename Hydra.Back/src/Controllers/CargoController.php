@@ -24,7 +24,7 @@ final class CargoController
     /** GET /api/cargos — lista os cargos da loja + o catálogo de permissões disponíveis. */
     public function index(): void
     {
-        $user = Auth::requirePermission('cargos.visualizar');
+        $user = Auth::requirePermission('equipe.gerenciar');
         $this->cargos->ensureDefaults($user['id_loja']);
 
         Response::json([
@@ -36,7 +36,7 @@ final class CargoController
     /** POST /api/cargos */
     public function store(): void
     {
-        $user = Auth::requirePermission('cargos.criar');
+        $user = Auth::requirePermission('equipe.gerenciar');
         $dados = Request::json();
 
         $validado = $this->validar($dados, $user['id_loja']);
@@ -59,7 +59,7 @@ final class CargoController
     /** PUT /api/cargos/{id} */
     public function update(int $id): void
     {
-        $user = Auth::requirePermission('cargos.editar');
+        $user = Auth::requirePermission('equipe.gerenciar');
         $cargo = $this->cargos->find($id, $user['id_loja']);
         if ($cargo === null) {
             Response::json(['erro' => 'Cargo não encontrado'], 404);
@@ -73,15 +73,16 @@ final class CargoController
             return;
         }
 
-        // Evita que a edição das permissões deixe a loja sem ninguém
-        // capaz de gerenciar usuários (ex.: tirar "Gerenciar Usuários"
-        // do único cargo ativo que concedia essa permissão).
+        // Evita que a edição das permissões deixe a loja sem ninguém capaz
+        // de administrar (ex.: tirar "Equipe e Cargos" do único cargo ativo
+        // que concedia essa permissão — ninguém mais abriria estas telas
+        // para desfazer a mudança).
         if (
-            !in_array('usuarios.editar', $validado['codigos'], true)
+            !in_array('equipe.gerenciar', $validado['codigos'], true)
             && $this->cargos->countUsuariosAtivos($id) > 0
-            && $this->cargos->countUsuariosAtivosComPermissaoExcetoCargo($user['id_loja'], 'usuarios.editar', $id) === 0
+            && $this->cargos->countUsuariosAtivosComPermissaoExcetoCargo($user['id_loja'], 'equipe.gerenciar', $id) === 0
         ) {
-            Response::json(['erro' => 'A loja precisa manter pelo menos um cargo ativo com a permissão "Editar Usuários"'], 422);
+            Response::json(['erro' => 'A loja precisa manter pelo menos um cargo ativo com a permissão "Equipe e Cargos"'], 422);
             return;
         }
 
@@ -97,7 +98,7 @@ final class CargoController
     /** DELETE /api/cargos/{id} */
     public function destroy(int $id): void
     {
-        $user = Auth::requirePermission('cargos.excluir');
+        $user = Auth::requirePermission('equipe.gerenciar');
         $cargo = $this->cargos->find($id, $user['id_loja']);
         if ($cargo === null) {
             Response::json(['erro' => 'Cargo não encontrado'], 404);

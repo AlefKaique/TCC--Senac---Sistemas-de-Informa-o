@@ -44,14 +44,19 @@ window.hydraApi = async function hydraApi(path, options = {}) {
  * itens, inclusive Cargos, que respondia 403 ao ser aberto; e um cargo
  * com "usuarios.visualizar" nao via Equipe, embora a API o autorizasse.
  *
+ * Equipe e Cargos dependem da mesma permissao e aparecem ou desaparecem
+ * juntas: sao duas vistas da mesma autoridade. O item Cargos tambem e a
+ * UNICA entrada para aquela tela — o botao "Gerenciar cargos" que existia
+ * na tela de Equipe foi removido, para nao duplicar o menu.
+ *
  * Recebe o objeto devolvido por GET /api/auth/me.
  */
 window.hydraAplicarMenuPorPermissao = function hydraAplicarMenuPorPermissao(usuario) {
   const permissoes = (usuario && usuario.permissoes) || [];
   const itens = [
-    ['hydroLiEquipe', 'usuarios.visualizar'],
-    ['hydroLiConfig', 'loja.visualizar'],
-    ['hydroLiCargos', 'cargos.visualizar'],
+    ['hydroLiEquipe', 'equipe.gerenciar'],
+    ['hydroLiConfig', 'loja.configurar'],
+    ['hydroLiCargos', 'equipe.gerenciar'],
   ];
 
   let algumVisivel = false;

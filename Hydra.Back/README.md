@@ -50,32 +50,90 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | GET    | `/api/auth/me`                       | logado | Usuário autenticado atual, com suas permissões |
 | POST   | `/api/auth/esqueci-senha`            | pública | Envia código de verificação por e-mail (Fig. 15) |
 | POST   | `/api/auth/redefinir-senha`          | pública (via código) | Valida o código e define nova senha |
-| GET    | `/api/usuarios`                      | `usuarios.visualizar` | Lista usuários e cargos da loja |
-| POST   | `/api/usuarios`                      | `usuarios.criar` | Cria usuário não administrativo |
-| PUT    | `/api/usuarios/{id}`                 | `usuarios.editar` | Edita nome, e-mail, cargo e situação |
-| DELETE | `/api/usuarios/{id}`                 | `usuarios.excluir` | Remove usuário (RN21: confirmação é no front) |
-| GET    | `/api/cargos`                        | `cargos.visualizar` | Lista cargos da loja + catálogo de permissões |
-| POST   | `/api/cargos`                        | `cargos.criar` | Cria cargo |
-| PUT    | `/api/cargos/{id}`                   | `cargos.editar` | Altera nome, cor, descrição e permissões |
-| DELETE | `/api/cargos/{id}`                   | `cargos.excluir` | Exclui cargo que não seja de sistema |
-| GET    | `/api/produtos`                      | `produtos.visualizar` | Catálogo da loja (Controle de Estoque) |
-| POST   | `/api/produtos`                      | `produtos.criar` | Cadastra produto (Fig. 25) |
-| PUT    | `/api/produtos/{id}`                 | `produtos.editar` | Edita produto (preços exigem `produtos.editar_preco`, RN04) |
-| DELETE | `/api/produtos/{id}`                 | `produtos.excluir` | Exclui ou inativa o produto (RN03) |
-| GET    | `/api/produtos/{id}/movimentacoes`   | `estoque.visualizar` | Histórico de entradas/saídas do produto (RF10) |
-| GET    | `/api/estoque/movimentacoes`         | `estoque.visualizar` | Movimentações da loja (Dashboard, RF06) |
-| POST   | `/api/estoque/movimentacoes`         | `estoque.movimentar` | Lança entrada ou saída manual (RF03/RF12) |
-| GET    | `/api/vendas`                        | `vendas.visualizar` | Histórico de vendas com itens e pagamentos |
-| POST   | `/api/vendas`                        | `vendas.registrar` | Finaliza venda (itens, pagamentos e desconto) |
-| GET    | `/api/loja`                          | `loja.visualizar` | Dados da loja (Configurações da Loja) |
+| GET    | `/api/usuarios`                      | `equipe.gerenciar` | Lista usuários e cargos da loja |
+| POST   | `/api/usuarios`                      | `equipe.gerenciar` | Cria usuário não administrativo |
+| PUT    | `/api/usuarios/{id}`                 | `equipe.gerenciar` | Edita nome, e-mail, cargo e situação (ativo/inativo) |
+| GET    | `/api/cargos`                        | `equipe.gerenciar` | Lista cargos da loja + catálogo de permissões |
+| POST   | `/api/cargos`                        | `equipe.gerenciar` | Cria cargo |
+| PUT    | `/api/cargos/{id}`                   | `equipe.gerenciar` | Altera nome, cor, descrição e permissões |
+| DELETE | `/api/cargos/{id}`                   | `equipe.gerenciar` | Exclui cargo que não seja de sistema |
+| GET    | `/api/produtos`                      | `estoque.gerenciar` **ou** `vendas.operar` | Catálogo da loja (Controle de Estoque e Caixa) |
+| POST   | `/api/produtos`                      | `estoque.gerenciar` | Cadastra produto (Fig. 25) |
+| PUT    | `/api/produtos/{id}`                 | `estoque.gerenciar` | Edita produto (preços exigem `produtos.editar_preco`, RN04) |
+| DELETE | `/api/produtos/{id}`                 | `estoque.gerenciar` | Exclui ou inativa o produto (RN03) |
+| GET    | `/api/produtos/{id}/movimentacoes`   | `estoque.gerenciar` | Histórico de entradas/saídas do produto (RF10) |
+| GET    | `/api/estoque/movimentacoes`         | `estoque.gerenciar` | Movimentações da loja (Dashboard, RF06) |
+| POST   | `/api/estoque/movimentacoes`         | `estoque.gerenciar` | Lança entrada ou saída manual (RF03/RF12) |
+| GET    | `/api/vendas`                        | `vendas.operar` | Histórico de vendas com itens, pagamentos e o nome do usuário que registrou |
+| POST   | `/api/vendas`                        | `vendas.operar` | Finaliza venda (itens, pagamentos e desconto) |
+| GET    | `/api/loja`                          | `loja.configurar` | Dados da loja (Configurações da Loja) |
 | PUT    | `/api/loja`                          | `loja.configurar` | Atualiza dados da loja |
 
-As permissões vivem na tabela `permissoes` e são atribuídas a cargos na
-tela "Cargos". Cada uma corresponde a uma chamada real de
-`Auth::requirePermission()` — nenhuma é apenas decorativa. O cargo do
-usuário e suas permissões são revalidados **a cada requisição**, de modo
-que inativar alguém ou mudar o cargo dele tem efeito imediato, sem
-precisar relogar.
+Não há `DELETE /api/usuarios/{id}`: **funcionário não se exclui**. As
+vendas (`vendas.id_usuario`) e as movimentações de estoque
+(`movimentacoes_estoque.id_usuario`) gravam quem fez cada lançamento, e
+apagar o usuário apagaria a autoria do histórico da loja. Para revogar o
+acesso de quem saiu, mude o status dele para `inativo` pela tela de Equipe:
+o login passa a ser recusado e a sessão aberta cai na requisição seguinte.
+
+### Cargos e permissões
+
+São **5 permissões**, uma por área do sistema. A granularidade anterior (19
+códigos, ver/criar/editar/excluir por módulo) não correspondia a nenhuma
+decisão real de um mercadinho: configura-se "quem cuida do estoque", não
+"quem pode editar mas não excluir produto".
+
+| código | nome na tela | o que libera |
+|---|---|---|
+| `estoque.gerenciar` | Estoque e Produtos | cadastrar, editar e excluir produtos; lançar entradas e saídas |
+| `produtos.editar_preco` | Alterar Preços | alterar preço de custo e de venda (RN04). Só tem efeito somada a `estoque.gerenciar`, que é o que libera o `PUT /api/produtos/{id}` |
+| `vendas.operar` | Vendas no Caixa | operar o PDV, finalizar vendas, ver o histórico — e ler o catálogo de produtos |
+| `equipe.gerenciar` | Equipe e Cargos | as telas de Equipe e de Cargos |
+| `loja.configurar` | Configuração da Loja | ver e alterar os dados cadastrais da loja |
+
+Cada uma corresponde a uma chamada real de `Auth::requirePermission()` (ou
+`::requireAnyPermission()`, usada só em `GET /api/produtos`) — nenhuma é
+apenas decorativa. O cargo do usuário e suas permissões são revalidados **a
+cada requisição**, de modo que inativar alguém ou mudar o cargo dele tem
+efeito imediato, sem precisar relogar.
+
+**Migração de um banco da versão anterior.** `CargoRepository::ensureDefaults()`
+roda a cada login e faz tudo sozinho: cria o catálogo novo, copia o acesso
+dos códigos antigos para os novos e só então apaga os antigos. A regra
+sub-concede de propósito — só quem tinha algum código de **escrita** na área
+ganha a permissão grossa, porque ela também concede escrita. Consequência a
+conferir depois de atualizar: um cargo feito à mão que só tinha
+`produtos.visualizar`/`estoque.visualizar` termina **sem permissão alguma**,
+porque "só olhar o estoque" deixou de existir — reabra Cargos e marque o que
+ele deve poder fazer.
+
+Se algo der errado no meio da migração e ninguém mais conseguir abrir Equipe
+ou Cargos, o diagnóstico e a recuperação são por SQL:
+
+```sql
+-- O que cada cargo tem hoje:
+SELECT c.id_loja, c.id_cargo, c.nome, c.cargo_sistema,
+       COALESCE(GROUP_CONCAT(p.codigo ORDER BY p.ordem), '(nenhuma)') AS permissoes
+  FROM cargos c
+  LEFT JOIN cargo_permissoes cp ON cp.id_cargo = c.id_cargo
+  LEFT JOIN permissoes p        ON p.id_permissao = cp.id_permissao
+ GROUP BY c.id_cargo
+ ORDER BY c.id_loja, c.cargo_sistema DESC;
+
+-- Devolve todas as permissões ao cargo "Administrador" (ajuste o id_loja):
+INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
+SELECT c.id_cargo, p.id_permissao
+  FROM cargos c CROSS JOIN permissoes p
+ WHERE c.id_loja = 1 AND c.nome = 'Administrador';
+
+-- Realinha o ENUM legado, que sustenta "a loja precisa de um admin ativo":
+UPDATE usuarios u JOIN cargos c ON c.id_cargo = u.id_cargo
+   SET u.perfil = 'administrador'
+ WHERE c.id_loja = 1 AND c.nome = 'Administrador';
+```
+
+Se o catálogo tiver ficado vazio, basta fazer login: `garantirCatalogo()` o
+recria.
 
 ### Limite de tentativas
 
@@ -101,7 +159,11 @@ não têm endpoints nem tela:
 - **`clientes`** — a tabela e a FK `vendas.id_cliente` existem, e a API
   aceita `id_cliente` ao registrar uma venda, mas não há CRUD de
   clientes. A RN15 (associação opcional de cliente à venda) está
-  implementada pela metade.
+  implementada pela metade. A tela do Caixa **não expõe mais o cliente**:
+  o que o mercadinho precisa saber de uma venda é quem operou o caixa, e
+  o histórico passou a mostrar `vendas.id_usuario` (que sempre foi
+  gravado) no lugar de uma coluna "Cliente" que vivia vazia. A tabela e a
+  coluna permanecem no banco para um CRUD futuro.
 - **`movimentacoes_financeiras`** — reservada para uma tela futura de
   lançamentos manuais. Os indicadores financeiros do Dashboard (RF06)
   são calculados direto de `vendas`.

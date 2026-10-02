@@ -7,7 +7,7 @@
    =================================================================== */
 
 /* O atributo "hidden" precisa vencer as classes que definem "display"
-   (.hydro-cargo-form, .hydro-cargo-tabpanel, .hydro-cargo-danger-zone,
+   (.hydro-cargo-form, .hydro-cargo-body, .hydro-cargo-danger-zone,
    .hydro-badge). Sem isto, a regra de autor tem prioridade sobre o
    [hidden] padrao do navegador e o elemento continua visivel. */
 [hidden] {
@@ -191,57 +191,9 @@
     pointer-events: none;
 }
 
-/* ============ Abas do editor ============ */
-.hydro-cargo-tabs {
-    display: flex;
-    gap: 4px;
-    border-bottom: 1px solid var(--border);
-    margin-top: -8px;
-}
-
-.hydro-cargo-tab {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 10px 14px;
-    border: none;
-    background: transparent;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    font-size: 14px;
-    font-weight: 600;
-    font-family: inherit;
-    color: var(--muted);
-    cursor: pointer;
-    transition: color .15s ease, border-color .15s ease;
-}
-
-.hydro-cargo-tab:hover {
-    color: var(--ink);
-}
-
-.hydro-cargo-tab.hydro-active {
-    color: var(--navy-900);
-    border-bottom-color: var(--navy-active);
-}
-
-.hydro-cargo-tab-count {
-    min-width: 20px;
-    padding: 1px 6px;
-    border-radius: 999px;
-    background: var(--bg);
-    font-size: 11.5px;
-    font-weight: 700;
-    color: var(--muted);
-    text-align: center;
-}
-
-.hydro-cargo-tab.hydro-active .hydro-cargo-tab-count {
-    background: var(--blue-bg);
-    color: var(--navy-900);
-}
-
-.hydro-cargo-tabpanel {
+/* ============ Corpo do editor ============
+   Um painel só: com 5 permissões não havia o que separar em abas. */
+.hydro-cargo-body {
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -289,44 +241,6 @@
     flex-wrap: wrap;
 }
 
-.hydro-cargo-swatches {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.hydro-cargo-swatch {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    padding: 0;
-    cursor: pointer;
-    position: relative;
-    transition: transform .1s ease;
-}
-
-.hydro-cargo-swatch:hover {
-    transform: scale(1.08);
-}
-
-.hydro-cargo-swatch.hydro-is-selected {
-    border-color: var(--navy-900);
-    box-shadow: 0 0 0 2px #fff inset;
-}
-
-.hydro-cargo-swatch.hydro-is-selected::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    margin: auto;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #fff;
-    mix-blend-mode: difference;
-}
-
 .hydro-cargo-custom-color {
     width: 28px;
     height: 28px;
@@ -350,19 +264,11 @@
     padding: 0;
 }
 
-/* ============ Permissões ============ */
-
-.hydro-cargo-perm-group {
+/* ============ Permissões ============
+   Lista plana: são 5, uma por área, então não há agrupamento por
+   categoria (renderia um título por item). */
+.hydro-cargo-perm-list {
     margin-bottom: 20px;
-}
-
-.hydro-cargo-perm-group-title {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    color: var(--muted-soft);
-    margin-bottom: 8px;
 }
 
 .hydro-cargo-perm-row {
@@ -536,21 +442,6 @@
     .hydro-cargo-editor-head .hydro-btn {
         width: 100%;
         justify-content: center;
-    }
-
-    /* As abas rolam na horizontal em vez de quebrar linha. */
-    .hydro-cargo-tabs {
-        overflow-x: auto;
-        scrollbar-width: none;
-    }
-
-    .hydro-cargo-tabs::-webkit-scrollbar {
-        display: none;
-    }
-
-    .hydro-cargo-tab {
-        flex-shrink: 0;
-        padding: 10px 12px;
     }
 
     .hydro-cargo-danger-zone {

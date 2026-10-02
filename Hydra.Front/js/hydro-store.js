@@ -66,21 +66,20 @@
 
     /* ================= Catálogo inicial (seed) ================= */
     var SEED_CATALOG = [
-        { id: 'p1', name: 'Café Tradicional 500g', desc: 'Torrado e moído, embalagem a vácuo.', sku: 'CAF500G', category: 'Alimentos', costPrice: 12.0, price: 18.9, quantity: 3, minStock: 10, unit: 'un', validade: seedValidade(240), image: null },
-        { id: 'p2', name: 'Leite Integral 1L', desc: 'Caixa longa vida, tipo A.', sku: 'LEITE1L', category: 'Bebidas', costPrice: 4.2, price: 6.5, quantity: 14, minStock: 20, unit: 'un', validade: seedValidade(12), image: null },
-        { id: 'p3', name: 'Açúcar Cristal 1kg', desc: 'Refinado, embalagem lacrada.', sku: 'ACU1K', category: 'Alimentos', costPrice: 3.1, price: 5.2, quantity: 12, minStock: 12, unit: 'un', validade: seedValidade(300), image: null },
-        { id: 'p4', name: 'Pão de Forma Integral', desc: 'Fatiado, pacote 500g.', sku: 'PAOFI500', category: 'Alimentos', costPrice: 6.0, price: 9.8, quantity: 34, minStock: 15, unit: 'un', validade: seedValidade(-5), image: null },
-        { id: 'p5', name: 'Manteiga com Sal 200g', desc: 'Pote plástico, refrigerada.', sku: 'MANT200', category: 'Alimentos', costPrice: 8.0, price: 12.4, quantity: 26, minStock: 12, unit: 'un', validade: seedValidade(60), image: null },
-        { id: 'p6', name: 'Suco de Laranja 1L', desc: 'Natural, sem conservantes.', sku: 'SUCOLJ1L', category: 'Bebidas', costPrice: 5.5, price: 8.9, quantity: 40, minStock: 15, unit: 'un', validade: seedValidade(20), image: null },
-        { id: 'p7', name: 'Biscoito Recheado 140g', desc: 'Sabor chocolate.', sku: 'BISCR140', category: 'Alimentos', costPrice: 2.6, price: 4.5, quantity: 55, minStock: 20, unit: 'un', validade: seedValidade(180), image: null },
-        { id: 'p8', name: 'Chocolate ao Leite 90g', desc: 'Barra tradicional.', sku: 'CHOC90', category: 'Alimentos', costPrice: 4.3, price: 7.2, quantity: 48, minStock: 18, unit: 'un', validade: seedValidade(150), image: null },
-        { id: 'p9', name: 'Arroz Branco Tipo 1 5kg', desc: 'Grãos longos e soltos.', sku: 'ARROZ5KG', category: 'Alimentos', costPrice: 17.0, price: 24.9, quantity: 30, minStock: 10, unit: 'un', validade: seedValidade(365), image: null },
-        /* Produtos vendidos a granel (por peso) — usados pelo módulo de item
-           pesável do Caixa (etiqueta com código de barras "peso embutido",
-           prefixo 2). O campo "plu" é o código interno de 5 dígitos que fica
-           embutido nesse código de barras; "price"/"quantity" são por kg. */
-        { id: 'p10', name: 'Banana Prata (kg)', desc: 'Fruta fresca, vendida a granel.', sku: 'BANANAKG', plu: '00012', category: 'Alimentos', costPrice: 3.9, price: 6.49, quantity: 42.5, minStock: 10, unit: 'kg', validade: seedValidade(4), image: null },
-        { id: 'p11', name: 'Queijo Mussarela (kg)', desc: 'Fatiado na hora, balcão de frios.', sku: 'QUEIJOKG', plu: '00045', category: 'Alimentos', costPrice: 28.0, price: 42.9, quantity: 8.2, minStock: 3, unit: 'kg', validade: seedValidade(9), image: null },
+        { id: 'p1', name: 'Café Tradicional 500g', desc: 'Torrado e moído, embalagem a vácuo.', category: 'Alimentos', costPrice: 12.0, price: 18.9, quantity: 3, minStock: 10, unit: 'un', validade: seedValidade(240), image: null },
+        { id: 'p2', name: 'Leite Integral 1L', desc: 'Caixa longa vida, tipo A.', category: 'Bebidas', costPrice: 4.2, price: 6.5, quantity: 14, minStock: 20, unit: 'un', validade: seedValidade(12), image: null },
+        { id: 'p3', name: 'Açúcar Cristal 1kg', desc: 'Refinado, embalagem lacrada.', category: 'Alimentos', costPrice: 3.1, price: 5.2, quantity: 12, minStock: 12, unit: 'un', validade: seedValidade(300), image: null },
+        { id: 'p4', name: 'Pão de Forma Integral', desc: 'Fatiado, pacote 500g.', category: 'Alimentos', costPrice: 6.0, price: 9.8, quantity: 34, minStock: 15, unit: 'un', validade: seedValidade(-5), image: null },
+        { id: 'p5', name: 'Manteiga com Sal 200g', desc: 'Pote plástico, refrigerada.', category: 'Alimentos', costPrice: 8.0, price: 12.4, quantity: 26, minStock: 12, unit: 'un', validade: seedValidade(60), image: null },
+        { id: 'p6', name: 'Suco de Laranja 1L', desc: 'Natural, sem conservantes.', category: 'Bebidas', costPrice: 5.5, price: 8.9, quantity: 40, minStock: 15, unit: 'un', validade: seedValidade(20), image: null },
+        { id: 'p7', name: 'Biscoito Recheado 140g', desc: 'Sabor chocolate.', category: 'Alimentos', costPrice: 2.6, price: 4.5, quantity: 55, minStock: 20, unit: 'un', validade: seedValidade(180), image: null },
+        { id: 'p8', name: 'Chocolate ao Leite 90g', desc: 'Barra tradicional.', category: 'Alimentos', costPrice: 4.3, price: 7.2, quantity: 48, minStock: 18, unit: 'un', validade: seedValidade(150), image: null },
+        { id: 'p9', name: 'Arroz Branco Tipo 1 5kg', desc: 'Grãos longos e soltos.', category: 'Alimentos', costPrice: 17.0, price: 24.9, quantity: 30, minStock: 10, unit: 'un', validade: seedValidade(365), image: null },
+        /* Produtos vendidos a granel: cadastrados com unidade "kg", o que faz
+           o Caixa pedir o peso ao adicioná-los à venda. "price"/"quantity"
+           são por kg. */
+        { id: 'p10', name: 'Banana Prata (kg)', desc: 'Fruta fresca, vendida a granel.', category: 'Alimentos', costPrice: 3.9, price: 6.49, quantity: 42.5, minStock: 10, unit: 'kg', validade: seedValidade(4), image: null },
+        { id: 'p11', name: 'Queijo Mussarela (kg)', desc: 'Fatiado na hora, balcão de frios.', category: 'Alimentos', costPrice: 28.0, price: 42.9, quantity: 8.2, minStock: 3, unit: 'kg', validade: seedValidade(9), image: null },
     ];
 
     /* ================= Produtos ================= */
@@ -310,7 +309,9 @@
                 sales.push({
                     id: uid('sale'),
                     orderId: 7800 + sales.length,
-                    clienteId: 'CL' + (10 + Math.floor(rand() * 90)),
+                    // O histórico mostra quem operou o caixa; na demo pública
+                    // não há usuário autenticado.
+                    usuario: 'Demonstração',
                     items: items,
                     total: Math.round(total * 100) / 100,
                     payment: ['dinheiro', 'cartao', 'pix'][Math.floor(rand() * 3)],

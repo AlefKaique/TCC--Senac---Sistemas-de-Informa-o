@@ -8,54 +8,86 @@ namespace Hydra\Repositories;
  *
  * Cada loja tem seus próprios cargos. Toda loja ganha, na primeira vez
  * em que este repositório é usado para ela, 3 cargos de sistema
- * (Administrador, Operador de Caixa e Estoquista) com as mesmas
- * permissões que o antigo ENUM "perfil" já garantia — assim nenhuma
- * loja cadastrada antes deste módulo perde acesso (ver ensureDefaults()).
+ * (Administrador, Operador de Caixa e Estoquista) — ver ensureDefaults(),
+ * que também é onde vive a migração preguiçosa do catálogo de permissões.
+ *
+ * O catálogo tem 5 permissões, uma por área do sistema. A granularidade
+ * anterior (19 códigos, ver/criar/editar/excluir por módulo) não
+ * correspondia a nenhuma decisão real de um mercadinho: configura-se "quem
+ * cuida do estoque", não "quem pode editar mas não excluir produto".
  */
 final class CargoRepository
 {
     /**
-     * Permissões de cada cargo de sistema, espelhando exatamente o que
-     * Hydra\Support\Auth concedia antes deste módulo para cada valor do
-     * ENUM "perfil". Isso garante que instalar o módulo de Cargos não
-     * muda o comportamento de nenhuma loja já existente.
+     * Permissões de cada cargo de sistema.
+     *
+     * O Operador de Caixa não recebe "estoque.gerenciar": ele precisa
+     * enxergar o catálogo para montar a venda, e é por isso que
+     * GET /api/produtos usa Auth::requireAnyPermission() e aceita
+     * "vendas.operar" — em vez de exigir poder de escrita no estoque de
+     * quem só opera o caixa.
      */
     private const PERMISSOES_SISTEMA = [
         'administrador' => [
-            'produtos.visualizar',
-            'produtos.criar',
-            'produtos.editar',
+            'estoque.gerenciar',
             'produtos.editar_preco',
-            'produtos.excluir',
-            'estoque.visualizar',
-            'estoque.movimentar',
-            'vendas.visualizar',
-            'vendas.registrar',
-            'usuarios.visualizar',
-            'usuarios.criar',
-            'usuarios.editar',
-            'usuarios.excluir',
-            'cargos.visualizar',
-            'cargos.criar',
-            'cargos.editar',
-            'cargos.excluir',
-            'loja.visualizar',
+            'vendas.operar',
+            'equipe.gerenciar',
             'loja.configurar',
         ],
         'operador_caixa' => [
-            // Precisa enxergar o catálogo para montar a venda no PDV.
-            'produtos.visualizar',
-            'vendas.visualizar',
-            'vendas.registrar',
+            'vendas.operar',
         ],
         'estoquista' => [
-            'produtos.visualizar',
-            'produtos.criar',
-            'produtos.editar',
-            'produtos.excluir',
-            'estoque.visualizar',
-            'estoque.movimentar',
+            'estoque.gerenciar',
         ],
+    ];
+
+    /**
+     * Catálogo das 5 permissões, espelhando o bloco INSERT do schema.sql.
+     * Existe também em PHP porque o INSERT do schema só roda se o arquivo
+     * for reaplicado à mão: sem isto, um banco criado na versão anterior
+     * ficaria com ZERO permissões no catálogo depois da aposentadoria dos
+     * códigos antigos, e a tela de Cargos abriria sem nenhum checkbox.
+     *
+     * Mantenha em sincronia com schema.sql.
+     *
+     * @var array<int,array{0:string,1:string,2:string,3:string,4:int}>
+     */
+    private const CATALOGO = [
+        ['estoque.gerenciar',     'Estoque e Produtos',   'Cadastrar, editar e excluir produtos e lançar entradas e saídas de estoque',              'Operação',      10],
+        ['produtos.editar_preco', 'Alterar Preços',       'Alterar preço de custo e de venda (RN04) — só tem efeito junto com "Estoque e Produtos"', 'Operação',      11],
+        ['vendas.operar',         'Vendas no Caixa',      'Operar o Caixa (PDV), finalizar vendas e consultar o histórico',                          'Operação',      12],
+        ['equipe.gerenciar',      'Equipe e Cargos',      'Gerenciar os usuários da loja e os cargos e suas permissões',                             'Administração', 20],
+        ['loja.configurar',       'Configuração da Loja', 'Ver e alterar os dados cadastrais da loja',                                               'Administração', 21],
+    ];
+
+    /**
+     * De onde cada permissão nova herda o acesso que o cargo já tinha na
+     * granularidade antiga (19 códigos).
+     *
+     * A regra SUB-concede de propósito: só quem tinha algum código de
+     * ESCRITA na área ganha a permissão grossa, porque ela também concede
+     * escrita. "produtos.visualizar" e "estoque.visualizar" sozinhos não
+     * geram nada — um cargo que só tinha esses dois termina sem permissão
+     * alguma, porque "só olhar o estoque" deixou de existir. O
+     * administrador remarca esses cargos na tela de Cargos.
+     *
+     * "loja.configurar" e "produtos.editar_preco" não aparecem como
+     * destino de si mesmos: as linhas deles em "permissoes" sobrevivem à
+     * migração com o mesmo id_permissao, então quem já os tinha continua
+     * tendo, sem remap.
+     *
+     * @var array<string,string[]>
+     */
+    private const MIGRACAO_PERMISSOES = [
+        'estoque.gerenciar' => ['produtos.criar', 'produtos.editar', 'produtos.excluir', 'estoque.movimentar'],
+        'vendas.operar'     => ['vendas.visualizar', 'vendas.registrar'],
+        'equipe.gerenciar'  => [
+            'usuarios.visualizar', 'usuarios.criar', 'usuarios.editar', 'usuarios.excluir',
+            'cargos.visualizar', 'cargos.criar', 'cargos.editar', 'cargos.excluir',
+        ],
+        'loja.configurar'   => ['loja.visualizar'],
     ];
 
     private const NOMES_SISTEMA = [
@@ -78,15 +110,34 @@ final class CargoRepository
     }
 
     /**
-     * Garante que a loja tenha os 3 cargos de sistema e que nenhum
-     * usuário da loja fique com id_cargo nulo. Idempotente e barata
-     * (um SELECT COUNT) — chamada a cada login e ao abrir a tela de
-     * Cargos, para que lojas criadas antes deste módulo sejam migradas
-     * sem precisar de um script de migração manual.
+     * Garante que o catálogo de permissões exista, que o acesso gravado na
+     * granularidade antiga seja migrado, que a loja tenha os 3 cargos de
+     * sistema e que nenhum usuário dela fique com id_cargo nulo.
+     * Idempotente e barata — chamada a cada login (AuthController::login) e
+     * ao abrir Equipe/Cargos, para que bancos criados em versões anteriores
+     * sejam migrados sem script manual.
+     *
+     * NÃO abre transação de propósito: AuthController::registro() já chama
+     * este método DENTRO de uma transação, e o PDO não aceita aninhamento.
+     * A segurança sem transação vem da ORDEM abaixo — o passo destrutivo
+     * (remover as permissões aposentadas) é o último, então uma requisição
+     * que morra no meio deixa o cargo com os códigos novos E os antigos
+     * (acesso de sobra, nunca de menos) e a próxima chamada termina o
+     * serviço.
      */
     public function ensureDefaults(int $idLoja): void
     {
-        $this->removerPermissoesAposentadas();
+        $this->garantirCatalogo();
+
+        if ($this->temPermissoesAposentadas()) {
+            // Ordem crítica: copiar antes de apagar. Invertido, o DELETE
+            // levaria o acesso antigo embora antes de haver de onde copiá-lo,
+            // e todo cargo de toda loja ficaria sem permissão alguma — sem
+            // nenhum caminho de volta pela interface.
+            $this->remapearPermissoesDosCargos();
+            $this->removerPermissoesAposentadas();
+            $this->resincronizarPerfilDeTodosOsCargos();
+        }
 
         $stmt = db()->prepare('SELECT COUNT(*) FROM cargos WHERE id_loja = :id_loja');
         $stmt->execute(['id_loja' => $idLoja]);
@@ -116,8 +167,103 @@ final class CargoRepository
      *
      * - "vendas.aplicar_desconto": o PDV não tem campo de desconto, então
      *   a permissão nunca chegou a ser usada.
+     * - os 17 códigos granulares da versão anterior. Dos 19, sobrevivem só
+     *   "produtos.editar_preco" e "loja.configurar", reaproveitados como
+     *   códigos novos (ver CATALOGO).
+     *
+     * CUIDADO: este DELETE só pode rodar DEPOIS de
+     * remapearPermissoesDosCargos(). Ver o docblock de ensureDefaults().
      */
-    private const PERMISSOES_APOSENTADAS = ['vendas.aplicar_desconto'];
+    private const PERMISSOES_APOSENTADAS = [
+        'vendas.aplicar_desconto',
+        'produtos.visualizar', 'produtos.criar', 'produtos.editar', 'produtos.excluir',
+        'estoque.visualizar', 'estoque.movimentar',
+        'vendas.visualizar', 'vendas.registrar',
+        'usuarios.visualizar', 'usuarios.criar', 'usuarios.editar', 'usuarios.excluir',
+        'cargos.visualizar', 'cargos.criar', 'cargos.editar', 'cargos.excluir',
+        'loja.visualizar',
+    ];
+
+    /**
+     * ON DUPLICATE KEY UPDATE, e não INSERT IGNORE: "produtos.editar_preco"
+     * e "loja.configurar" já existem em bancos antigos e precisam ganhar o
+     * nome/descrição novos SEM trocar de id_permissao — senão as linhas de
+     * cargo_permissoes que apontam para elas perderiam o vínculo.
+     */
+    private function garantirCatalogo(): void
+    {
+        $stmt = db()->prepare(
+            'INSERT INTO permissoes (codigo, nome, descricao, categoria, ordem)
+             VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+               nome = VALUES(nome), descricao = VALUES(descricao),
+               categoria = VALUES(categoria), ordem = VALUES(ordem)'
+        );
+        foreach (self::CATALOGO as $linha) {
+            $stmt->execute($linha);
+        }
+    }
+
+    /**
+     * Uma única busca pelo índice UNIQUE de "codigo": é este o custo da
+     * migração no caso normal, em que ela já rodou.
+     */
+    private function temPermissoesAposentadas(): bool
+    {
+        $marcadores = implode(',', array_fill(0, count(self::PERMISSOES_APOSENTADAS), '?'));
+        $stmt = db()->prepare("SELECT 1 FROM permissoes WHERE codigo IN ($marcadores) LIMIT 1");
+        $stmt->execute(self::PERMISSOES_APOSENTADAS);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Copia, para TODOS os cargos de TODAS as lojas, o acesso que eles já
+     * tinham nos códigos antigos para os códigos novos equivalentes.
+     *
+     * Global, e não por loja, porque removerPermissoesAposentadas() apaga
+     * linhas de "permissoes" (tabela global) e o ON DELETE CASCADE de
+     * cargo_permissoes atinge todas as lojas de uma vez. Se o remap fosse
+     * por loja, o primeiro login da loja A apagaria o acesso dos cargos da
+     * loja B antes de qualquer usuário dela ter logado — e a loja B ficaria
+     * trancada para sempre.
+     */
+    private function remapearPermissoesDosCargos(): void
+    {
+        $insert = db()->prepare(
+            'INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
+             VALUES (:id_cargo, :id_permissao)'
+        );
+
+        foreach (self::MIGRACAO_PERMISSOES as $novoCodigo => $codigosAntigos) {
+            $idNovo = $this->idDaPermissao($novoCodigo);
+            if ($idNovo === null) {
+                // garantirCatalogo() roda antes; na dúvida, não concede nada
+                // (e também não apaga nada).
+                continue;
+            }
+
+            $marcadores = implode(',', array_fill(0, count($codigosAntigos), '?'));
+            $stmt = db()->prepare(
+                "SELECT DISTINCT cp.id_cargo
+                   FROM cargo_permissoes cp
+                   JOIN permissoes p ON p.id_permissao = cp.id_permissao
+                  WHERE p.codigo IN ($marcadores)"
+            );
+            $stmt->execute($codigosAntigos);
+
+            foreach ($stmt->fetchAll(\PDO::FETCH_COLUMN) as $idCargo) {
+                $insert->execute(['id_cargo' => (int) $idCargo, 'id_permissao' => $idNovo]);
+            }
+        }
+    }
+
+    private function idDaPermissao(string $codigo): ?int
+    {
+        $stmt = db()->prepare('SELECT id_permissao FROM permissoes WHERE codigo = :codigo');
+        $stmt->execute(['codigo' => $codigo]);
+        $id = $stmt->fetchColumn();
+        return $id === false ? null : (int) $id;
+    }
 
     private function removerPermissoesAposentadas(): void
     {
@@ -126,6 +272,23 @@ final class CargoRepository
         // ON DELETE CASCADE declarado no schema.
         db()->prepare("DELETE FROM permissoes WHERE codigo IN ($marcadores)")
             ->execute(self::PERMISSOES_APOSENTADAS);
+    }
+
+    /**
+     * usuarios.perfil é derivado das permissões do cargo (nivelEquivalente())
+     * e sustenta a regra "a loja precisa de um administrador ativo"
+     * (UsuarioRepository::countAdminsAtivos). Trocar os códigos por baixo dos
+     * cargos pode mudar esse nível — o caso real é um cargo que só tinha
+     * "loja.visualizar" (nível operador_caixa) e passa a ter
+     * "loja.configurar" (nível administrador). Sem este resync o ENUM
+     * gravado ficaria divergente do que as permissões dizem.
+     */
+    private function resincronizarPerfilDeTodosOsCargos(): void
+    {
+        $ids = db()->query('SELECT id_cargo FROM cargos')->fetchAll(\PDO::FETCH_COLUMN);
+        foreach ($ids as $idCargo) {
+            $this->resincronizarPerfilDosUsuarios((int) $idCargo);
+        }
     }
 
     /** Usuários antigos (criados antes deste módulo) ganham o cargo de sistema equivalente ao seu "perfil" atual. */
@@ -307,24 +470,16 @@ final class CargoRepository
      */
     public static function nivelEquivalente(array $codigos): string
     {
-        // Qualquer permissao administrativa de escrita caracteriza o nivel
-        // "administrador"; apenas ver a tela de Equipe ou de Cargos nao.
-        $administrativas = [
-            'usuarios.criar', 'usuarios.editar', 'usuarios.excluir',
-            'cargos.criar', 'cargos.editar', 'cargos.excluir',
-            'loja.configurar',
-        ];
-        if (array_intersect($administrativas, $codigos) !== []) {
+        // Qualquer permissão administrativa caracteriza o nível
+        // "administrador". Com permissões grossas não existe mais o caso
+        // "só ver a tela de Equipe": quem vê, gerencia.
+        if (array_intersect(['equipe.gerenciar', 'loja.configurar'], $codigos) !== []) {
             return 'administrador';
         }
-        if (in_array('vendas.registrar', $codigos, true)) {
+        if (in_array('vendas.operar', $codigos, true)) {
             return 'operador_caixa';
         }
-        $deEstoque = [
-            'produtos.criar', 'produtos.editar', 'produtos.excluir',
-            'estoque.movimentar',
-        ];
-        if (array_intersect($deEstoque, $codigos) !== []) {
+        if (in_array('estoque.gerenciar', $codigos, true)) {
             return 'estoquista';
         }
         return 'operador_caixa';

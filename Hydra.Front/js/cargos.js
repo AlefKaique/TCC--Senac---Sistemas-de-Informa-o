@@ -1,8 +1,12 @@
 (function () {
     'use strict';
 
-    // Paleta inspirada nas cores de cargo do Discord.
-    const SWATCHES = [
+    /* Cores sugeridas para um cargo novo (inspiradas nas do Discord). A
+       grade de amostras saiu da tela — o seletor de cor nativo alcança as
+       mesmas cores e ocupa uma linha em vez de cinco. A lista fica só para
+       sortear uma cor inicial agradável em vez de todo cargo novo nascer
+       com o mesmo azul. */
+    const CORES_PADRAO = [
         '#1ABC9C', '#2ECC71', '#3498DB', '#9B59B6', '#E91E63',
         '#F1C40F', '#E67E22', '#E74C3C', '#95A5A6', '#607D8B',
         '#11806A', '#206694', '#71368A', '#AD1457', '#5865F2',
@@ -22,7 +26,7 @@
     }
 
     function randomSwatch() {
-        return SWATCHES[Math.floor(Math.random() * SWATCHES.length)];
+        return CORES_PADRAO[Math.floor(Math.random() * CORES_PADRAO.length)];
     }
 
     let toastTimer = null;
@@ -51,23 +55,14 @@
         modalOverlay.classList.remove('hydro-show');
     }
 
-    document.getElementById('hydroModalClose').addEventListener('click', closeModal);
+    // O "x" do cabeçalho foi removido: cada modal fecha pelo botão
+    // "Fechar"/"Cancelar" do rodapé, pelo Esc ou clicando fora.
     modalOverlay.addEventListener('click', (e) => {
         if (e.target === modalOverlay) closeModal();
     });
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeModal();
     });
-
-    /* ================= Catálogo de permissões agrupado por categoria ================= */
-    function groupCatalogo() {
-        const map = new Map();
-        catalogo.forEach((p) => {
-            if (!map.has(p.categoria)) map.set(p.categoria, []);
-            map.get(p.categoria).push(p);
-        });
-        return map;
-    }
 
     /* ================= Renderização: lista de cargos ================= */
     function renderList() {
@@ -103,79 +98,36 @@
         document.getElementById('hydroCargoCorInput').value = draft.cor;
     }
 
-    function renderSwatches() {
-        const wrap = document.getElementById('hydroCargoSwatches');
-        wrap.innerHTML = SWATCHES
-            .map((hex) => `<button type="button" class="hydro-cargo-swatch ${hex.toUpperCase() === draft.cor.toUpperCase() ? 'hydro-is-selected' : ''}" style="background:${hex}" data-color="${hex}" title="${hex}" aria-label="Cor ${hex}"></button>`)
-            .join('');
-
-        wrap.querySelectorAll('[data-color]').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                draft.cor = btn.dataset.color;
-                updatePreviewDot();
-                renderSwatches();
-                checkDirty();
-            });
-        });
-    }
-
-    /* ================= Abas do editor ================= */
-    function selectTab(name) {
-        document.querySelectorAll('.hydro-cargo-tab').forEach((tab) => {
-            const active = tab.dataset.tab === name;
-            tab.classList.toggle('hydro-active', active);
-            tab.setAttribute('aria-selected', active ? 'true' : 'false');
-        });
-        document.querySelectorAll('.hydro-cargo-tabpanel').forEach((panel) => {
-            panel.hidden = panel.dataset.panel !== name;
-        });
-    }
-
-    document.querySelectorAll('.hydro-cargo-tab').forEach((tab) => {
-        tab.addEventListener('click', () => selectTab(tab.dataset.tab));
-    });
-
-    /* Mostra "marcadas/total" na aba Permissoes, para dar noção do alcance
-       do cargo sem precisar abrir a aba. */
-    function updatePermCount() {
-        document.getElementById('hydroCargoPermCount').textContent =
-            `${draft ? draft.permissoes.size : 0}/${catalogo.length}`;
-    }
-
-    function renderPermGroups() {
-        const container = document.getElementById('hydroCargoPermGroups');
-        const groups = groupCatalogo();
-        let html = '';
-        groups.forEach((permissoesDoGrupo, categoria) => {
-            html += `<div class="hydro-cargo-perm-group"><p class="hydro-cargo-perm-group-title">${escapeHtml(categoria)}</p>`;
-            permissoesDoGrupo.forEach((p) => {
-                const checked = draft.permissoes.has(p.codigo) ? 'checked' : '';
-                html += `
+    /* O catálogo tem 5 permissões, uma por área do sistema. Agrupar por
+       "categoria" renderia um título por item, então a lista é plana — a
+       coluna permissoes.categoria continua existindo no banco (é NOT NULL)
+       e é só ignorada aqui. A API já devolve o catálogo ordenado por
+       permissoes.ordem. */
+    function renderPermRows() {
+        const container = document.getElementById('hydroCargoPermList');
+        container.innerHTML = catalogo
+            .map((p) => `
           <label class="hydro-cargo-perm-row">
             <span class="hydro-cargo-perm-copy">
               <strong>${escapeHtml(p.nome)}</strong>
               <span>${escapeHtml(p.descricao || '')}</span>
             </span>
-            <input type="checkbox" class="hydro-cargo-checkbox" data-codigo="${escapeHtml(p.codigo)}" ${checked}>
-          </label>`;
-            });
-            html += '</div>';
-        });
-        container.innerHTML = html;
+            <input type="checkbox" class="hydro-cargo-checkbox" data-codigo="${escapeHtml(p.codigo)}" ${draft.permissoes.has(p.codigo) ? 'checked' : ''}>
+          </label>`)
+            .join('');
 
         container.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
             cb.addEventListener('change', () => {
                 if (cb.checked) draft.permissoes.add(cb.dataset.codigo);
                 else draft.permissoes.delete(cb.dataset.codigo);
-                updatePermCount();
                 checkDirty();
             });
         });
     }
 
-    /* O cabecalho repete o nome do cargo porque o campo de texto vive na
-       aba "Dados": sem isso, quem esta na aba de permissoes perde a
-       referencia de qual cargo esta editando. */
+    /* O cabecalho repete o nome do cargo porque o campo de texto fica no
+       alto do painel: sem isso, quem rolou ate a lista de permissoes perde
+       a referencia de qual cargo esta editando. */
     function updateHeadName() {
         const nome = (draft && draft.nome.trim()) || '';
         document.getElementById('hydroCargoHeadName').textContent =
@@ -195,15 +147,10 @@
 
         updateHeadName();
         updatePreviewDot();
-        renderSwatches();
-        renderPermGroups();
-        updatePermCount();
+        renderPermRows();
 
         // Cargos de sistema e cargos ainda nao criados nao podem ser excluidos.
         document.getElementById('hydroCargoDangerZone').hidden = isSystem || selectedId === 'new';
-
-        // Trocar de cargo sempre volta para a primeira aba.
-        selectTab('dados');
     }
 
     /* ================= Estado "sujo" (alterações não salvas) ================= */
@@ -380,7 +327,6 @@
         if (!draft) return;
         draft.cor = e.target.value;
         updatePreviewDot();
-        renderSwatches();
         checkDirty();
     });
 
@@ -420,10 +366,14 @@
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
             const permissoesUsuario = usuario.permissoes || [];
-            if (!permissoesUsuario.includes('cargos.visualizar')) {
+            if (!permissoesUsuario.includes('equipe.gerenciar')) {
                 window.location.href = 'controle-estoque.html';
                 return;
             }
+            // Esta tela não chamava a função: o bloco "Admin" da barra
+            // lateral ficava visível mesmo para quem não pode abrir aquelas
+            // telas. O item Cargos é a única entrada para cá.
+            window.hydraAplicarMenuPorPermissao(usuario);
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém a tela estática, sem carregar dados reais.
             return;

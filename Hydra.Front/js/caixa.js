@@ -50,6 +50,9 @@
     let usingRealApi = false;
     let catalog = [];
     let salesHistory = [];
+    // Usuário autenticado: o histórico e o cabeçalho do pedido mostram quem
+    // operou o caixa (null para o visitante da demo pública).
+    let usuarioAtual = null;
 
     function getCatalog() {
         return catalog;
@@ -62,7 +65,6 @@
             id: String(p.id_produto),
             name: p.nome,
             desc: p.descricao || '',
-            sku: p.codigo_barras || `PRD-${p.id_produto}`,
             category: p.categoria,
             price: Number(p.preco_venda),
             quantity: Number(p.quantidade),
@@ -76,7 +78,7 @@
             id: String(v.id_venda),
             orderId: v.id_venda,
             date: v.data_venda,
-            clienteId: v.id_cliente != null ? String(v.id_cliente) : '—',
+            usuario: v.nome_usuario || 'Usuário removido',
             items: (v.itens || []).map((it) => ({
                 productId: String(it.id_produto),
                 name: it.nome_produto,
@@ -96,37 +98,11 @@
     }
 
     /* ================= Itens vendidos por peso (kg) =================
-       Um produto é "pesável" quando cadastrado com unidade "kg". O código
-       de barras impresso pela balança usa a convenção "peso embutido"
-       (comum no varejo brasileiro para produtos a granel):
-         dígito 1......: prefixo "2" (faixa de uso interno/itens pesáveis)
-         dígitos 2-6...: PLU — código do produto cadastrado na loja
-         dígitos 7-12..: peso em gramas
-         dígito 13.....: dígito verificador (checksum padrão EAN-13)
-       Ex.: 2000120003507 = PLU 00012, 350g (0,350 kg). */
+       Um produto é "pesável" quando cadastrado com unidade "kg": ao ser
+       adicionado à venda, o Caixa abre o modal de peso para o operador
+       digitar os gramas/quilos lidos na balança. */
     function isWeightUnit(unit) {
         return unit === 'kg';
-    }
-
-    function productPlu(product) {
-        if (product.plu) return String(product.plu).padStart(5, '0').slice(-5);
-        return String(product.sku || '').replace(/\D/g, '').padStart(5, '0').slice(-5);
-    }
-
-    function decodeWeightBarcode(code) {
-        if (!/^2\d{12}$/.test(code)) return null;
-        const digits = code.split('').map(Number);
-        const checkDigit = digits[12];
-        let sum = 0;
-        for (let i = 0; i < 12; i++) {
-            sum += digits[i] * (i % 2 === 0 ? 1 : 3);
-        }
-        const calculated = (10 - (sum % 10)) % 10;
-        if (calculated !== checkDigit) return null;
-
-        const plu = code.slice(1, 6);
-        const weightGrams = Number(code.slice(6, 12));
-        return { plu, weightKg: weightGrams / 1000 };
     }
 
     /* Define (não soma) o peso da linha do pedido para um produto pesável. */
@@ -149,7 +125,7 @@
 
     function createOrder() {
         orderCounter += 1;
-        return { id: orderCounter, clienteId: '—', items: {}, payment: null, cashReceived: '' };
+        return { id: orderCounter, items: {}, payment: null, cashReceived: '' };
     }
 
     let order = createOrder();
@@ -263,8 +239,6 @@
         }
         if (setWeightItem(weightModalProduct, weightToKg(raw, weightUnit))) {
             closeWeightModal();
-            searchInput.value = '';
-            closeSuggestions();
             renderAll();
         }
     });
@@ -284,15 +258,67 @@
         if (view === 'historico') renderHistory();
     });
 
-    /* ================= Busca / leitura de código de barras ================= */
+    /* ================= Vitrine: produtos em estoque =================
+       A tela de Vendas abre mostrando o que há na prateleira, com busca por
+       nome e filtro de categoria. O operador do mercadinho vende olhando a
+       lista, sem precisar decorar nada. */
     const searchInput = document.getElementById('hydroProductSearch');
-    const suggestionsEl = document.getElementById('hydroSuggestions');
+    const catalogGridEl = document.getElementById('hydroCatalogGrid');
+    const catalogEmptyEl = document.getElementById('hydroCatalogEmpty');
+    const catalogCategoryEl = document.getElementById('hydroCatalogCategory');
 
-    function matchesTerm(product, term) {
-        return (
-            product.name.toLowerCase().includes(term) ||
-            (product.sku || '').toLowerCase().includes(term)
-        );
+    const catalogState = { search: '', category: '' };
+
+    /* A quantidade é DECIMAL(10,3) no banco, então o MySQL devolve "20.000"
+       para 20 unidades e "42.500" para 42,5 kg. Mesma normalização usada em
+       controle-estoque.js (duplicada: cada tela carrega seu próprio script). */
+    function formatStock(value, unit) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return String(value);
+        return `${n.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${unit || 'un'}`;
+    }
+
+    function getFilteredCatalog() {
+        return getCatalog()
+            .filter(
+                (p) =>
+                    (!catalogState.search || p.name.toLowerCase().includes(catalogState.search)) &&
+                    (!catalogState.category || p.category === catalogState.category)
+            )
+            // Sem estoque vai para o fim em vez de desaparecer: escondido, o
+            // produto pareceria excluído do cadastro.
+            .sort(
+                (a, b) =>
+                    (a.quantity <= 0) - (b.quantity <= 0) || a.name.localeCompare(b.name, 'pt-BR')
+            );
+    }
+
+    function renderCatalogFilters() {
+        Array.from(new Set(getCatalog().map((p) => p.category).filter(Boolean)))
+            .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+            .forEach((categoria) => {
+                const option = document.createElement('option');
+                option.value = categoria;
+                option.textContent = categoria;
+                catalogCategoryEl.appendChild(option);
+            });
+    }
+
+    function renderCatalog() {
+        const items = getFilteredCatalog();
+        catalogEmptyEl.hidden = items.length > 0;
+        catalogGridEl.innerHTML = items
+            .map((p) => {
+                const outOfStock = p.quantity <= 0;
+                const priceLabel = isWeightUnit(p.unit) ? `${money(p.price)}/kg` : money(p.price);
+                return `<button type="button" class="hydro-catalog-card" data-product-id="${p.id}" ${outOfStock ? 'disabled' : ''}>
+                    <span class="hydro-catalog-name">${escapeHtml(p.name)}</span>
+                    <span class="hydro-catalog-meta">${escapeHtml(p.category || '—')}</span>
+                    <span class="hydro-catalog-price">${priceLabel}</span>
+                    <span class="hydro-catalog-stock">${outOfStock ? 'Sem estoque' : formatStock(p.quantity, p.unit)}</span>
+                </button>`;
+            })
+            .join('');
     }
 
     function addProductToOrder(productId, qtyToAdd = 1) {
@@ -311,117 +337,56 @@
         return true;
     }
 
-    function closeSuggestions() {
-        suggestionsEl.classList.remove('hydro-show');
-        suggestionsEl.innerHTML = '';
-    }
-
-    function renderSuggestions() {
-        const term = (searchInput.value || '').trim().toLowerCase();
-        if (!term) {
-            closeSuggestions();
-            return;
-        }
-        const matches = getCatalog().filter((p) => matchesTerm(p, term)).slice(0, 8);
-        if (!matches.length) {
-            suggestionsEl.innerHTML = '<button type="button" class="hydro-suggestion" disabled>Nenhum produto encontrado</button>';
-        } else {
-            suggestionsEl.innerHTML = matches
-                .map((p) => {
-                    const outOfStock = p.quantity <= 0;
-                    const priceLabel = outOfStock ? 'sem estoque' : isWeightUnit(p.unit) ? `${money(p.price)}/kg` : money(p.price);
-                    return `<button type="button" class="hydro-suggestion" data-product-id="${p.id}" ${outOfStock ? 'disabled' : ''}>
-                        <span class="hydro-suggestion-name">${escapeHtml(p.name)}</span>
-                        <span class="hydro-suggestion-meta">${escapeHtml(p.sku)} · ${priceLabel}</span>
-                    </button>`;
-                })
-                .join('');
-        }
-        suggestionsEl.classList.add('hydro-show');
-    }
-
-    function scanTerm() {
-        const raw = (searchInput.value || '').trim();
-        if (!raw) return;
-
-        /* Etiqueta de balança (peso embutido): 13 dígitos começando com 2. */
-        const digitsOnly = raw.replace(/\D/g, '');
-        if (digitsOnly.length === 13 && digitsOnly.charAt(0) === '2') {
-            const decoded = decodeWeightBarcode(digitsOnly);
-            if (!decoded) {
-                showToast('Código de barras de peso inválido (dígito verificador não confere)', true);
-                return;
-            }
-            const product = getCatalog().find((p) => isWeightUnit(p.unit) && productPlu(p) === decoded.plu);
-            if (!product) {
-                showToast('Nenhum produto pesável cadastrado com este código', true);
-                return;
-            }
-            if (setWeightItem(product, decoded.weightKg)) {
-                searchInput.value = '';
-                closeSuggestions();
-                renderAll();
-                showToast(`${product.name} adicionado — ${decoded.weightKg.toFixed(3)} kg`);
-            }
-            return;
-        }
-
-        const term = raw.toLowerCase();
-        const exactSku = getCatalog().find((p) => (p.sku || '').toLowerCase() === term);
-        const matches = exactSku ? [exactSku] : getCatalog().filter((p) => matchesTerm(p, term));
-
-        if (matches.length === 1) {
-            const product = matches[0];
-            if (isWeightUnit(product.unit)) {
-                searchInput.value = '';
-                closeSuggestions();
-                openWeightModal(product);
-                return;
-            }
-            if (addProductToOrder(product.id)) {
-                searchInput.value = '';
-                closeSuggestions();
-                renderAll();
-            }
-        } else if (matches.length === 0) {
-            showToast('Produto não encontrado', true);
-        } else {
-            showToast('Vários produtos encontrados — selecione um da lista');
-        }
-    }
-
-    searchInput.addEventListener('input', renderSuggestions);
-    searchInput.addEventListener('focus', renderSuggestions);
-    searchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            scanTerm();
-        } else if (e.key === 'Escape') {
-            closeSuggestions();
-        }
-    });
-
-    suggestionsEl.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-product-id]');
-        if (!btn || btn.disabled) return;
-        const product = findProduct(btn.dataset.productId);
+    /* Adiciona ao pedido o produto clicado na vitrine. O filtro não é
+       limpo: a vitrine é superfície de navegação, e o operador normalmente
+       pega vários itens da mesma categoria em sequência. */
+    function selectProduct(productId) {
+        const product = findProduct(productId);
         if (!product) return;
 
         if (isWeightUnit(product.unit)) {
-            searchInput.value = '';
-            closeSuggestions();
             openWeightModal(product);
             return;
         }
-        if (addProductToOrder(product.id)) {
+        if (addProductToOrder(product.id)) renderAll();
+    }
+
+    catalogGridEl.addEventListener('click', (e) => {
+        const card = e.target.closest('[data-product-id]');
+        if (!card || card.disabled) return;
+        selectProduct(card.dataset.productId);
+    });
+
+    searchInput.addEventListener('input', () => {
+        catalogState.search = (searchInput.value || '').trim().toLowerCase();
+        renderCatalog();
+    });
+
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
             searchInput.value = '';
-            closeSuggestions();
-            renderAll();
+            catalogState.search = '';
+            renderCatalog();
+            return;
+        }
+        if (e.key !== 'Enter') return;
+
+        // Atalho de teclado: com a busca reduzida a um único produto, o Enter
+        // já o põe na venda sem exigir o clique no card.
+        e.preventDefault();
+        const matches = getFilteredCatalog().filter((p) => p.quantity > 0);
+        if (matches.length === 1) {
+            selectProduct(matches[0].id);
+        } else if (matches.length === 0) {
+            showToast('Produto não encontrado', true);
+        } else {
+            showToast('Refine a busca ou clique no produto desejado');
         }
     });
 
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.hydro-scan-bar')) closeSuggestions();
+    catalogCategoryEl.addEventListener('change', () => {
+        catalogState.category = catalogCategoryEl.value;
+        renderCatalog();
     });
 
     /* ================= Render: tabela de itens do pedido ================= */
@@ -480,7 +445,8 @@
     function renderOrderPanel() {
         const order = getActiveOrder();
         orderTitleEl.textContent = `Pedido #${order.id}`;
-        orderClientEl.textContent = `Cliente ID #${order.clienteId}`;
+        // Quem está operando o caixa — é esse nome que fica gravado na venda.
+        orderClientEl.textContent = `Operador: ${(usuarioAtual && usuarioAtual.nome) || 'Demonstração'}`;
 
         const { entries, subtotal, total } = computeTotals(order);
         const itemCount = entries.reduce((sum, [, qty]) => sum + qty, 0);
@@ -514,7 +480,6 @@
                 return `
                 <tr>
                     <td data-label="Item"><div class="hydro-item-thumb"><i class="hydro-ic hydro-ic-package"></i></div></td>
-                    <td data-label="Código" class="hydro-item-code">${escapeHtml(product.sku)}</td>
                     <td data-label="Descrição">
                         <p class="hydro-item-name">${escapeHtml(product.name)}</p>
                         <p class="hydro-item-desc">${escapeHtml(product.desc || product.category)}</p>
@@ -581,15 +546,7 @@
         });
     });
 
-    /* ================= Ações: editar cliente / cancelar pedido ================= */
-    document.getElementById('hydroEditClientBtn').addEventListener('click', () => {
-        const order = getActiveOrder();
-        const value = prompt('ID do cliente para este pedido:', order.clienteId);
-        if (value === null) return;
-        order.clienteId = value.trim() || order.clienteId;
-        renderOrderPanel();
-    });
-
+    /* ================= Ação: cancelar pedido ================= */
     document.getElementById('hydroClearOrderBtn').addEventListener('click', () => {
         if (!Object.keys(order.items).length) {
             showToast('Este pedido já está vazio', true);
@@ -657,9 +614,9 @@
             finishBtn.disabled = false;
         } else {
             // HydroStore.addSale grava a venda e já dá baixa no estoque compartilhado
-            HydroStore.addSale({
+            const vendaDemo = HydroStore.addSale({
                 orderId: order.id,
-                clienteId: order.clienteId,
+                usuario: 'Demonstração',
                 items: saleItems,
                 subtotal: Math.round(subtotal * 100) / 100,
                 total: Math.round(total * 100) / 100,
@@ -667,6 +624,10 @@
                 cashReceived: cashReceived === null ? null : Math.round(cashReceived * 100) / 100,
                 change,
             });
+            /* addSale grava no localStorage lendo uma lista nova, sem tocar
+               nesta referência em memória — sem este unshift a venda só
+               apareceria no histórico depois de recarregar a página. */
+            salesHistory.unshift(vendaDemo);
         }
 
         const changeMsg = change !== null ? ` — troco: ${money(change)}` : '';
@@ -687,7 +648,7 @@
             .sort((a, b) => new Date(b.date) - new Date(a.date))
             .filter((sale) => {
                 if (!term) return true;
-                return String(sale.orderId).includes(term) || (sale.clienteId || '').toLowerCase().includes(term);
+                return String(sale.orderId).includes(term) || (sale.usuario || '').toLowerCase().includes(term);
             });
 
         historyWrapEl.classList.toggle('hydro-empty', sales.length === 0);
@@ -700,7 +661,7 @@
                 <tr>
                     <td data-label="Data/Hora">${when}</td>
                     <td data-label="Pedido">#${sale.orderId}</td>
-                    <td data-label="Cliente">${escapeHtml(sale.clienteId || '—')}</td>
+                    <td data-label="Usuário">${escapeHtml(sale.usuario || 'Demonstração')}</td>
                     <td data-label="Itens">${itemCount} ${itemCount === 1 ? 'item' : 'itens'}</td>
                     <td data-label="Pagamento">${escapeHtml(PAYMENT_LABELS[sale.payment] || sale.payment || '—')}</td>
                     <td data-label="Total" class="hydro-item-total">${money(sale.total)}</td>
@@ -720,7 +681,7 @@
     const saleDetailModalEl = document.getElementById('hydroSaleDetailModal');
     const saleDetailWhenEl = document.getElementById('hydroSaleDetailWhen');
     const saleDetailTitleEl = document.getElementById('hydroSaleDetailTitle');
-    const saleDetailClientEl = document.getElementById('hydroSaleDetailClient');
+    const saleDetailUserEl = document.getElementById('hydroSaleDetailUser');
     const saleDetailPaymentEl = document.getElementById('hydroSaleDetailPayment');
     const saleDetailCashRowEl = document.getElementById('hydroSaleDetailCashRow');
     const saleDetailReceivedEl = document.getElementById('hydroSaleDetailReceived');
@@ -732,7 +693,7 @@
     function openSaleDetailModal(sale) {
         saleDetailWhenEl.textContent = new Date(sale.date).toLocaleString('pt-BR');
         saleDetailTitleEl.textContent = `Pedido #${sale.orderId}`;
-        saleDetailClientEl.textContent = sale.clienteId || '—';
+        saleDetailUserEl.textContent = sale.usuario || 'Demonstração';
         saleDetailPaymentEl.textContent = PAYMENT_LABELS[sale.payment] || sale.payment || '—';
 
         const isCash = sale.payment === 'dinheiro' && sale.cashReceived != null;
@@ -789,6 +750,9 @@
     /* ================= Render geral ================= */
     function renderAll() {
         renderOrderPanel();
+        // A vitrine entra aqui para o saldo dos cards acompanhar a baixa de
+        // estoque feita ao finalizar cada venda.
+        renderCatalog();
     }
 
     /* ================= Mobile sidebar ================= */
@@ -810,7 +774,11 @@
     (async function init() {
         if (window.hydraApi) {
             try {
-                await window.hydraApi('/auth/me');
+                /* O usuário é guardado aqui, e não no guardAdminMenu() do topo
+                   do arquivo: aquela IIFE não é aguardada e correria com o
+                   primeiro render do painel do pedido. */
+                const { usuario } = await window.hydraApi('/auth/me');
+                usuarioAtual = usuario;
                 const [produtosRes, vendasRes] = await Promise.all([
                     window.hydraApi('/produtos'),
                     window.hydraApi('/vendas'),
@@ -828,6 +796,7 @@
             catalog = HydroStore.getProducts();
             salesHistory = HydroStore.getSales();
         }
+        renderCatalogFilters();
         renderAll();
     })();
 })();

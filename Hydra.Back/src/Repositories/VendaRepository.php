@@ -50,9 +50,21 @@ final class VendaRepository
         ]);
     }
 
+    /* O histórico de vendas mostra quem operou o caixa, não o cliente:
+       "v.*" (nunca "*") porque com o JOIN o asterisco despejaria
+       usuarios.* inteiro no JSON da API — senha, e-mail e reset_token
+       incluídos. LEFT JOIN por simetria com o histórico de
+       movimentações, embora vendas.id_usuario seja NOT NULL. */
+    private const SELECT_COM_USUARIO =
+        'SELECT v.*, u.nome AS nome_usuario
+           FROM vendas v
+           LEFT JOIN usuarios u ON u.id_usuario = v.id_usuario';
+
     public function findInLoja(int $idVenda, int $idLoja): ?array
     {
-        $stmt = db()->prepare('SELECT * FROM vendas WHERE id_venda = :id AND id_loja = :id_loja');
+        $stmt = db()->prepare(
+            self::SELECT_COM_USUARIO . ' WHERE v.id_venda = :id AND v.id_loja = :id_loja'
+        );
         $stmt->execute(['id' => $idVenda, 'id_loja' => $idLoja]);
         $row = $stmt->fetch();
         return $row ?: null;
@@ -61,7 +73,9 @@ final class VendaRepository
     /** @return array<int,array<string,mixed>> */
     public function listByLoja(int $idLoja): array
     {
-        $stmt = db()->prepare('SELECT * FROM vendas WHERE id_loja = :id_loja ORDER BY data_venda DESC');
+        $stmt = db()->prepare(
+            self::SELECT_COM_USUARIO . ' WHERE v.id_loja = :id_loja ORDER BY v.data_venda DESC'
+        );
         $stmt->execute(['id_loja' => $idLoja]);
         return $stmt->fetchAll();
     }
