@@ -15,6 +15,65 @@
 
     HydroStore.seedHistoryIfNeeded();
 
+    /* ================= Categorias já usadas na loja =================
+       Não existe lista fixa nem tabela de categorias: o usuário digita a
+       que fizer sentido para o mercadinho dele. As que já estão em uso
+       vêm do próprio catálogo e são oferecidas como sugestão, o que evita
+       criar "Bebidas" de novo só porque a grafia saiu diferente. */
+    let categoriasDaLoja = [];
+
+    function preencherDatalistCategorias(nomes) {
+        categoriasDaLoja = Array.from(new Set(nomes.map((n) => String(n || '').trim()).filter(Boolean)))
+            .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+        const datalist = document.getElementById('hydroCategoryList');
+        categoriasDaLoja.forEach((categoria) => {
+            const option = document.createElement('option');
+            // Atribuído como propriedade, nunca via innerHTML: é à prova de
+            // injeção por construção, sem precisar de um escapeHtml aqui.
+            option.value = categoria;
+            datalist.appendChild(option);
+        });
+    }
+
+    (async function loadCategorias() {
+        if (window.hydraApi) {
+            try {
+                const { produtos } = await window.hydraApi('/produtos');
+                preencherDatalistCategorias(produtos.map((p) => p.categoria));
+                return;
+            } catch (err) {
+                // Visitante da demo pública (401) ou cargo sem acesso ao
+                // catálogo: cai para o catálogo local abaixo. Sem sugestões o
+                // campo ainda funciona, livre para digitar.
+            }
+        }
+        preencherDatalistCategorias(HydroStore.getProducts().map((p) => p.category));
+    })();
+
+    /* Normaliza a categoria digitada: colapsa espaços, corta no tamanho da
+       coluna e, se já existir uma equivalente na loja, reaproveita a grafia
+       dela — é isso que impede "bebidas", " Bebidas " e "BEBIDAS" de virarem
+       três opções no filtro do Estoque. */
+    function normalizeCategory(value, existing) {
+        const cleaned = String(value || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+        if (!cleaned) return '';
+        const hit = (existing || []).find(
+            (c) => c.toLocaleLowerCase('pt-BR') === cleaned.toLocaleLowerCase('pt-BR')
+        );
+        return hit || cleaned.charAt(0).toLocaleUpperCase('pt-BR') + cleaned.slice(1);
+    }
+
+    /* Data de hoje em YYYY-MM-DD no fuso local. toISOString() não serve:
+       é UTC, então em UTC-3 depois das 21h devolveria o dia seguinte e
+       recusaria um produto que vence hoje. */
+    function todayIso() {
+        const d = new Date();
+        const mes = String(d.getMonth() + 1).padStart(2, '0');
+        const dia = String(d.getDate()).padStart(2, '0');
+        return `${d.getFullYear()}-${mes}-${dia}`;
+    }
+
     const form = document.getElementById('hydroProductForm');
     const saveBtn = document.getElementById('hydroSaveBtn');
     const toast = document.getElementById('hydroToast');
@@ -41,6 +100,11 @@
 
     unitSelect.addEventListener('change', toggleBoxUnitGroup);
     toggleBoxUnitGroup();
+
+    /* Não se cadastra produto vencido: o seletor nativo já aparece com os
+       dias passados em cinza, antes de qualquer tentativa de salvar. */
+    const expiryInput = document.getElementById('hydroProdExpiry');
+    expiryInput.min = todayIso();
 
     /* ================= Toast ================= */
     let toastTimer = null;
@@ -132,8 +196,8 @@
             setError('hydroProdName', 'Informe o nome do produto');
             valid = false;
         }
-        if (!data.categoria) {
-            setError('hydroProdCategory', 'Selecione uma categoria');
+        if (!normalizeCategory(data.categoria, categoriasDaLoja)) {
+            setError('hydroProdCategory', 'Informe a categoria do produto');
             valid = false;
         }
         if (data.precoVenda === '' || Number(data.precoVenda) <= 0) {
@@ -144,26 +208,21 @@
             setError('hydroProdQty', 'Informe a quantidade em estoque');
             valid = false;
         }
+        if (data.validade && data.validade < todayIso()) {
+            setError('hydroProdExpiry', 'A data de validade informada já passou');
+            valid = false;
+        }
 
         return valid;
     }
 
     /* ================= Salvar ================= */
-    const CATEGORY_LABELS = {
-        alimentos: 'Alimentos',
-        bebidas: 'Bebidas',
-        limpeza: 'Limpeza',
-        higiene: 'Higiene e beleza',
-        outros: 'Outros',
-    };
-
     function getFormData() {
         const fd = new FormData(form);
         const unidadeSelecionada = (fd.get('unidade') || 'un').toString();
         const unidadeCaixa = (fd.get('unidadeCaixa') || 'un').toString();
         return {
             nome: (fd.get('nome') || '').toString(),
-            codigoBarras: (fd.get('codigoBarras') || '').toString(),
             categoria: (fd.get('categoria') || '').toString(),
             precoCusto: (fd.get('precoCusto') || '').toString(),
             precoVenda: (fd.get('precoVenda') || '').toString(),
@@ -177,25 +236,13 @@
         };
     }
 
-    function generateSku(name, barcode) {
-        if (barcode && barcode.trim()) return barcode.trim();
-        const base = name
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toUpperCase()
-            .replace(/[^A-Z0-9]/g, '')
-            .slice(0, 8);
-        return (base || 'PROD') + '-' + Date.now().toString(36).slice(-4).toUpperCase();
-    }
-
     function saveProductLocally(data) {
         const name = data.nome.trim();
         const product = {
             id: HydroStore.uid('p'),
             name: name,
             desc: '',
-            sku: generateSku(name, data.codigoBarras),
-            category: CATEGORY_LABELS[data.categoria] || data.categoria,
+            category: normalizeCategory(data.categoria, categoriasDaLoja),
             costPrice: data.precoCusto ? Number(data.precoCusto) : 0,
             price: Number(data.precoVenda),
             quantity: Number(data.quantidade),
@@ -218,8 +265,7 @@
             method: 'POST',
             body: {
                 nome: data.nome.trim(),
-                codigo_barras: data.codigoBarras.trim(),
-                categoria: CATEGORY_LABELS[data.categoria] || data.categoria,
+                categoria: normalizeCategory(data.categoria, categoriasDaLoja),
                 preco_custo: data.precoCusto || null,
                 preco_venda: Number(data.precoVenda),
                 quantidade: Number(data.quantidade),
@@ -258,6 +304,18 @@
             }
         } else {
             saveProductLocally(data);
+        }
+
+        /* Categoria recém-criada entra nas sugestões sem recarregar a tela:
+           cadastrar dois produtos da mesma categoria nova em sequência
+           reaproveita a grafia do primeiro. */
+        const categoriaSalva = normalizeCategory(data.categoria, categoriasDaLoja);
+        if (categoriaSalva && !categoriasDaLoja.includes(categoriaSalva)) {
+            categoriasDaLoja.push(categoriaSalva);
+            categoriasDaLoja.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            const option = document.createElement('option');
+            option.value = categoriaSalva;
+            document.getElementById('hydroCategoryList').appendChild(option);
         }
 
         showToast('Produto salvo com sucesso!');

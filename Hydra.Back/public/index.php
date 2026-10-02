@@ -122,7 +122,7 @@ $routes = [
     ['GET', '#^/api/usuarios$#', fn () => (new UsuarioController())->index()],
     ['POST', '#^/api/usuarios$#', fn () => (new UsuarioController())->store()],
     ['PUT', '#^/api/usuarios/(\d+)$#', fn ($id) => (new UsuarioController())->update((int) $id)],
-    ['DELETE', '#^/api/usuarios/(\d+)$#', fn ($id) => (new UsuarioController())->destroy((int) $id)],
+    // Não há DELETE de usuário: ver o comentário no fim de UsuarioController.
 
     ['GET', '#^/api/loja$#', fn () => (new LojaController())->show()],
     ['PUT', '#^/api/loja$#', fn () => (new LojaController())->update()],

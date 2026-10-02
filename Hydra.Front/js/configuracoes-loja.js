@@ -141,7 +141,7 @@
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
             // Mesma permissao que a API exige em GET /api/loja.
-            if (!(usuario.permissoes || []).includes('loja.visualizar')) {
+            if (!(usuario.permissoes || []).includes('loja.configurar')) {
                 window.location.href = 'controle-estoque.html';
                 return;
             }

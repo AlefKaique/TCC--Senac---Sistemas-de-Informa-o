@@ -23,10 +23,16 @@ final class ProdutoController
         $this->movimentacoes = new MovimentacaoEstoqueRepository();
     }
 
-    /** GET /api/produtos */
+    /**
+     * GET /api/produtos
+     * Único endpoint com requireAnyPermission: o catálogo é a tela de
+     * Estoque, mas é também o que o Caixa lê para montar a venda. Exigir
+     * "estoque.gerenciar" aqui obrigaria a dar poder de escrita no estoque
+     * a quem só opera o caixa.
+     */
     public function index(): void
     {
-        $user = Auth::requirePermission('produtos.visualizar');
+        $user = Auth::requireAnyPermission(['estoque.gerenciar', 'vendas.operar']);
         Response::json(['produtos' => $this->produtos->listByLoja($user['id_loja'])]);
     }
 
@@ -38,7 +44,7 @@ final class ProdutoController
      */
     public function store(): void
     {
-        $user = Auth::requirePermission('produtos.criar');
+        $user = Auth::requirePermission('estoque.gerenciar');
         $dados = Request::json();
 
         $validado = $this->validar($dados);
@@ -47,14 +53,6 @@ final class ProdutoController
             return;
         }
         $campos = $validado['campos'];
-
-        if (
-            $campos['codigo_barras'] !== null
-            && $this->produtos->codigoBarrasExists($user['id_loja'], $campos['codigo_barras'])
-        ) {
-            Response::json(['erro' => 'Já existe um produto cadastrado com este código de barras'], 409);
-            return;
-        }
 
         $pdo = db();
         $pdo->beginTransaction();
@@ -89,7 +87,7 @@ final class ProdutoController
      */
     public function update(int $id): void
     {
-        $user = Auth::requirePermission('produtos.editar');
+        $user = Auth::requirePermission('estoque.gerenciar');
         $produto = $this->produtos->findInLoja($id, $user['id_loja']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
@@ -97,7 +95,7 @@ final class ProdutoController
         }
 
         $dados = Request::json();
-        $validado = $this->validar($dados);
+        $validado = $this->validar($dados, $produto);
         if ($validado['erro'] !== null) {
             Response::json(['erro' => $validado['erro']], 422);
             return;
@@ -124,14 +122,6 @@ final class ProdutoController
             return;
         }
 
-        if (
-            $campos['codigo_barras'] !== null
-            && $this->produtos->codigoBarrasExists($user['id_loja'], $campos['codigo_barras'], $id)
-        ) {
-            Response::json(['erro' => 'Já existe um produto cadastrado com este código de barras'], 409);
-            return;
-        }
-
         $this->produtos->update($id, $campos);
         Response::json(['produto' => $this->produtos->findInLoja($id, $user['id_loja'])]);
     }
@@ -145,7 +135,7 @@ final class ProdutoController
      */
     public function destroy(int $id): void
     {
-        $user = Auth::requirePermission('produtos.excluir');
+        $user = Auth::requirePermission('estoque.gerenciar');
         $produto = $this->produtos->findInLoja($id, $user['id_loja']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
@@ -165,7 +155,7 @@ final class ProdutoController
     /** GET /api/produtos/{id}/movimentacoes — RF10 */
     public function movimentacoes(int $id): void
     {
-        $user = Auth::requirePermission('estoque.visualizar');
+        $user = Auth::requirePermission('estoque.gerenciar');
         $produto = $this->produtos->findInLoja($id, $user['id_loja']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
@@ -176,14 +166,23 @@ final class ProdutoController
     }
 
     /**
+     * Validação compartilhada por store() e update(). Cuidado: chave
+     * ausente é tratada como vazia, então o PUT é substituição total —
+     * o front-end tem de reenviar os campos que o formulário de edição
+     * não expõe (ver o reenvio de "lote" em controle-estoque.js).
+     *
      * @param array<string,mixed> $dados
+     * @param array<string,mixed>|null $produtoAtual linha atual do produto no
+     *        update; null na criação. Serve para saber se a validade mudou.
      * @return array{erro:?string,campos:array<string,mixed>}
      */
-    private function validar(array $dados): array
+    private function validar(array $dados, ?array $produtoAtual = null): array
     {
         $nome = trim((string) ($dados['nome'] ?? ''));
-        $categoria = trim((string) ($dados['categoria'] ?? ''));
-        $codigoBarras = trim((string) ($dados['codigo_barras'] ?? ''));
+        // A categoria é digitada livremente pelo usuário (não há mais lista
+        // fixa), então o espaço em branco é normalizado aqui para que
+        // "Bebidas" e "Bebidas " não virem duas categorias distintas.
+        $categoria = (string) preg_replace('/\s+/u', ' ', trim((string) ($dados['categoria'] ?? '')));
         $unidade = trim((string) ($dados['unidade'] ?? 'un')) ?: 'un';
         $lote = trim((string) ($dados['lote'] ?? ''));
         $validade = trim((string) ($dados['validade'] ?? ''));
@@ -197,6 +196,11 @@ final class ProdutoController
         if ($nome === '' || $categoria === '') {
             return ['erro' => 'Preencha o nome e a categoria do produto', 'campos' => []];
         }
+        // A coluna é VARCHAR(60): sem este corte o MySQL truncaria em
+        // silêncio (ou estouraria, virando um 500 opaco no catch genérico).
+        if (mb_strlen($categoria) > 60) {
+            return ['erro' => 'Categoria muito longa (máximo 60 caracteres)', 'campos' => []];
+        }
         if (!is_numeric($precoVenda) || (float) $precoVenda <= 0) {
             return ['erro' => 'Informe um preço de venda válido', 'campos' => []];
         }
@@ -206,8 +210,26 @@ final class ProdutoController
         if ($estoqueMinimo !== null && $estoqueMinimo !== '' && (!is_numeric($estoqueMinimo) || (float) $estoqueMinimo < 0)) {
             return ['erro' => 'Estoque mínimo inválido', 'campos' => []];
         }
-        if ($validade !== '' && \DateTime::createFromFormat('Y-m-d', $validade) === false) {
-            return ['erro' => 'Data de validade inválida', 'campos' => []];
+        if ($validade !== '') {
+            // O "!" zera as horas (comparação puramente de data) e o
+            // round-trip pelo format() fecha a lenência do createFromFormat,
+            // que aceitaria "2026-02-31" rolando a data para março.
+            $dataValidade = \DateTimeImmutable::createFromFormat('!Y-m-d', $validade);
+            if ($dataValidade === false || $dataValidade->format('Y-m-d') !== $validade) {
+                return ['erro' => 'Data de validade inválida', 'campos' => []];
+            }
+            // Não se cadastra produto já vencido. Na edição a regra só vale
+            // quando a data mudou: um produto que venceu na prateleira
+            // precisa continuar editável — é justamente ele que a tela de
+            // Estoque destaca para o estoquista agir (RF19).
+            $validadeMudou = $produtoAtual === null
+                || (string) ($produtoAtual['validade'] ?? '') !== $validade;
+            if ($validadeMudou && $dataValidade < new \DateTimeImmutable('today')) {
+                return [
+                    'erro' => 'A data de validade informada já passou — não é possível cadastrar um produto vencido',
+                    'campos' => [],
+                ];
+            }
         }
 
         return [
@@ -215,7 +237,6 @@ final class ProdutoController
             'campos' => [
                 'nome' => $nome,
                 'descricao' => $descricao !== '' ? $descricao : null,
-                'codigo_barras' => $codigoBarras !== '' ? $codigoBarras : null,
                 'categoria' => $categoria,
                 'preco_custo' => ($precoCusto !== null && $precoCusto !== '' && is_numeric($precoCusto)) ? (float) $precoCusto : null,
                 'preco_venda' => (float) $precoVenda,

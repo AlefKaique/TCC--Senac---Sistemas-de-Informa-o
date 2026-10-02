@@ -125,6 +125,18 @@ CREATE INDEX idx_clientes_email   ON clientes (email);
 --
 -- Corresponde à entidade PRODUTO do DER (Figura 9) e ao atributo de
 -- status + método inativar() do Diagrama de Classes (Figura 6).
+--
+-- O código de barras foi removido do sistema: o mercadinho de bairro
+-- não tem leitor nem etiqueta padronizada, e o produto passou a ser
+-- identificado pelo nome. Em um banco JÁ EM USO (criado antes dessa
+-- remoção), execute os dois comandos abaixo NESTA ORDEM:
+--
+--     ALTER TABLE produtos DROP INDEX uq_produtos_loja_codigo_barras;
+--     ALTER TABLE produtos DROP COLUMN codigo_barras;
+--
+-- A ordem importa: o índice era composto (id_loja, codigo_barras).
+-- Soltar a coluna primeiro faria o MySQL reduzir o índice a
+-- UNIQUE (id_loja), o que passaria a permitir só UM produto por loja.
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS produtos (
@@ -132,7 +144,8 @@ CREATE TABLE IF NOT EXISTS produtos (
     id_loja         INT NOT NULL,
     nome            VARCHAR(150) NOT NULL,
     descricao       VARCHAR(255) NULL,
-    codigo_barras   VARCHAR(50)  NULL,
+    -- Digitada livremente pelo usuário no cadastro, com as categorias já
+    -- usadas na loja oferecidas como sugestão (não há lista fixa).
     categoria       VARCHAR(60)  NOT NULL,
     preco_custo     DECIMAL(10,2) NULL,
     preco_venda     DECIMAL(10,2) NOT NULL,
@@ -145,12 +158,7 @@ CREATE TABLE IF NOT EXISTS produtos (
     data_criacao    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
-        ON DELETE CASCADE,
-
-    -- NULL não conta para UNIQUE em MySQL: vários produtos sem código
-    -- de barras na mesma loja são permitidos; só bloqueia duplicidade
-    -- de um código já usado.
-    UNIQUE KEY uq_produtos_loja_codigo_barras (id_loja, codigo_barras)
+        ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX idx_produtos_id_loja  ON produtos (id_loja);
@@ -396,36 +404,98 @@ CREATE TABLE IF NOT EXISTS cargo_permissoes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Catálogo fixo de permissões — cada uma corresponde a uma verificação
--- real no back-end (Hydra\Support\Auth::requirePermission), não é só
--- texto decorativo na tela de Cargos.
-INSERT IGNORE INTO permissoes (codigo, nome, descricao, categoria, ordem) VALUES
-    ('produtos.visualizar',     'Ver Produtos',             'Abrir o catálogo e a tela de Controle de Estoque',          'Produtos',       10),
-    ('produtos.criar',          'Cadastrar Produtos',       'Incluir novos produtos no catálogo',                        'Produtos',       11),
-    ('produtos.editar',         'Editar Produtos',          'Alterar dados de um produto já cadastrado',                 'Produtos',       12),
-    ('produtos.editar_preco',   'Alterar Preços',           'Alterar preço de custo e de venda de um produto',           'Produtos',       13),
-    ('produtos.excluir',        'Excluir Produtos',         'Excluir ou inativar produtos do catálogo',                  'Produtos',       14),
-    ('estoque.visualizar',      'Ver Movimentações',        'Consultar o histórico de entradas e saídas de estoque',     'Estoque',        20),
-    ('estoque.movimentar',      'Registrar Movimentações',  'Lançar entradas e saídas manuais de estoque',               'Estoque',        21),
-    ('vendas.visualizar',       'Ver Vendas',               'Consultar o histórico de vendas da loja',                   'Vendas (Caixa)', 30),
-    ('vendas.registrar',        'Registrar Vendas',         'Operar o Caixa (PDV) e finalizar vendas',                   'Vendas (Caixa)', 31),
-    ('usuarios.visualizar',     'Ver Usuários',             'Abrir a tela de Equipe e consultar os usuários da loja',    'Administração',  40),
-    ('usuarios.criar',          'Criar Usuários',           'Cadastrar novos usuários na loja',                          'Administração',  41),
-    ('usuarios.editar',         'Editar Usuários',          'Alterar dados, cargo e situação (ativo/inativo) de usuários','Administração', 42),
-    ('usuarios.excluir',        'Excluir Usuários',         'Remover usuários da loja',                                  'Administração',  43),
-    ('cargos.visualizar',       'Ver Cargos',               'Abrir a tela de Cargos e consultar suas permissões',        'Administração',  44),
-    ('cargos.criar',            'Criar Cargos',             'Criar novos cargos',                                        'Administração',  45),
-    ('cargos.editar',           'Editar Cargos',            'Alterar nome, cor e permissões de um cargo',                'Administração',  46),
-    ('cargos.excluir',          'Excluir Cargos',           'Excluir cargos que não sejam cargos de sistema',            'Administração',  47),
-    ('loja.visualizar',         'Ver Dados da Loja',        'Consultar os dados cadastrais da loja',                     'Administração',  48),
-    ('loja.configurar',         'Alterar Dados da Loja',    'Alterar os dados cadastrais da loja',                       'Administração',  49);
+-- real no back-end (Hydra\Support\Auth::requirePermission ou
+-- ::requireAnyPermission), não é só texto decorativo na tela de Cargos.
+--
+-- São 5, uma por área do sistema. A granularidade anterior (19 códigos,
+-- ver/criar/editar/excluir por módulo) não correspondia a nenhuma decisão
+-- real de um mercadinho: configura-se "quem cuida do estoque", não "quem
+-- pode editar mas não excluir produto".
+--
+-- "produtos.editar_preco" fica separada porque a RN04 exige que só o
+-- Administrador altere preços — é a única granularidade fina que o negócio
+-- pede. Ela só tem efeito somada a "estoque.gerenciar", que é o que libera
+-- o PUT /api/produtos/{id}.
+--
+-- ON DUPLICATE KEY UPDATE em vez de INSERT IGNORE: "produtos.editar_preco"
+-- e "loja.configurar" já existem em bancos da versão anterior (os códigos
+-- foram reaproveitados). O IGNORE pularia as duas e deixaria o nome antigo
+-- ("Alterar Dados da Loja") na tela; o UPDATE atualiza o texto SEM trocar o
+-- id_permissao, então as linhas de cargo_permissoes continuam valendo.
+INSERT INTO permissoes (codigo, nome, descricao, categoria, ordem) VALUES
+    ('estoque.gerenciar',     'Estoque e Produtos',   'Cadastrar, editar e excluir produtos e lançar entradas e saídas de estoque',              'Operação',      10),
+    ('produtos.editar_preco', 'Alterar Preços',       'Alterar preço de custo e de venda (RN04) — só tem efeito junto com "Estoque e Produtos"', 'Operação',      11),
+    ('vendas.operar',         'Vendas no Caixa',      'Operar o Caixa (PDV), finalizar vendas e consultar o histórico',                          'Operação',      12),
+    ('equipe.gerenciar',      'Equipe e Cargos',      'Gerenciar os usuários da loja e os cargos e suas permissões',                             'Administração', 20),
+    ('loja.configurar',       'Configuração da Loja', 'Ver e alterar os dados cadastrais da loja',                                               'Administração', 21)
+ON DUPLICATE KEY UPDATE
+    nome = VALUES(nome), descricao = VALUES(descricao),
+    categoria = VALUES(categoria), ordem = VALUES(ordem);
 
--- "vendas.aplicar_desconto" foi retirada do catálogo: o PDV não oferece
--- campo de desconto, então a permissão só ocupava espaço na tela de
--- Cargos. Em um banco que já a tenha, este DELETE a remove (as linhas
--- em cargo_permissoes caem junto, por ON DELETE CASCADE). O mesmo é
--- feito automaticamente em CargoRepository::ensureDefaults(), para não
--- exigir que o schema seja reaplicado à mão em um banco já em uso.
-DELETE FROM permissoes WHERE codigo = 'vendas.aplicar_desconto';
+-- Migração do acesso antigo para os códigos novos. Roda ANTES do DELETE
+-- mais abaixo, e é a mesma regra de
+-- CargoRepository::remapearPermissoesDosCargos() — que faz isto
+-- automaticamente a cada login, para não exigir reaplicar este arquivo em
+-- um banco já em uso.
+--
+-- A regra SUB-concede de propósito: só quem tinha algum código de ESCRITA
+-- na área ganha a permissão grossa, que também concede escrita. Um cargo
+-- que só tinha "produtos.visualizar"/"estoque.visualizar" termina sem
+-- permissão alguma — "só olhar o estoque" deixou de existir, e o
+-- administrador remarca esse cargo na tela de Cargos.
+INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
+SELECT DISTINCT cp.id_cargo, novo.id_permissao
+  FROM cargo_permissoes cp
+  JOIN permissoes antiga ON antiga.id_permissao = cp.id_permissao
+  JOIN permissoes novo   ON novo.codigo = 'estoque.gerenciar'
+ WHERE antiga.codigo IN ('produtos.criar', 'produtos.editar', 'produtos.excluir', 'estoque.movimentar');
+
+INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
+SELECT DISTINCT cp.id_cargo, novo.id_permissao
+  FROM cargo_permissoes cp
+  JOIN permissoes antiga ON antiga.id_permissao = cp.id_permissao
+  JOIN permissoes novo   ON novo.codigo = 'vendas.operar'
+ WHERE antiga.codigo IN ('vendas.visualizar', 'vendas.registrar');
+
+INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
+SELECT DISTINCT cp.id_cargo, novo.id_permissao
+  FROM cargo_permissoes cp
+  JOIN permissoes antiga ON antiga.id_permissao = cp.id_permissao
+  JOIN permissoes novo   ON novo.codigo = 'equipe.gerenciar'
+ WHERE antiga.codigo IN ('usuarios.visualizar', 'usuarios.criar', 'usuarios.editar', 'usuarios.excluir',
+                         'cargos.visualizar', 'cargos.criar', 'cargos.editar', 'cargos.excluir');
+
+INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
+SELECT DISTINCT cp.id_cargo, novo.id_permissao
+  FROM cargo_permissoes cp
+  JOIN permissoes antiga ON antiga.id_permissao = cp.id_permissao
+  JOIN permissoes novo   ON novo.codigo = 'loja.configurar'
+ WHERE antiga.codigo = 'loja.visualizar';
+
+-- Permissões retiradas do catálogo depois de já terem sido gravadas em
+-- algum banco. As linhas correspondentes em cargo_permissoes caem junto,
+-- por ON DELETE CASCADE. O mesmo é feito automaticamente em
+-- CargoRepository::ensureDefaults(), que também roda o remap acima antes
+-- de apagar.
+--
+--   - "vendas.aplicar_desconto": o PDV nunca teve campo de desconto.
+--   - os 17 códigos granulares da versão anterior. Dos 19, sobrevivem só
+--     "produtos.editar_preco" e "loja.configurar", reaproveitados acima.
+--
+-- A ORDEM IMPORTA: este DELETE depois do remap. Invertido, o acesso antigo
+-- é apagado antes de haver de onde copiá-lo e todo cargo de toda loja fica
+-- sem permissão alguma. Se isso acontecer, o SQL de diagnóstico e de
+-- recuperação do acesso administrativo está em Hydra.Back/README.md,
+-- seção "Cargos e permissões".
+DELETE FROM permissoes WHERE codigo IN (
+    'vendas.aplicar_desconto',
+    'produtos.visualizar', 'produtos.criar', 'produtos.editar', 'produtos.excluir',
+    'estoque.visualizar', 'estoque.movimentar',
+    'vendas.visualizar', 'vendas.registrar',
+    'usuarios.visualizar', 'usuarios.criar', 'usuarios.editar', 'usuarios.excluir',
+    'cargos.visualizar', 'cargos.criar', 'cargos.editar', 'cargos.excluir',
+    'loja.visualizar'
+);
 
 -- A chave estrangeira de usuarios.id_cargo é criada aqui, e não na
 -- declaração da tabela, porque "usuarios" vem antes de "cargos" neste

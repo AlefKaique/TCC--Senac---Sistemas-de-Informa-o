@@ -185,11 +185,6 @@
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 8l-9-5-9 5 9 5 9-5Z'/%3E%3Cpath d='M3 8v8l9 5 9-5V8'/%3E%3Cpath d='M12 13v8'/%3E%3C/svg%3E");
 }
 
-.hydro-ic-barcode {
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cline x1='7' y1='8' x2='7' y2='16'/%3E%3Cline x1='10' y1='8' x2='10' y2='16'/%3E%3Cline x1='13' y1='8' x2='13' y2='16'/%3E%3Cline x1='17' y1='8' x2='17' y2='16'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cline x1='7' y1='8' x2='7' y2='16'/%3E%3Cline x1='10' y1='8' x2='10' y2='16'/%3E%3Cline x1='13' y1='8' x2='13' y2='16'/%3E%3Cline x1='17' y1='8' x2='17' y2='16'/%3E%3C/svg%3E");
-}
-
 .hydro-ic-voucher {
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 9V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z'/%3E%3Cpath d='M13 5v2'/%3E%3Cpath d='M13 17v2'/%3E%3Cpath d='M13 11v2'/%3E%3C/svg%3E");
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 9V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z'/%3E%3Cpath d='M13 5v2'/%3E%3Cpath d='M13 17v2'/%3E%3Cpath d='M13 11v2'/%3E%3C/svg%3E");
@@ -511,7 +506,7 @@
     color: #fff;
 }
 
-/* ============ Barra de busca / leitura de código de barras ============ */
+/* ============ Barra de busca de produto ============ */
 .hydro-scan-bar {
     position: relative;
     display: flex;
@@ -547,68 +542,120 @@
     font-weight: 400;
 }
 
-.hydro-scan-suggestions {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: calc(100% + 6px);
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-pop);
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 30;
-    display: none;
-}
-
-.hydro-scan-suggestions.hydro-show {
-    display: block;
-}
-
-.hydro-suggestion {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    width: 100%;
-    padding: 11px 16px;
-    font-size: 13.5px;
-    color: var(--ink);
-    background: transparent;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-}
-
-.hydro-suggestion:last-child {
-    border-bottom: none;
-}
-
-.hydro-suggestion:hover:not(:disabled) {
-    background: var(--bg);
-}
-
-.hydro-suggestion:disabled {
-    color: var(--muted-soft);
-    cursor: not-allowed;
-}
-
-.hydro-suggestion-name {
-    font-weight: 600;
-}
-
-.hydro-suggestion-meta {
-    color: var(--muted-soft);
-    font-size: 12px;
-    white-space: nowrap;
-}
-
 /* ============ Layout principal do PDV ============ */
 .hydro-pos-layout {
     display: grid;
     grid-template-columns: 1fr 360px;
     gap: 22px;
     align-items: start;
+}
+
+/* Coluna da esquerda: vitrine de produtos + tabela de itens do pedido.
+   O min-width:0 é obrigatório — item de grid tem min-width:auto, e as
+   células nowrap da tabela de itens estourariam a coluna 1fr sem ele. */
+.hydro-pos-main {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    min-width: 0;
+}
+
+/* ============ Vitrine: produtos em estoque ============ */
+.hydro-catalog-panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+}
+
+.hydro-catalog-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.hydro-catalog-toolbar .hydro-order-section-label {
+    margin: 0;
+}
+
+.hydro-catalog-toolbar select {
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 10px;
+    max-width: 220px;
+}
+
+.hydro-catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 12px;
+    padding: 14px;
+    max-height: 340px;
+    overflow-y: auto;
+}
+
+/* .hydro-caixa button só herda font-family e cursor, então o visual do
+   card é todo declarado aqui. */
+.hydro-catalog-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+    padding: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.hydro-catalog-card:hover:not(:disabled) {
+    border-color: var(--navy-active);
+    box-shadow: var(--shadow-card);
+}
+
+/* Produto sem estoque continua visível (escondê-lo faria parecer que saiu
+   do cadastro), mas não pode entrar na venda. */
+.hydro-catalog-card:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.hydro-catalog-name {
+    font-weight: 700;
+    font-size: 13.5px;
+    color: var(--navy-900);
+}
+
+.hydro-catalog-meta {
+    font-size: 11.5px;
+    color: var(--muted-soft);
+}
+
+.hydro-catalog-price {
+    font-weight: 800;
+    font-size: 14px;
+    color: var(--ink);
+    margin-top: 4px;
+}
+
+.hydro-catalog-stock {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.hydro-catalog-empty {
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13.5px;
 }
 
 /* ============ Tabela de itens do pedido ============ */
@@ -683,11 +730,6 @@
     font-size: 12px;
     color: var(--muted);
     margin-top: 2px;
-}
-
-.hydro-item-code {
-    color: var(--muted);
-    white-space: nowrap;
 }
 
 .hydro-item-unit,
@@ -846,9 +888,8 @@
     color: var(--navy-900);
 }
 
-/* Linha "Qtd" de itens vendidos por peso (kg) — mostra o peso já definido
-   pelo código de barras da balança ou pela entrada manual, com um botão
-   para reabrir o modal e ajustar. */
+/* Linha "Qtd" de itens vendidos por peso (kg) — mostra o peso informado no
+   modal de peso, com um botão para reabri-lo e ajustar. */
 .hydro-weight-cell {
     display: flex;
     align-items: center;
@@ -1293,6 +1334,13 @@
         grid-template-columns: 1fr;
     }
 
+    /* Sem a coluna lateral, a vitrine pode crescer à vontade — rolar duas
+       áreas encaixadas no celular é pior do que rolar só a página. */
+    .hydro-catalog-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        max-height: none;
+    }
+
     .hydro-order-card {
         position: static;
     }
@@ -1346,6 +1394,19 @@
 
     .hydro-scan-bar {
         padding: 12px 14px;
+    }
+
+    .hydro-catalog-grid {
+        grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    }
+
+    .hydro-catalog-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hydro-catalog-toolbar select {
+        max-width: none;
     }
 
     .hydro-pos-footer {

@@ -49,13 +49,13 @@
                 </nav>
 
                 <div class="hydro-menu hydro-menu-admin">
-                    <p class="hydro-menu-label"><span class="hydro-menu-restricted">Admin</span></p>
+                    <p class="hydro-menu-label" id="hydroMenuAdminLabel"><span class="hydro-menu-restricted">Admin</span></p>
                     <ul>
-                        <li><a href="#" class="hydro-active" data-view="equipe"><i
+                        <li id="hydroLiEquipe"><a href="#" class="hydro-active" data-view="equipe"><i
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
-                        <li><a href="configuracoes-loja.html"><i
+                        <li id="hydroLiConfig"><a href="configuracoes-loja.html"><i
                                     class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span></a></li>
-                        <li><a href="cargos.html"><i
+                        <li id="hydroLiCargos"><a href="cargos.html"><i
                                     class="hydro-ic hydro-ic-shield"></i><span>Cargos</span></a></li>
                     </ul>
                 </div>
@@ -131,17 +131,19 @@
                         </label>
                         <label class="hydro-select-field">
                             <span class="hydro-select-label">Status</span>
+                            <!-- Os valores precisam ser minúsculos: o filtro
+                                 compara com usuarios.status, que é
+                                 'ativo'/'inativo' no banco. -->
                             <select id="hydroFilterStatusUser">
                                 <option value="">Todos os status</option>
-                                <option value="Ativo">Ativo</option>
-                                <option value="Inativo">Inativo</option>
+                                <option value="ativo">Ativo</option>
+                                <option value="inativo">Inativo</option>
                             </select>
                         </label>
                     </div>
+                    <!-- Cargos é alcançado só pelo menu lateral: o botão que
+                         existia aqui duplicava aquele item. -->
                     <div class="hydro-toolbar-buttons">
-                        <a class="hydro-btn hydro-btn-outline" href="cargos.html">
-                            <i class="hydro-ic hydro-ic-shield"></i> Gerenciar cargos
-                        </a>
                         <button class="hydro-btn hydro-btn-primary" id="hydroBtnNovoUsuario">
                             <i class="hydro-ic hydro-ic-plus"></i> Novo usuário
                         </button>
@@ -184,7 +186,6 @@
             <div class="hydro-modal" role="dialog" aria-modal="true">
                 <div class="hydro-modal-header">
                     <h2 id="hydroModalTitle">Título</h2>
-                    <button class="hydro-modal-close" id="hydroModalClose" aria-label="Fechar">&times;</button>
                 </div>
                 <div class="hydro-modal-body" id="hydroModalBody"></div>
                 <div class="hydro-modal-footer" id="hydroModalFooter"></div>

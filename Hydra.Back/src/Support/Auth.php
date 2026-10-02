@@ -149,4 +149,26 @@ final class Auth
         }
         return $user;
     }
+
+    /**
+     * Variante de requirePermission() para o endpoint que serve a mais de
+     * uma área do sistema. O caso que a motivou é GET /api/produtos: o
+     * catálogo é a tela de Estoque, mas é também o que o Caixa lê para
+     * montar a venda. Exigir "estoque.gerenciar" ali obrigaria a dar poder
+     * de escrita no estoque a um operador de caixa só para ele enxergar os
+     * preços — o oposto do que as permissões grossas tentam fazer.
+     *
+     * @param string[] $codigos basta ter UM deles
+     */
+    public static function requireAnyPermission(array $codigos): array
+    {
+        $user = self::requireLogin();
+        foreach ($codigos as $codigo) {
+            if (self::can($codigo)) {
+                return $user;
+            }
+        }
+        Response::json(['erro' => 'Seu cargo não tem permissão para acessar este recurso'], 403);
+        exit;
+    }
 }

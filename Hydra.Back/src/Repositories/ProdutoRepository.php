@@ -25,35 +25,21 @@ final class ProdutoRepository
         return $row ?: null;
     }
 
-    public function codigoBarrasExists(int $idLoja, string $codigoBarras, ?int $ignorarId = null): bool
-    {
-        $sql = 'SELECT 1 FROM produtos WHERE id_loja = :id_loja AND codigo_barras = :codigo_barras';
-        $params = ['id_loja' => $idLoja, 'codigo_barras' => $codigoBarras];
-        if ($ignorarId !== null) {
-            $sql .= ' AND id_produto != :ignorar_id';
-            $params['ignorar_id'] = $ignorarId;
-        }
-        $stmt = db()->prepare($sql);
-        $stmt->execute($params);
-        return (bool) $stmt->fetchColumn();
-    }
-
     /** @param array<string,mixed> $dados */
     public function create(int $idLoja, array $dados): int
     {
         $stmt = db()->prepare(
             'INSERT INTO produtos
-                (id_loja, nome, descricao, codigo_barras, categoria, preco_custo, preco_venda,
+                (id_loja, nome, descricao, categoria, preco_custo, preco_venda,
                  quantidade, estoque_minimo, unidade, lote, validade)
              VALUES
-                (:id_loja, :nome, :descricao, :codigo_barras, :categoria, :preco_custo, :preco_venda,
+                (:id_loja, :nome, :descricao, :categoria, :preco_custo, :preco_venda,
                  :quantidade, :estoque_minimo, :unidade, :lote, :validade)'
         );
         $stmt->execute([
             'id_loja' => $idLoja,
             'nome' => $dados['nome'],
             'descricao' => $dados['descricao'],
-            'codigo_barras' => $dados['codigo_barras'],
             'categoria' => $dados['categoria'],
             'preco_custo' => $dados['preco_custo'],
             'preco_venda' => $dados['preco_venda'],
@@ -73,7 +59,6 @@ final class ProdutoRepository
             'UPDATE produtos SET
                 nome = :nome,
                 descricao = :descricao,
-                codigo_barras = :codigo_barras,
                 categoria = :categoria,
                 preco_custo = :preco_custo,
                 preco_venda = :preco_venda,
@@ -87,7 +72,6 @@ final class ProdutoRepository
         $stmt->execute([
             'nome' => $dados['nome'],
             'descricao' => $dados['descricao'],
-            'codigo_barras' => $dados['codigo_barras'],
             'categoria' => $dados['categoria'],
             'preco_custo' => $dados['preco_custo'],
             'preco_venda' => $dados['preco_venda'],

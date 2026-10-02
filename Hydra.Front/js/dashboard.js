@@ -20,7 +20,7 @@
         if (!window.hydraApi) return;
         try {
             const { usuario } = await window.hydraApi('/auth/me');
-            if (!(usuario.permissoes || []).includes('vendas.visualizar')) {
+            if (!(usuario.permissoes || []).includes('vendas.operar')) {
                 window.location.href = 'controle-estoque.html';
                 return;
             }
@@ -45,7 +45,6 @@
         return {
             id: String(p.id_produto),
             name: p.nome,
-            sku: p.codigo_barras || `PRD-${p.id_produto}`,
             quantity: Number(p.quantidade),
             minStock: Number(p.estoque_minimo),
             validade: p.validade,
@@ -328,11 +327,10 @@
                     return `
                 <tr>
                     <td class="hydro-alert-product">${escapeHtml(product.name)}</td>
-                    <td class="hydro-alert-sku">${escapeHtml(product.sku || '—')}</td>
                     <td><span class="hydro-alert-qty ${meta.qty}">${product.quantity}</span></td>
                     <td>${product.minStock}</td>
                     <td><span class="hydro-badge ${meta.badge}">${meta.label}</span></td>
-                    <td><a class="hydro-view-link" href="controle-estoque.html?sku=${encodeURIComponent(product.sku || '')}">Ver produto</a></td>
+                    <td><a class="hydro-view-link" href="controle-estoque.html?busca=${encodeURIComponent(product.name)}">Ver produto</a></td>
                 </tr>`;
                 })
                 .join('');
@@ -368,11 +366,10 @@
                     return `
                 <tr>
                     <td class="hydro-alert-product">${escapeHtml(product.name)}</td>
-                    <td class="hydro-alert-sku">${escapeHtml(product.sku || '—')}</td>
                     <td><span class="hydro-alert-qty ${meta.qty}">${product.quantity}</span></td>
                     <td>${formatDate(product.validade)}</td>
                     <td><span class="hydro-badge ${meta.badge}">${meta.label}</span></td>
-                    <td><a class="hydro-view-link" href="controle-estoque.html?sku=${encodeURIComponent(product.sku || '')}">Ver produto</a></td>
+                    <td><a class="hydro-view-link" href="controle-estoque.html?busca=${encodeURIComponent(product.name)}">Ver produto</a></td>
                 </tr>`;
                 })
                 .join('');
@@ -384,20 +381,35 @@
         if (window.hydraApi) {
             try {
                 await window.hydraApi('/auth/me');
-                const [produtosRes, vendasRes, movRes] = await Promise.all([
+                /* allSettled, e não all: o Operador de Caixa chega até aqui
+                   (tem "vendas.operar"), mas não tem "estoque.gerenciar", então
+                   GET /api/estoque/movimentacoes responde 403. Com Promise.all
+                   esse 403 derrubava as três chamadas e o painel inteiro
+                   passava a mostrar números de DEMONSTRAÇÃO, sem avisar — o
+                   dono olharia um faturamento inventado. Agora cada parte que
+                   o cargo pode ver é real, e o gráfico de movimentações
+                   simplesmente fica vazio. */
+                const [produtosRes, vendasRes, movRes] = await Promise.allSettled([
                     window.hydraApi('/produtos'),
                     window.hydraApi('/vendas'),
                     window.hydraApi('/estoque/movimentacoes'),
                 ]);
+
+                // Se nem produtos nem vendas vieram, não há painel a montar:
+                // cai para a demonstração (visitante ou cargo sem acesso).
+                if (produtosRes.status === 'rejected' && vendasRes.status === 'rejected') {
+                    throw produtosRes.reason;
+                }
+
                 renderDashboard(
-                    produtosRes.produtos.map(mapApiProduct),
-                    vendasRes.vendas.map(mapApiVenda),
-                    movRes.movimentacoes.map(mapApiMovimentacao)
+                    produtosRes.status === 'fulfilled' ? produtosRes.value.produtos.map(mapApiProduct) : [],
+                    vendasRes.status === 'fulfilled' ? vendasRes.value.vendas.map(mapApiVenda) : [],
+                    movRes.status === 'fulfilled' ? movRes.value.movimentacoes.map(mapApiMovimentacao) : []
                 );
                 return;
             } catch (err) {
-                // Visitante não autenticado, ou perfil sem acesso a Produtos/Vendas
-                // (RF02/RN07) — mostra o catálogo de demonstração local.
+                // Visitante não autenticado, ou cargo sem acesso nem a Produtos
+                // nem a Vendas — mostra o catálogo de demonstração local.
             }
         }
         renderDashboard(HydroStore.getProducts(), HydroStore.getSales(), HydroStore.getMovements());
@@ -406,7 +418,7 @@
     /* ================= Busca (atalho para Estoque) ================= */
     document.getElementById('hydroSearchInput').addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && e.target.value.trim()) {
-            window.location.href = 'controle-estoque.html?sku=' + encodeURIComponent(e.target.value.trim());
+            window.location.href = 'controle-estoque.html?busca=' + encodeURIComponent(e.target.value.trim());
         }
     });
 

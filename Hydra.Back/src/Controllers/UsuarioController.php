@@ -31,12 +31,12 @@ final class UsuarioController
     /**
      * GET /api/usuarios
      * Devolve também os cargos da loja (id, nome, cor) para preencher o
-     * seletor de cargo da tela — sem exigir a permissão "cargos.visualizar"
-     * (que é só para a tela de administração de Cargos em si).
+     * seletor de cargo da tela, poupando uma segunda chamada a
+     * GET /api/cargos.
      */
     public function index(): void
     {
-        $admin = Auth::requirePermission('usuarios.visualizar');
+        $admin = Auth::requirePermission('equipe.gerenciar');
         $this->cargos->ensureDefaults($admin['id_loja']);
         Response::json([
             'usuarios' => $this->usuarios->listByLoja($admin['id_loja']),
@@ -54,7 +54,7 @@ final class UsuarioController
      */
     public function store(): void
     {
-        $admin = Auth::requirePermission('usuarios.criar');
+        $admin = Auth::requirePermission('equipe.gerenciar');
         $dados = Request::json();
 
         $nome = trim((string) ($dados['nome'] ?? ''));
@@ -85,7 +85,7 @@ final class UsuarioController
         // administrativos: a recusa que existia antes só criava um desvio
         // (cadastrar com outro cargo e editar em seguida), porque PUT
         // /api/usuarios/{id} sempre aceitou o mesmo cargo. Quem chega até
-        // aqui já tem "usuarios.criar".
+        // aqui já tem "equipe.gerenciar".
         $perfil = CargoRepository::nivelEquivalente($cargo['permissoes']);
         if ($this->usuarios->emailExists($email)) {
             Response::json(['erro' => 'Já existe uma conta com este e-mail'], 409);
@@ -107,7 +107,7 @@ final class UsuarioController
     /** PUT /api/usuarios/{id} */
     public function update(int $id): void
     {
-        $admin = Auth::requirePermission('usuarios.editar');
+        $admin = Auth::requirePermission('equipe.gerenciar');
         $usuario = $this->usuarios->findInLoja($id, $admin['id_loja']);
         if ($usuario === null) {
             Response::json(['erro' => 'Usuário não encontrado'], 404);
@@ -146,6 +146,16 @@ final class UsuarioController
         }
         $perfil = CargoRepository::nivelEquivalente($cargo['permissoes']);
 
+        // Mesma proteção que o antigo DELETE /api/usuarios/{id} tinha, agora
+        // no caminho do status: desativar a própria conta mata a própria
+        // sessão na requisição seguinte (Auth::requireLogin()), e o admin
+        // descobre isso sendo expulso para o login. A trava de administrador
+        // ativo abaixo não cobre este caso quando existe um segundo admin.
+        if ($id === $admin['id_usuario'] && $status !== 'ativo') {
+            Response::json(['erro' => 'Você não pode desativar sua própria conta'], 422);
+            return;
+        }
+
         // Evita que a loja fique sem nenhum administrador ativo.
         $perdendoAdmin = $usuario['perfil'] === 'administrador'
             && ($perfil !== 'administrador' || $status !== 'ativo');
@@ -164,25 +174,13 @@ final class UsuarioController
         Response::json(['usuario' => $this->usuarios->findPublic($id)]);
     }
 
-    /** DELETE /api/usuarios/{id} — RN21: a confirmação prévia é feita no front-end. */
-    public function destroy(int $id): void
-    {
-        $admin = Auth::requirePermission('usuarios.excluir');
-        $usuario = $this->usuarios->findInLoja($id, $admin['id_loja']);
-        if ($usuario === null) {
-            Response::json(['erro' => 'Usuário não encontrado'], 404);
-            return;
-        }
-        if ($id === $admin['id_usuario']) {
-            Response::json(['erro' => 'Você não pode excluir sua própria conta'], 422);
-            return;
-        }
-        if ($usuario['perfil'] === 'administrador' && $this->usuarios->countAdminsAtivos($admin['id_loja']) <= 1) {
-            Response::json(['erro' => 'A loja precisa ter pelo menos um administrador ativo'], 422);
-            return;
-        }
-
-        $this->usuarios->delete($id);
-        Response::json(['ok' => true]);
-    }
+    /*
+     * Não existe exclusão de usuário. As vendas (vendas.id_usuario) e as
+     * movimentações de estoque (movimentacoes_estoque.id_usuario) gravam
+     * quem fez cada lançamento: apagar o funcionário apagaria a autoria do
+     * histórico da loja. Para revogar o acesso de quem saiu, basta mudar o
+     * status dele para "inativo" pela tela de Equipe — o login passa a ser
+     * recusado (AuthController) e a sessão aberta cai na requisição
+     * seguinte (Auth::requireLogin).
+     */
 }

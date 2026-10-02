@@ -722,11 +722,6 @@
     color: var(--navy-900);
 }
 
-.hydro-alert-sku {
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
-}
-
 .hydro-alert-qty {
     display: inline-flex;
     min-width: 34px;
