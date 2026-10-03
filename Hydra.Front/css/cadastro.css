@@ -323,3 +323,39 @@ html, body.signup-body{
     right: 4px;
   }
 }
+/* Link "Voltar" acima da logo nas telas de Login e Cadastro */
+.auth-back{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 20px;
+  color: var(--gray-600);
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color .15s ease;
+}
+.auth-back:hover,
+.auth-back:focus-visible{
+  color: var(--navy);
+}
+.auth-back svg{
+  width: 16px;
+  height: 16px;
+}
+
+.login__form{
+  margin-top: 24px;
+}
+
+.is-hidden{
+  display: none !important;
+}
+
+#codigo{
+  text-align: center;
+  letter-spacing: 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.1rem;
+}

@@ -44,12 +44,17 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | Método | Rota | Permissão exigida | Descrição |
 |--------|------|-------------------|-----------|
 | GET    | `/api/health`                        | pública | Verificação de saúde (usada pelo Render) |
-| POST   | `/api/auth/registro`                 | pública | Onboarding: cria loja + usuário administrador (Fig. 13); não abre sessão — o front redireciona para o Login |
-| POST   | `/api/auth/login`                    | pública | Login (Fig. 14) |
+| POST   | `/api/auth/registro`                 | pública | Onboarding: cria loja + usuário administrador (Fig. 13) e envia o código de confirmação do e-mail; não abre sessão |
+| POST   | `/api/auth/verificar-email`          | pública (via código) | Confirma o e-mail da conta recém-criada; depois o front redireciona para o Login |
+| POST   | `/api/auth/reenviar-verificacao`     | pública | Reenvia o código de confirmação do e-mail |
+| POST   | `/api/auth/login`                    | pública | Login (Fig. 14). Para Administrador ou e-mail não confirmado responde `requer_codigo` e envia um código por e-mail |
+| POST   | `/api/auth/login/codigo`             | login pendente | Segunda etapa: valida o código e abre a sessão |
+| POST   | `/api/auth/login/reenviar`           | login pendente | Reenvia o código da segunda etapa |
 | POST   | `/api/auth/logout`                   | logado | Encerra a sessão |
 | GET    | `/api/auth/me`                       | logado | Usuário autenticado atual, com suas permissões |
 | POST   | `/api/auth/esqueci-senha`            | pública | Envia código de verificação por e-mail (Fig. 15) |
-| POST   | `/api/auth/redefinir-senha`          | pública (via código) | Valida o código e define nova senha |
+| POST   | `/api/auth/verificar-codigo-recuperacao` | pública (via código) | Confere o código antes de a tela pedir a nova senha (não o consome) |
+| POST   | `/api/auth/redefinir-senha`          | pública (via código) | Valida o código de novo e define nova senha |
 | GET    | `/api/usuarios`                      | `equipe.gerenciar` | Lista usuários e cargos da loja |
 | POST   | `/api/usuarios`                      | `equipe.gerenciar` | Cria usuário não administrativo |
 | PUT    | `/api/usuarios/{id}`                 | `equipe.gerenciar` | Edita nome, e-mail, cargo e situação (ativo/inativo) |
@@ -167,6 +172,21 @@ recria.
 responde **429** e bloqueia por 15 minutos, dobrando a cada novo grupo de
 falhas. Sem isso, o código de 6 dígitos da recuperação (1 milhão de
 combinações, válido por 15 minutos) seria percorrível por um script.
+
+Os códigos de confirmação de e-mail e de login (`verificar-email`,
+`login/codigo`) usam a chave `codigo:<email>`, e os envios de código
+(`registro`, `login`, reenvios) usam `envio:<email>`, para que "Reenviar
+código" não vire um disparador ilimitado de e-mails.
+
+### Confirmação de e-mail e código no login
+
+A conta criada no Cadastro só tem o e-mail confirmado depois de digitar o
+código enviado (`usuarios.email_verificado`). No login, quem ainda não
+confirmou o e-mail e todo **Administrador** precisam digitar um código de
+6 dígitos (válido por 10 minutos) enviado ao e-mail. Operador de Caixa e
+Estoquista entram só com a senha. Funcionários criados em Gerenciar
+Usuários já nascem com o e-mail confirmado. Banco já em uso: ver o
+`ALTER TABLE usuarios` no comentário da tabela em `schema.sql`.
 
 Autenticação é feita por sessão PHP (cookie `PHPSESSID`), que expira ao
 fechar o navegador. Não há login persistente ("lembrar de mim"): o

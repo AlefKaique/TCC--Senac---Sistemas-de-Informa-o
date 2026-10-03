@@ -7,7 +7,9 @@
 --
 -- Telas cobertas por este schema:
 --   - Cadastro (Fig. 13)        -> INSERT em lojas + INSERT em usuarios (perfil = administrador)
+--                                  + confirmação do e-mail por código (email_verificado)
 --   - Login (Fig. 14)           -> SELECT em usuarios (email, senha) + UPDATE ultimo_acesso
+--                                  + código por e-mail para Administradores (codigo_acesso)
 --   - Recuperar senha (Fig. 15) -> UPDATE reset_token / reset_token_expira_em
 --   - Gerenciar Usuários        -> CRUD em usuarios (perfil = operador_caixa/estoquista)
 --   - Configurações da Loja     -> UPDATE em lojas
@@ -64,6 +66,30 @@ CREATE TABLE IF NOT EXISTS usuarios (
     -- suporte à tela de Recuperação de Senha (RN05)
     reset_token             VARCHAR(255) NULL,
     reset_token_expira_em   DATETIME NULL,
+
+    -- Confirmação de e-mail e verificação em duas etapas do login.
+    --   - email_verificado: a conta criada no Cadastro só fica confirmada
+    --     depois de digitar o código enviado ao e-mail, que é também o canal
+    --     de recuperação de senha. Funcionários criados em Gerenciar
+    --     Usuários já nascem confirmados (o administrador responde pelo
+    --     e-mail que cadastrou).
+    --   - codigo_acesso: código de 6 dígitos da confirmação de e-mail e do
+    --     login do Administrador (2FA). Fica separado de reset_token para
+    --     que um código de login não sirva para redefinir a senha.
+    --
+    -- Em um banco JÁ EM USO (criado antes destas colunas), execute:
+    --
+    --     ALTER TABLE usuarios
+    --         ADD COLUMN email_verificado TINYINT(1) NOT NULL DEFAULT 0,
+    --         ADD COLUMN codigo_acesso VARCHAR(255) NULL,
+    --         ADD COLUMN codigo_acesso_expira_em DATETIME NULL;
+    --     UPDATE usuarios SET email_verificado = 1;
+    --
+    -- O UPDATE marca as contas existentes como confirmadas, para que
+    -- ninguém fique trancado do lado de fora ao atualizar o sistema.
+    email_verificado        TINYINT(1)   NOT NULL DEFAULT 0,
+    codigo_acesso           VARCHAR(255) NULL,
+    codigo_acesso_expira_em DATETIME NULL,
 
     FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
         ON DELETE CASCADE

@@ -118,6 +118,11 @@ $routes = [
     ['GET', '#^/api/auth/me$#', fn () => (new AuthController())->me()],
     ['POST', '#^/api/auth/esqueci-senha$#', fn () => (new AuthController())->esqueciSenha()],
     ['POST', '#^/api/auth/redefinir-senha$#', fn () => (new AuthController())->redefinirSenha()],
+    ['POST', '#^/api/auth/verificar-codigo-recuperacao$#', fn () => (new AuthController())->verificarCodigoRecuperacao()],
+    ['POST', '#^/api/auth/verificar-email$#', fn () => (new AuthController())->verificarEmail()],
+    ['POST', '#^/api/auth/reenviar-verificacao$#', fn () => (new AuthController())->reenviarVerificacao()],
+    ['POST', '#^/api/auth/login/codigo$#', fn () => (new AuthController())->loginCodigo()],
+    ['POST', '#^/api/auth/login/reenviar$#', fn () => (new AuthController())->loginReenviar()],
 
     ['GET', '#^/api/usuarios$#', fn () => (new UsuarioController())->index()],
     ['POST', '#^/api/usuarios$#', fn () => (new UsuarioController())->store()],

@@ -11,11 +11,23 @@ final class UsuarioRepository
         return (bool) $stmt->fetchColumn();
     }
 
-    public function create(int $idLoja, string $nome, string $email, string $senhaHash, string $perfil, ?int $idCargo = null): int
-    {
+    /**
+     * $emailVerificado é false só para a conta criada pelo Cadastro, que
+     * ainda precisa confirmar o e-mail por código. Funcionários criados
+     * pelo administrador já nascem confirmados.
+     */
+    public function create(
+        int $idLoja,
+        string $nome,
+        string $email,
+        string $senhaHash,
+        string $perfil,
+        ?int $idCargo = null,
+        bool $emailVerificado = true
+    ): int {
         $stmt = db()->prepare(
-            'INSERT INTO usuarios (id_loja, nome, email, senha, perfil, id_cargo)
-             VALUES (:id_loja, :nome, :email, :senha, :perfil, :id_cargo)'
+            'INSERT INTO usuarios (id_loja, nome, email, senha, perfil, id_cargo, email_verificado)
+             VALUES (:id_loja, :nome, :email, :senha, :perfil, :id_cargo, :email_verificado)'
         );
         $stmt->execute([
             'id_loja' => $idLoja,
@@ -24,6 +36,7 @@ final class UsuarioRepository
             'senha' => $senhaHash,
             'perfil' => $perfil,
             'id_cargo' => $idCargo,
+            'email_verificado' => $emailVerificado ? 1 : 0,
         ]);
         return (int) db()->lastInsertId();
     }
@@ -140,6 +153,36 @@ final class UsuarioRepository
              WHERE id_usuario = :id'
         );
         $stmt->execute(['senha' => $senhaHash, 'id' => $idUsuario]);
+    }
+
+    /** Código de confirmação de e-mail / login do administrador (ver schema.sql). */
+    public function setCodigoAcesso(int $idUsuario, string $codigo, string $expiraEm): void
+    {
+        $stmt = db()->prepare(
+            'UPDATE usuarios SET codigo_acesso = :codigo, codigo_acesso_expira_em = :expira WHERE id_usuario = :id'
+        );
+        $stmt->execute(['codigo' => $codigo, 'expira' => $expiraEm, 'id' => $idUsuario]);
+    }
+
+    public function findByValidCodigoAcesso(int $idUsuario, string $codigo): ?array
+    {
+        $stmt = db()->prepare(
+            'SELECT * FROM usuarios
+             WHERE id_usuario = :id AND codigo_acesso = :codigo AND codigo_acesso_expira_em > NOW()'
+        );
+        $stmt->execute(['id' => $idUsuario, 'codigo' => $codigo]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    /** Consome o código (uso único) e marca o e-mail como confirmado. */
+    public function marcarEmailVerificadoELimparCodigo(int $idUsuario): void
+    {
+        $stmt = db()->prepare(
+            'UPDATE usuarios SET email_verificado = 1, codigo_acesso = NULL, codigo_acesso_expira_em = NULL
+             WHERE id_usuario = :id'
+        );
+        $stmt->execute(['id' => $idUsuario]);
     }
 
 }
