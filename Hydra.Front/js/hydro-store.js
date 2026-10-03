@@ -6,12 +6,19 @@
 (function (global) {
     'use strict';
 
+    /* As chaves de vendas/movimentações e a de "já semeei" terminam em _v2
+       desde que a numeração de pedido passou a começar em 1 (antes era
+       7800 + n). Sem trocar as três juntas, um navegador que já tinha a
+       demonstração antiga ficaria com as duas numerações misturadas no
+       histórico, e as movimentações das vendas velhas continuariam contando
+       no Dashboard. Trocar só a de "semeei" não bastaria: o seed se somaria
+       ao histórico antigo em vez de substituí-lo. */
     var KEYS = {
         products: 'hydro_products',
-        sales: 'hydro_sales',
-        movements: 'hydro_stock_movements',
+        sales: 'hydro_sales_v2',
+        movements: 'hydro_stock_movements_v2',
         snapshots: 'hydro_daily_snapshots',
-        seeded: 'hydro_seeded_v1',
+        seeded: 'hydro_seeded_v2',
     };
 
     function read(key, fallback) {
@@ -194,13 +201,16 @@
     function stockStatus(quantity, minStock) {
         quantity = Number(quantity) || 0;
         minStock = Number(minStock) || 0;
-        if (minStock <= 0) return quantity > 0 ? 'ok' : 'critical';
+        /* Prateleira vazia tem estado próprio ("Esgotado"), separado de
+           "Crítico": são coisas diferentes para quem repõe o estoque. */
+        if (quantity <= 0) return 'empty';
+        if (minStock <= 0) return 'ok';
         if (quantity < minStock / 2) return 'critical';
         if (quantity < minStock) return 'warning';
         return 'ok';
     }
 
-    var STATUS_LABELS = { critical: 'Crítico', warning: 'Atenção', ok: 'Em estoque' };
+    var STATUS_LABELS = { empty: 'Esgotado', critical: 'Crítico', warning: 'Atenção', ok: 'Em estoque' };
 
     var EXPIRY_WARNING_DAYS = 30;
 
@@ -308,7 +318,10 @@
 
                 sales.push({
                     id: uid('sale'),
-                    orderId: 7800 + sales.length,
+                    // Sequencial a partir de 1, igual ao numero_venda que o
+                    // back-end gera por loja — o Caixa e o Histórico mostram
+                    // este número, e os dois modos têm de combinar.
+                    orderId: sales.length + 1,
                     // O histórico mostra quem operou o caixa; na demo pública
                     // não há usuário autenticado.
                     usuario: 'Demonstração',

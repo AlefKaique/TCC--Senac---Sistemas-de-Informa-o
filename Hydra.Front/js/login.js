@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.disabled = true;
 
     try {
-      await window.hydraApi('/auth/login', {
+      const { usuario } = await window.hydraApi('/auth/login', {
         method: 'POST',
         body: {
           email: document.getElementById('email').value.trim(),
@@ -37,7 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
         },
       });
 
-      window.location.href = 'controle-estoque.html';
+      /* Antes todo login caía em controle-estoque.html. Com as permissoes
+         separadas por area, um operador de caixa seria mandado para uma tela
+         que a guarda dela recusa — e voltaria para ca. A resposta do login ja
+         traz as permissoes, entao da para ir direto para a tela certa. */
+      window.location.href = window.hydraHomePorPermissao(usuario);
     } catch (err) {
       btn.disabled = false;
       btn.textContent = originalText;

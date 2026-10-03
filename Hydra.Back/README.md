@@ -57,14 +57,14 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | POST   | `/api/cargos`                        | `equipe.gerenciar` | Cria cargo |
 | PUT    | `/api/cargos/{id}`                   | `equipe.gerenciar` | Altera nome, cor, descrição e permissões |
 | DELETE | `/api/cargos/{id}`                   | `equipe.gerenciar` | Exclui cargo que não seja de sistema |
-| GET    | `/api/produtos`                      | `estoque.gerenciar` **ou** `vendas.operar` | Catálogo da loja (Controle de Estoque e Caixa) |
-| POST   | `/api/produtos`                      | `estoque.gerenciar` | Cadastra produto (Fig. 25) |
-| PUT    | `/api/produtos/{id}`                 | `estoque.gerenciar` | Edita produto (preços exigem `produtos.editar_preco`, RN04) |
-| DELETE | `/api/produtos/{id}`                 | `estoque.gerenciar` | Exclui ou inativa o produto (RN03) |
-| GET    | `/api/produtos/{id}/movimentacoes`   | `estoque.gerenciar` | Histórico de entradas/saídas do produto (RF10) |
-| GET    | `/api/estoque/movimentacoes`         | `estoque.gerenciar` | Movimentações da loja (Dashboard, RF06) |
-| POST   | `/api/estoque/movimentacoes`         | `estoque.gerenciar` | Lança entrada ou saída manual (RF03/RF12) |
-| GET    | `/api/vendas`                        | `vendas.operar` | Histórico de vendas com itens, pagamentos e o nome do usuário que registrou |
+| GET    | `/api/produtos`                      | `estoque.consultar` | Catálogo da loja (Controle de Estoque e Caixa) |
+| POST   | `/api/produtos`                      | `produtos.gerenciar` | Cadastra produto (Fig. 25) |
+| PUT    | `/api/produtos/{id}`                 | `produtos.gerenciar` | Edita produto (preços exigem `produtos.editar_preco`, RN04) |
+| DELETE | `/api/produtos/{id}`                 | `produtos.gerenciar` | Exclui ou inativa o produto (RN03) |
+| GET    | `/api/produtos/{id}/movimentacoes`   | `estoque.consultar` | Histórico de entradas/saídas do produto (RF10) |
+| GET    | `/api/estoque/movimentacoes`         | `estoque.consultar` | Movimentações da loja (Dashboard, RF06) |
+| POST   | `/api/estoque/movimentacoes`         | `estoque.lancar` | Lança entrada ou saída manual (RF03/RF12) |
+| GET    | `/api/vendas`                        | `vendas.historico` **ou** `relatorios.visualizar` | Histórico de vendas com itens, pagamentos, o nome de quem registrou e o próximo número de pedido da loja |
 | POST   | `/api/vendas`                        | `vendas.operar` | Finaliza venda (itens, pagamentos e desconto) |
 | GET    | `/api/loja`                          | `loja.configurar` | Dados da loja (Configurações da Loja) |
 | PUT    | `/api/loja`                          | `loja.configurar` | Atualiza dados da loja |
@@ -78,34 +78,59 @@ o login passa a ser recusado e a sessão aberta cai na requisição seguinte.
 
 ### Cargos e permissões
 
-São **5 permissões**, uma por área do sistema. A granularidade anterior (19
-códigos, ver/criar/editar/excluir por módulo) não correspondia a nenhuma
-decisão real de um mercadinho: configura-se "quem cuida do estoque", não
-"quem pode editar mas não excluir produto".
+São **9 permissões**, recortadas pelas funções que alguém de fato exerce no
+mercadinho. É o meio-termo entre as duas tentativas anteriores: a primeira
+tinha 19 códigos (ver/criar/editar/excluir por módulo) e pedia uma decisão
+que ninguém toma — "pode editar mas não excluir produto"; a segunda caiu
+para 5 códigos grossos e juntou demais, a ponto de autorizar alguém a
+conferir o estoque implicar autorizá-lo a lançar movimentação e mexer no
+cadastro.
+
+O corte atual separa **consultar** de **mexer** em cada área, e separa
+Estoque de Caixa por inteiro.
 
 | código | nome na tela | o que libera |
 |---|---|---|
-| `estoque.gerenciar` | Estoque e Produtos | cadastrar, editar e excluir produtos; lançar entradas e saídas |
-| `produtos.editar_preco` | Alterar Preços | alterar preço de custo e de venda (RN04). Só tem efeito somada a `estoque.gerenciar`, que é o que libera o `PUT /api/produtos/{id}` |
-| `vendas.operar` | Vendas no Caixa | operar o PDV, finalizar vendas, ver o histórico — e ler o catálogo de produtos |
+| `estoque.consultar` | Consultar Estoque | abrir a tela de Estoque e ler o catálogo (produtos, saldos, lotes, validades e o histórico de movimentações). É leitura: não cadastra nem movimenta. É a **base** das duas abaixo — sem ela a tela de Estoque não abre |
+| `estoque.lancar` | Entradas e Saídas de Estoque | lançar entrada/saída e corrigir o saldo de um produto |
+| `produtos.gerenciar` | Cadastro de Produtos | cadastrar, editar e excluir produtos |
+| `produtos.editar_preco` | Alterar Preços | alterar preço de custo e de venda (RN04). Só tem efeito somada a `produtos.gerenciar`, que é o que libera o `PUT /api/produtos/{id}` |
+| `vendas.operar` | Vendas no Caixa | abrir o PDV e finalizar vendas |
+| `vendas.historico` | Histórico de Vendas | consultar as vendas já finalizadas e os detalhes de cada uma |
+| `relatorios.visualizar` | Relatórios | abrir o Dashboard com o faturamento e os indicadores (RN16, RN17) |
 | `equipe.gerenciar` | Equipe e Cargos | as telas de Equipe e de Cargos |
 | `loja.configurar` | Configuração da Loja | ver e alterar os dados cadastrais da loja |
 
-Cada uma corresponde a uma chamada real de `Auth::requirePermission()` (ou
-`::requireAnyPermission()`, usada só em `GET /api/produtos`) — nenhuma é
-apenas decorativa. O cargo do usuário e suas permissões são revalidados **a
-cada requisição**, de modo que inativar alguém ou mudar o cargo dele tem
-efeito imediato, sem precisar relogar.
+Cargos de sistema criados para toda loja nova:
 
-**Migração de um banco da versão anterior.** `CargoRepository::ensureDefaults()`
-roda a cada login e faz tudo sozinho: cria o catálogo novo, copia o acesso
-dos códigos antigos para os novos e só então apaga os antigos. A regra
-sub-concede de propósito — só quem tinha algum código de **escrita** na área
-ganha a permissão grossa, porque ela também concede escrita. Consequência a
-conferir depois de atualizar: um cargo feito à mão que só tinha
-`produtos.visualizar`/`estoque.visualizar` termina **sem permissão alguma**,
-porque "só olhar o estoque" deixou de existir — reabra Cargos e marque o que
-ele deve poder fazer.
+| cargo | permissões |
+|---|---|
+| Administrador | todas as 9 |
+| Operador de Caixa | `estoque.consultar`, `vendas.operar`, `vendas.historico`, `relatorios.visualizar` |
+| Estoquista | `estoque.consultar`, `estoque.lancar`, `produtos.gerenciar` |
+
+O Estoquista não recebe permissão de venda nenhuma e o Operador de Caixa não
+recebe nenhuma de escrita no estoque. O que os dois compartilham é
+`estoque.consultar`, porque o Caixa precisa ler o catálogo para montar a
+venda — ler não é mexer.
+
+Cada código corresponde a uma chamada real de `Auth::requirePermission()`
+(ou `::requireAnyPermission()`, usada só em `GET /api/vendas`) — nenhum é
+apenas decorativo. No front-end, as mesmas permissões escondem os itens da
+barra lateral e barram a abertura da tela (`hydraAplicarMenuPorPermissao` e
+`hydraGuardaDeTela`, em `Hydra.Front/js/api.js`). O cargo do usuário e suas
+permissões são revalidados **a cada requisição**, de modo que inativar
+alguém ou mudar o cargo dele tem efeito imediato, sem precisar relogar.
+
+**Migração de um banco das versões anteriores.**
+`CargoRepository::ensureDefaults()` roda a cada login e faz tudo sozinho:
+cria o catálogo novo, copia o acesso dos códigos antigos para os novos e só
+então apaga os antigos. Desta vez a regra **sobre-concede** de propósito:
+quem tinha `estoque.gerenciar` recebe os três códigos que o substituem, e
+quem tinha `vendas.operar` recebe também `vendas.historico` e
+`relatorios.visualizar`, que antes vinham junto. Ninguém perde acesso que já
+exercia — reabra Cargos e desmarque o que cada cargo não deve mais ter,
+porque reduzir é reversível e ficar trancado do lado de fora não é.
 
 Se algo der errado no meio da migração e ninguém mais conseguir abrir Equipe
 ou Cargos, o diagnóstico e a recuperação são por SQL:

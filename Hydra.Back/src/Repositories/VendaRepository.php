@@ -7,14 +7,33 @@ namespace Hydra\Repositories;
  */
 final class VendaRepository
 {
+    /**
+     * Grava a venda e devolve o id_venda.
+     *
+     * O número do pedido (numero_venda) é calculado aqui, e não pelo
+     * AUTO_INCREMENT: "id_venda" é global e compartilhado por todas as
+     * lojas, então usá-lo na tela faria a primeira venda de uma loja nova
+     * aparecer como "#28". O FOR UPDATE segura a faixa de linhas da loja
+     * até o fim da transação — que VendaController::store() já abriu —
+     * para que duas vendas simultâneas não leiam o mesmo MAX. A garantia
+     * final é a UNIQUE KEY uq_vendas_loja_numero: se ainda assim houver
+     * empate, o INSERT estoura e o controller faz rollback.
+     */
     public function create(int $idLoja, int $idUsuario, ?int $idCliente, float $subtotal, float $desconto, float $valorTotal): int
     {
         $stmt = db()->prepare(
-            'INSERT INTO vendas (id_loja, id_usuario, id_cliente, subtotal, desconto, valor_total)
-             VALUES (:id_loja, :id_usuario, :id_cliente, :subtotal, :desconto, :valor_total)'
+            'SELECT COALESCE(MAX(numero_venda), 0) + 1 FROM vendas WHERE id_loja = :id_loja FOR UPDATE'
+        );
+        $stmt->execute(['id_loja' => $idLoja]);
+        $numeroVenda = (int) $stmt->fetchColumn();
+
+        $stmt = db()->prepare(
+            'INSERT INTO vendas (id_loja, numero_venda, id_usuario, id_cliente, subtotal, desconto, valor_total)
+             VALUES (:id_loja, :numero_venda, :id_usuario, :id_cliente, :subtotal, :desconto, :valor_total)'
         );
         $stmt->execute([
             'id_loja' => $idLoja,
+            'numero_venda' => $numeroVenda,
             'id_usuario' => $idUsuario,
             'id_cliente' => $idCliente,
             'subtotal' => $subtotal,
@@ -22,6 +41,21 @@ final class VendaRepository
             'valor_total' => $valorTotal,
         ]);
         return (int) db()->lastInsertId();
+    }
+
+    /**
+     * Número que a próxima venda da loja vai receber — é o que o cabeçalho
+     * do Caixa mostra ("Pedido #7") antes de a venda existir. É uma
+     * previsão, não uma reserva: se outro caixa finalizar primeiro, o
+     * número efetivo é o que create() calcular dentro da transação.
+     */
+    public function proximoNumero(int $idLoja): int
+    {
+        $stmt = db()->prepare(
+            'SELECT COALESCE(MAX(numero_venda), 0) + 1 FROM vendas WHERE id_loja = :id_loja'
+        );
+        $stmt->execute(['id_loja' => $idLoja]);
+        return (int) $stmt->fetchColumn();
     }
 
     public function addItem(int $idVenda, int $idProduto, float $quantidade, float $precoUnitario): void

@@ -145,7 +145,11 @@
                     <aside class="hydro-order-card" id="hydroOrderCard">
                         <div class="hydro-order-header">
                             <div>
-                                <h2 id="hydroOrderTitle">Pedido #0000</h2>
+                                <!-- O número real entra no primeiro render
+                                     (renderOrderPanel). O texto estático era
+                                     "Pedido #0000", que piscava como se fosse
+                                     um número de verdade. -->
+                                <h2 id="hydroOrderTitle">Nova Venda</h2>
                                 <p id="hydroOrderClient">Operador: —</p>
                             </div>
                             <div class="hydro-order-header-actions">
@@ -220,6 +224,25 @@
                         <i class="hydro-ic hydro-ic-search"></i>
                         <input type="text" id="hydroHistorySearch" autocomplete="off"
                             placeholder="Buscar por número do pedido ou usuário...">
+                    </div>
+
+                    <!-- Filtro por data: os atalhos cobrem o uso do dia a dia
+                         (o mercadinho quase sempre quer "hoje") e os campos
+                         De/Até ficam para quando é preciso um período exato.
+                         Escolher um atalho preenche os dois campos. -->
+                    <div class="hydro-history-filters">
+                        <div class="hydro-history-presets" id="hydroHistoryPresets">
+                            <button type="button" class="hydro-history-preset" data-preset="hoje">Hoje</button>
+                            <button type="button" class="hydro-history-preset" data-preset="7">7 dias</button>
+                            <button type="button" class="hydro-history-preset" data-preset="30">30 dias</button>
+                            <button type="button" class="hydro-history-preset hydro-active" data-preset="">Tudo</button>
+                        </div>
+                        <div class="hydro-history-range">
+                            <label for="hydroHistoryFrom">De</label>
+                            <input type="date" id="hydroHistoryFrom">
+                            <label for="hydroHistoryTo">Até</label>
+                            <input type="date" id="hydroHistoryTo">
+                        </div>
                     </div>
 
                     <section class="hydro-items-panel">

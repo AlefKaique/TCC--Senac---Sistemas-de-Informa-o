@@ -98,22 +98,31 @@
         document.getElementById('hydroCargoCorInput').value = draft.cor;
     }
 
-    /* O catálogo tem 5 permissões, uma por área do sistema. Agrupar por
-       "categoria" renderia um título por item, então a lista é plana — a
-       coluna permissoes.categoria continua existindo no banco (é NOT NULL)
-       e é só ignorada aqui. A API já devolve o catálogo ordenado por
-       permissoes.ordem. */
+    /* O catálogo tem 9 permissões em 2 categorias ("Operação" e
+       "Administração"), e por isso elas são agrupadas por título. Enquanto
+       eram 5, agrupar renderia quase um título por item e a lista era plana.
+       A API devolve o catálogo ordenado por permissoes.ordem, que já põe as
+       da mesma categoria em sequência — então basta emitir o título quando a
+       categoria muda, sem reordenar nada aqui. */
     function renderPermRows() {
         const container = document.getElementById('hydroCargoPermList');
+        let categoriaAtual = null;
+
         container.innerHTML = catalogo
-            .map((p) => `
+            .map((p) => {
+                const titulo = p.categoria !== categoriaAtual
+                    ? `<p class="hydro-cargo-perm-group">${escapeHtml(p.categoria)}</p>`
+                    : '';
+                categoriaAtual = p.categoria;
+                return `${titulo}
           <label class="hydro-cargo-perm-row">
             <span class="hydro-cargo-perm-copy">
               <strong>${escapeHtml(p.nome)}</strong>
               <span>${escapeHtml(p.descricao || '')}</span>
             </span>
             <input type="checkbox" class="hydro-cargo-checkbox" data-codigo="${escapeHtml(p.codigo)}" ${draft.permissoes.has(p.codigo) ? 'checked' : ''}>
-          </label>`)
+          </label>`;
+            })
             .join('');
 
         container.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
@@ -365,15 +374,11 @@
             const { usuario } = await window.hydraApi('/auth/me');
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
-            const permissoesUsuario = usuario.permissoes || [];
-            if (!permissoesUsuario.includes('equipe.gerenciar')) {
-                window.location.href = 'controle-estoque.html';
-                return;
-            }
             // Esta tela não chamava a função: o bloco "Admin" da barra
             // lateral ficava visível mesmo para quem não pode abrir aquelas
             // telas. O item Cargos é a única entrada para cá.
             window.hydraAplicarMenuPorPermissao(usuario);
+            if (!window.hydraGuardaDeTela(usuario, ['equipe.gerenciar'])) return;
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém a tela estática, sem carregar dados reais.
             return;

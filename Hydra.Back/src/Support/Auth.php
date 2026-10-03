@@ -152,11 +152,11 @@ final class Auth
 
     /**
      * Variante de requirePermission() para o endpoint que serve a mais de
-     * uma área do sistema. O caso que a motivou é GET /api/produtos: o
-     * catálogo é a tela de Estoque, mas é também o que o Caixa lê para
-     * montar a venda. Exigir "estoque.gerenciar" ali obrigaria a dar poder
-     * de escrita no estoque a um operador de caixa só para ele enxergar os
-     * preços — o oposto do que as permissões grossas tentam fazer.
+     * uma área do sistema. O caso atual é GET /api/vendas: ele alimenta o
+     * Histórico de Vendas ("vendas.historico") e também o cálculo do
+     * faturamento no Dashboard ("relatorios.visualizar"). Exigir só o
+     * primeiro obrigaria a dar acesso ao histórico item a item a quem
+     * deveria enxergar apenas os totais.
      *
      * @param string[] $codigos basta ter UM deles
      */

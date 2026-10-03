@@ -24,17 +24,17 @@ final class EstoqueController
         $this->movimentacoes = new MovimentacaoEstoqueRepository();
     }
 
-    /** GET /api/estoque/movimentacoes — usado pelo Dashboard (RF06). */
+    /** GET /api/estoque/movimentacoes — usado pelo Dashboard (RF06). Leitura. */
     public function index(): void
     {
-        $user = Auth::requirePermission('estoque.gerenciar');
+        $user = Auth::requirePermission('estoque.consultar');
         Response::json(['movimentacoes' => $this->movimentacoes->listByLoja($user['id_loja'])]);
     }
 
-    /** POST /api/estoque/movimentacoes */
+    /** POST /api/estoque/movimentacoes — é aqui que o saldo muda, daí "estoque.lancar". */
     public function store(): void
     {
-        $user = Auth::requirePermission('estoque.gerenciar');
+        $user = Auth::requirePermission('estoque.lancar');
         $dados = Request::json();
 
         $idProduto = (int) ($dados['id_produto'] ?? 0);

@@ -185,11 +185,32 @@ CREATE INDEX idx_produtos_validade  ON produtos (validade);
 -- classe Pagamento se relaciona com Venda em multiplicidade 1..*
 -- (Diagrama de Classes, Figura 6), contemplando pagamento fracionado
 -- em mais de uma forma — daí "pagamentos" ser uma tabela à parte.
+--
+-- "numero_venda" é o número do pedido que o Caixa e o Histórico exibem.
+-- Ele existe porque "id_venda" é AUTO_INCREMENT GLOBAL, compartilhado por
+-- todas as lojas: a primeira venda de uma loja nova sairia com um número
+-- alto e cheio de buracos. O número é por loja e começa em 1.
+--
+-- Em um banco JÁ EM USO (criado antes desta coluna), execute os comandos
+-- abaixo NESTA ORDEM — o UPDATE precisa rodar antes do índice UNIQUE,
+-- senão todas as linhas ficariam em 0 e colidiriam entre si:
+--
+--     ALTER TABLE vendas ADD COLUMN numero_venda INT NOT NULL DEFAULT 0;
+--     UPDATE vendas v
+--       JOIN (SELECT id_venda,
+--                    ROW_NUMBER() OVER (PARTITION BY id_loja ORDER BY id_venda) AS rn
+--               FROM vendas) t ON t.id_venda = v.id_venda
+--        SET v.numero_venda = t.rn;
+--     ALTER TABLE vendas
+--         ALTER COLUMN numero_venda DROP DEFAULT,
+--         ADD UNIQUE KEY uq_vendas_loja_numero (id_loja, numero_venda);
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS vendas (
     id_venda        INT AUTO_INCREMENT PRIMARY KEY,
     id_loja         INT NOT NULL,
+    -- Número do pedido exibido na tela, sequencial DENTRO da loja.
+    numero_venda    INT NOT NULL,
     id_usuario      INT NOT NULL,
     id_cliente      INT NULL,
     subtotal        DECIMAL(10,2) NOT NULL,
@@ -202,7 +223,12 @@ CREATE TABLE IF NOT EXISTS vendas (
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
         ON DELETE RESTRICT,
     FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
-        ON DELETE SET NULL
+        ON DELETE SET NULL,
+
+    -- Garantia real contra número repetido: o SELECT MAX(...)+1 que o
+    -- VendaRepository faz é protegido por FOR UPDATE, mas é esta chave que
+    -- impede de verdade duas vendas simultâneas receberem o mesmo número.
+    UNIQUE KEY uq_vendas_loja_numero (id_loja, numero_venda)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX idx_vendas_id_loja    ON vendas (id_loja);
@@ -335,7 +361,7 @@ CREATE INDEX idx_movimentacoes_financeiras_data     ON movimentacoes_financeiras
 --   ensureDefaults(), chamado de forma preguiçosa no login). Cargos de
 --   sistema (cargo_sistema = 1) não podem ser excluídos; cargos
 --   personalizados podem ser livremente criados, editados e excluídos
---   pelo Administrador (tela exclusiva, permissão "cargos.gerenciar").
+--   pelo Administrador (tela exclusiva, permissão "equipe.gerenciar").
 --
 --   usuarios.perfil é mantido (não removido) por compatibilidade: ele é
 --   recalculado automaticamente a partir das permissões do cargo
@@ -407,27 +433,40 @@ CREATE TABLE IF NOT EXISTS cargo_permissoes (
 -- real no back-end (Hydra\Support\Auth::requirePermission ou
 -- ::requireAnyPermission), não é só texto decorativo na tela de Cargos.
 --
--- São 5, uma por área do sistema. A granularidade anterior (19 códigos,
--- ver/criar/editar/excluir por módulo) não correspondia a nenhuma decisão
--- real de um mercadinho: configura-se "quem cuida do estoque", não "quem
--- pode editar mas não excluir produto".
+-- São 9, recortadas pelas funções que alguém de fato exerce no mercadinho.
+-- É o meio-termo entre as duas tentativas anteriores: a primeira tinha 19
+-- códigos (ver/criar/editar/excluir por módulo) e pedia uma decisão que
+-- ninguém toma — "pode editar mas não excluir produto"; a segunda caiu para
+-- 5 códigos grossos e juntou demais, a ponto de autorizar alguém a conferir
+-- o estoque implicar autorizá-lo a lançar movimentação e mexer no cadastro.
 --
--- "produtos.editar_preco" fica separada porque a RN04 exige que só o
--- Administrador altere preços — é a única granularidade fina que o negócio
--- pede. Ela só tem efeito somada a "estoque.gerenciar", que é o que libera
--- o PUT /api/produtos/{id}.
+-- O corte atual separa CONSULTAR de MEXER em cada área, e separa Estoque de
+-- Caixa por inteiro: o cargo Estoquista não recebe nenhuma permissão de
+-- venda e o Operador de Caixa não recebe nenhuma de escrita no estoque. O
+-- que os dois compartilham é "estoque.consultar", porque o Caixa precisa
+-- ler o catálogo para montar a venda — ler não é mexer.
 --
--- ON DUPLICATE KEY UPDATE em vez de INSERT IGNORE: "produtos.editar_preco"
--- e "loja.configurar" já existem em bancos da versão anterior (os códigos
--- foram reaproveitados). O IGNORE pularia as duas e deixaria o nome antigo
--- ("Alterar Dados da Loja") na tela; o UPDATE atualiza o texto SEM trocar o
--- id_permissao, então as linhas de cargo_permissoes continuam valendo.
+-- "produtos.editar_preco" continua separada porque a RN04 exige que só o
+-- Administrador altere preços. Ela só tem efeito somada a
+-- "produtos.gerenciar", que é o que libera o PUT /api/produtos/{id}.
+--
+-- ON DUPLICATE KEY UPDATE em vez de INSERT IGNORE: "produtos.editar_preco",
+-- "vendas.operar", "equipe.gerenciar" e "loja.configurar" já existem em
+-- bancos das versões anteriores. O IGNORE as pularia e deixaria o texto
+-- antigo na tela (ex.: "Operar o Caixa (PDV), finalizar vendas e consultar
+-- o histórico", que agora é falso — o histórico virou permissão própria);
+-- o UPDATE atualiza o texto SEM trocar o id_permissao, então as linhas de
+-- cargo_permissoes continuam valendo.
 INSERT INTO permissoes (codigo, nome, descricao, categoria, ordem) VALUES
-    ('estoque.gerenciar',     'Estoque e Produtos',   'Cadastrar, editar e excluir produtos e lançar entradas e saídas de estoque',              'Operação',      10),
-    ('produtos.editar_preco', 'Alterar Preços',       'Alterar preço de custo e de venda (RN04) — só tem efeito junto com "Estoque e Produtos"', 'Operação',      11),
-    ('vendas.operar',         'Vendas no Caixa',      'Operar o Caixa (PDV), finalizar vendas e consultar o histórico',                          'Operação',      12),
-    ('equipe.gerenciar',      'Equipe e Cargos',      'Gerenciar os usuários da loja e os cargos e suas permissões',                             'Administração', 20),
-    ('loja.configurar',       'Configuração da Loja', 'Ver e alterar os dados cadastrais da loja',                                               'Administração', 21)
+    ('estoque.consultar',     'Consultar Estoque',            'Ver a lista de produtos, quantidades, lotes e validades — é a base das duas permissões abaixo', 'Operação',   10),
+    ('estoque.lancar',        'Entradas e Saídas de Estoque', 'Lançar entrada e saída de mercadoria — marque também "Consultar Estoque"',                   'Operação',      11),
+    ('produtos.gerenciar',    'Cadastro de Produtos',         'Cadastrar, editar e excluir produtos — marque também "Consultar Estoque"',                   'Operação',      12),
+    ('produtos.editar_preco', 'Alterar Preços',               'Alterar preço de custo e de venda (RN04) — só tem efeito junto com "Cadastro de Produtos"', 'Operação',      13),
+    ('vendas.operar',         'Vendas no Caixa',              'Operar o Caixa (PDV) e finalizar vendas',                                                   'Operação',      20),
+    ('vendas.historico',      'Histórico de Vendas',          'Consultar as vendas já finalizadas e os detalhes de cada uma',                              'Operação',      21),
+    ('relatorios.visualizar', 'Relatórios',                   'Abrir o Dashboard com o faturamento e os indicadores da loja (RN16, RN17)',                 'Operação',      22),
+    ('equipe.gerenciar',      'Equipe e Cargos',              'Gerenciar os usuários da loja e os cargos e suas permissões',                               'Administração', 30),
+    ('loja.configurar',       'Configuração da Loja',         'Ver e alterar os dados cadastrais da loja',                                                 'Administração', 31)
 ON DUPLICATE KEY UPDATE
     nome = VALUES(nome), descricao = VALUES(descricao),
     categoria = VALUES(categoria), ordem = VALUES(ordem);
@@ -436,26 +475,60 @@ ON DUPLICATE KEY UPDATE
 -- mais abaixo, e é a mesma regra de
 -- CargoRepository::remapearPermissoesDosCargos() — que faz isto
 -- automaticamente a cada login, para não exigir reaplicar este arquivo em
--- um banco já em uso.
+-- um banco já em uso. Cobre as duas gerações anteriores do catálogo (19
+-- códigos granulares e 5 códigos grossos).
 --
--- A regra SUB-concede de propósito: só quem tinha algum código de ESCRITA
--- na área ganha a permissão grossa, que também concede escrita. Um cargo
--- que só tinha "produtos.visualizar"/"estoque.visualizar" termina sem
--- permissão alguma — "só olhar o estoque" deixou de existir, e o
--- administrador remarca esse cargo na tela de Cargos.
+-- A regra SOBRE-concede de propósito, ao contrário da migração anterior:
+-- quem tinha "estoque.gerenciar" (que juntava consultar, movimentar e
+-- cadastrar) recebe os três códigos que o substituem, e quem tinha
+-- "vendas.operar" recebe também o histórico e os relatórios, que antes
+-- vinham junto. Ninguém perde acesso que já exercia; o administrador reduz
+-- o que sobrou na tela de Cargos — uma operação reversível, ao contrário de
+-- descobrir que o estoquista ficou trancado do lado de fora.
 INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
 SELECT DISTINCT cp.id_cargo, novo.id_permissao
   FROM cargo_permissoes cp
   JOIN permissoes antiga ON antiga.id_permissao = cp.id_permissao
-  JOIN permissoes novo   ON novo.codigo = 'estoque.gerenciar'
- WHERE antiga.codigo IN ('produtos.criar', 'produtos.editar', 'produtos.excluir', 'estoque.movimentar');
+  JOIN permissoes novo   ON novo.codigo = 'estoque.consultar'
+ WHERE antiga.codigo IN ('estoque.gerenciar', 'vendas.operar', 'estoque.visualizar', 'produtos.visualizar');
+
+INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
+SELECT DISTINCT cp.id_cargo, novo.id_permissao
+  FROM cargo_permissoes cp
+  JOIN permissoes antiga ON antiga.id_permissao = cp.id_permissao
+  JOIN permissoes novo   ON novo.codigo = 'estoque.lancar'
+ WHERE antiga.codigo IN ('estoque.gerenciar', 'estoque.movimentar');
+
+INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
+SELECT DISTINCT cp.id_cargo, novo.id_permissao
+  FROM cargo_permissoes cp
+  JOIN permissoes antiga ON antiga.id_permissao = cp.id_permissao
+  JOIN permissoes novo   ON novo.codigo = 'produtos.gerenciar'
+ WHERE antiga.codigo IN ('estoque.gerenciar', 'produtos.criar', 'produtos.editar', 'produtos.excluir');
 
 INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
 SELECT DISTINCT cp.id_cargo, novo.id_permissao
   FROM cargo_permissoes cp
   JOIN permissoes antiga ON antiga.id_permissao = cp.id_permissao
   JOIN permissoes novo   ON novo.codigo = 'vendas.operar'
- WHERE antiga.codigo IN ('vendas.visualizar', 'vendas.registrar');
+ WHERE antiga.codigo = 'vendas.registrar';
+
+-- Estes dois leem "vendas.operar", que NÃO é apagado no fim do arquivo —
+-- ele sobrevive com o significado estreitado (só o PDV). Por isso a leitura
+-- aqui é segura mesmo reexecutando este arquivo: INSERT IGNORE não duplica.
+INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
+SELECT DISTINCT cp.id_cargo, novo.id_permissao
+  FROM cargo_permissoes cp
+  JOIN permissoes antiga ON antiga.id_permissao = cp.id_permissao
+  JOIN permissoes novo   ON novo.codigo = 'vendas.historico'
+ WHERE antiga.codigo IN ('vendas.operar', 'vendas.visualizar');
+
+INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
+SELECT DISTINCT cp.id_cargo, novo.id_permissao
+  FROM cargo_permissoes cp
+  JOIN permissoes antiga ON antiga.id_permissao = cp.id_permissao
+  JOIN permissoes novo   ON novo.codigo = 'relatorios.visualizar'
+ WHERE antiga.codigo = 'vendas.operar';
 
 INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
 SELECT DISTINCT cp.id_cargo, novo.id_permissao
@@ -479,8 +552,14 @@ SELECT DISTINCT cp.id_cargo, novo.id_permissao
 -- de apagar.
 --
 --   - "vendas.aplicar_desconto": o PDV nunca teve campo de desconto.
---   - os 17 códigos granulares da versão anterior. Dos 19, sobrevivem só
---     "produtos.editar_preco" e "loja.configurar", reaproveitados acima.
+--   - "estoque.gerenciar": a permissão grossa da geração anterior, agora
+--     dividida em "estoque.consultar", "estoque.lancar" e
+--     "produtos.gerenciar".
+--   - os 17 códigos granulares da primeira geração.
+--
+-- "vendas.operar" NÃO entra nesta lista: ele continua existindo, só que
+-- significando apenas "operar o PDV" — o histórico e os relatórios saíram
+-- dele e viraram códigos próprios.
 --
 -- A ORDEM IMPORTA: este DELETE depois do remap. Invertido, o acesso antigo
 -- é apagado antes de haver de onde copiá-lo e todo cargo de toda loja fica
@@ -489,6 +568,7 @@ SELECT DISTINCT cp.id_cargo, novo.id_permissao
 -- seção "Cargos e permissões".
 DELETE FROM permissoes WHERE codigo IN (
     'vendas.aplicar_desconto',
+    'estoque.gerenciar',
     'produtos.visualizar', 'produtos.criar', 'produtos.editar', 'produtos.excluir',
     'estoque.visualizar', 'estoque.movimentar',
     'vendas.visualizar', 'vendas.registrar',
