@@ -13,6 +13,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/login.css">
+  <link rel="stylesheet" href="../css/password-rules.css">
 </head>
 
 <body class="signup-body">
@@ -48,12 +49,12 @@
           </form>
         </div>
 
-        <!-- ===== STEP 2: CÓDIGO + NOVA SENHA ===== -->
+        <!-- ===== STEP 2: CÓDIGO ===== -->
         <div id="step-code" class="is-hidden">
           <p class="signup__subtitle">Enviamos um código de 6 dígitos para <strong id="sent-to-email"></strong>.
-            Digite-o abaixo junto com sua nova senha.</p>
+            Digite-o abaixo para continuar.</p>
 
-          <form class="signup__form login__form" id="reset-form" novalidate>
+          <form class="signup__form login__form" id="code-form" novalidate>
 
             <div class="field">
               <label for="codigo">Código de verificação</label>
@@ -61,24 +62,43 @@
                 autocomplete="one-time-code" maxlength="6" pattern="\d{6}" required>
             </div>
 
-            <div class="field">
-              <label for="nova-senha">Nova senha</label>
-              <input type="password" id="nova-senha" name="nova_senha" placeholder="Digite sua nova senha" required
-                minlength="6">
-            </div>
-
-            <div class="field">
-              <label for="confirmar-nova-senha">Confirmar nova senha</label>
-              <input type="password" id="confirmar-nova-senha" name="confirmar_nova_senha"
-                placeholder="Digite sua nova senha novamente" required minlength="6">
-            </div>
-
-            <button type="submit" class="btn btn--primary btn--block">Redefinir senha</button>
+            <button type="submit" class="btn btn--primary btn--block">Verificar código</button>
 
             <p class="signup__login">
               Não recebeu? <a href="#" id="resend-code">Reenviar código</a> ·
               <a href="#" id="use-another-email">Usar outro e-mail</a>
             </p>
+
+          </form>
+        </div>
+
+        <!-- ===== STEP 3: NOVA SENHA (só depois do código validado) ===== -->
+        <div id="step-senha" class="is-hidden">
+          <p class="signup__subtitle">Código confirmado! Agora crie uma nova senha para
+            <strong id="reset-email"></strong>.</p>
+
+          <form class="signup__form login__form" id="reset-form" novalidate>
+
+            <div class="field">
+              <label for="nova-senha">Nova senha</label>
+              <div class="hydro-pwd-field-wrap">
+                <input type="password" id="nova-senha" name="nova_senha" placeholder="Digite sua nova senha" required
+                  minlength="8" autocomplete="new-password">
+                <button type="button" class="hydro-pwd-toggle" id="nova-senha-toggle"></button>
+              </div>
+              <div id="nova-senha-regras"></div>
+            </div>
+
+            <div class="field">
+              <label for="confirmar-nova-senha">Confirmar nova senha</label>
+              <div class="hydro-pwd-field-wrap">
+                <input type="password" id="confirmar-nova-senha" name="confirmar_nova_senha"
+                  placeholder="Digite sua nova senha novamente" required minlength="8" autocomplete="new-password">
+                <button type="button" class="hydro-pwd-toggle" id="confirmar-nova-senha-toggle"></button>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn--primary btn--block">Redefinir senha</button>
 
           </form>
         </div>
@@ -150,6 +170,7 @@
   </div>
 
   <script src="../js/api.js"></script>
+  <script src="../js/password-rules.js"></script>
   <script src="../js/recuperar-senha.js"></script>
 </body>
 

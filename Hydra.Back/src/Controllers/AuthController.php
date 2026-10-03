@@ -18,6 +18,9 @@ use Hydra\Support\Response;
  */
 final class AuthController
 {
+    /** Validade do código de confirmação de e-mail / login do administrador. */
+    private const MINUTOS_CODIGO = 10;
+
     private UsuarioRepository $usuarios;
     private LojaRepository $lojas;
     private CargoRepository $cargos;
@@ -83,7 +86,8 @@ final class AuthController
                 $email,
                 password_hash($senha, PASSWORD_BCRYPT),
                 'administrador',
-                $idCargoAdmin
+                $idCargoAdmin,
+                false
             );
             $pdo->commit();
         } catch (\Throwable $e) {
@@ -92,14 +96,93 @@ final class AuthController
             return;
         }
 
-        // Não autentica automaticamente: depois do cadastro o usuário é
-        // levado à tela de Login para entrar com o e-mail e a senha que
-        // acabou de definir. Deixar a sessão aberta aqui deixava a conta
-        // logada em um navegador que nunca digitou a senha e pulava a
-        // confirmação de que ela foi memorizada corretamente.
+        // Não autentica automaticamente: depois do cadastro o usuário
+        // confirma o e-mail com o código enviado e só então é levado à tela
+        // de Login para entrar com o e-mail e a senha que acabou de definir.
+        // Deixar a sessão aberta aqui deixava a conta logada em um navegador
+        // que nunca digitou a senha e pulava a confirmação de que ela foi
+        // memorizada corretamente.
         $usuario = $this->usuarios->find($idUsuario);
 
-        Response::json(['usuario' => $this->publicUser($usuario)], 201);
+        RateLimit::registrarFalha('envio:' . $email);
+        $extra = $this->enviarCodigoAcesso(
+            $usuario,
+            'Confirme seu e-mail — Hydra PDV',
+            'Confirme seu e-mail',
+            'Use o código abaixo para confirmar o e-mail da sua conta no Hydra PDV.'
+        );
+
+        Response::json(
+            ['usuario' => $this->publicUser($usuario), 'requer_verificacao' => true] + $extra,
+            201
+        );
+    }
+
+    /**
+     * POST /api/auth/verificar-email
+     * Confirma o e-mail da conta criada no Cadastro com o código enviado.
+     * Não abre sessão: o fluxo segue para a tela de Login.
+     */
+    public function verificarEmail(): void
+    {
+        $dados = Request::json();
+        $email = trim(strtolower((string) ($dados['email'] ?? '')));
+        $codigo = trim((string) ($dados['codigo'] ?? ''));
+
+        if ($email === '' || $codigo === '') {
+            Response::json(['erro' => 'Preencha o código recebido'], 422);
+            return;
+        }
+
+        $chaveLimite = 'codigo:' . $email;
+        RateLimit::requireNaoBloqueado($chaveLimite);
+
+        $usuario = $this->usuarios->findByEmail($email);
+        $valido = $usuario !== null
+            ? $this->usuarios->findByValidCodigoAcesso((int) $usuario['id_usuario'], $codigo)
+            : null;
+        if ($valido === null) {
+            RateLimit::registrarFalha($chaveLimite);
+            Response::json(['erro' => 'Código inválido ou expirado'], 400);
+            return;
+        }
+
+        $this->usuarios->marcarEmailVerificadoELimparCodigo((int) $usuario['id_usuario']);
+        RateLimit::limpar($chaveLimite);
+        RateLimit::limpar('envio:' . $email);
+
+        Response::json(['ok' => true]);
+    }
+
+    /**
+     * POST /api/auth/reenviar-verificacao
+     * Reenvia o código de confirmação de e-mail. Resposta sempre genérica.
+     */
+    public function reenviarVerificacao(): void
+    {
+        $dados = Request::json();
+        $email = trim(strtolower((string) ($dados['email'] ?? '')));
+
+        // Conta os envios, para que o botão "Reenviar" não vire um disparador
+        // ilimitado de e-mails para a caixa de outra pessoa.
+        $chaveLimite = 'envio:' . $email;
+        RateLimit::requireNaoBloqueado($chaveLimite);
+
+        $usuario = $email !== '' ? $this->usuarios->findByEmail($email) : null;
+        if ($usuario === null || (int) $usuario['email_verificado'] === 1) {
+            Response::json(['ok' => true]);
+            return;
+        }
+
+        RateLimit::registrarFalha($chaveLimite);
+        $extra = $this->enviarCodigoAcesso(
+            $usuario,
+            'Confirme seu e-mail — Hydra PDV',
+            'Confirme seu e-mail',
+            'Use o código abaixo para confirmar o e-mail da sua conta no Hydra PDV.'
+        );
+
+        Response::json(['ok' => true] + $extra);
     }
 
     /**
@@ -143,10 +226,130 @@ final class AuthController
             $usuario = $this->usuarios->findByEmail($email);
         }
 
+        // Segunda etapa por código no e-mail: obrigatória para quem ainda
+        // não confirmou o e-mail e para o Administrador, que controla a
+        // equipe, os preços e os dados da loja. Operador de Caixa e
+        // Estoquista entram só com a senha — eles entram várias vezes ao dia
+        // em um terminal compartilhado, muitas vezes sem acesso ao e-mail.
+        $emailVerificado = (int) $usuario['email_verificado'] === 1;
+        if (!$emailVerificado || $usuario['perfil'] === 'administrador') {
+            $chaveEnvio = 'envio:' . $email;
+            RateLimit::requireNaoBloqueado($chaveEnvio);
+            RateLimit::registrarFalha($chaveEnvio);
+
+            // A senha já foi conferida; a sessão guarda só QUEM está na
+            // metade do login. Auth::login() acontece em loginCodigo().
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_regenerate_id(true);
+            }
+            $_SESSION['login_pendente'] = [
+                'id_usuario' => (int) $usuario['id_usuario'],
+                'expira' => time() + self::MINUTOS_CODIGO * 60,
+            ];
+
+            $extra = $emailVerificado
+                ? $this->enviarCodigoAcesso(
+                    $usuario,
+                    'Código de acesso — Hydra PDV',
+                    'Código de acesso',
+                    'Use o código abaixo para concluir o login de administrador no Hydra PDV.'
+                )
+                : $this->enviarCodigoAcesso(
+                    $usuario,
+                    'Confirme seu e-mail — Hydra PDV',
+                    'Confirme seu e-mail',
+                    'Use o código abaixo para confirmar o e-mail da sua conta e entrar no Hydra PDV.'
+                );
+
+            Response::json([
+                'requer_codigo' => true,
+                'email' => $usuario['email'],
+                'motivo' => $emailVerificado ? 'admin' : 'verificacao',
+            ] + $extra);
+            return;
+        }
+
         $this->usuarios->updateUltimoAcesso((int) $usuario['id_usuario']);
         Auth::login($usuario);
 
         Response::json(['usuario' => $this->publicUser($usuario)]);
+    }
+
+    /**
+     * POST /api/auth/login/codigo
+     * Segunda etapa do login: valida o código enviado ao e-mail do usuário
+     * que passou pela senha em login() e só então abre a sessão.
+     */
+    public function loginCodigo(): void
+    {
+        $usuario = $this->usuarioLoginPendente();
+        if ($usuario === null) {
+            Response::json(['erro' => 'Sua verificação expirou. Faça login novamente.'], 401);
+            return;
+        }
+
+        $dados = Request::json();
+        $codigo = trim((string) ($dados['codigo'] ?? ''));
+        $chaveLimite = 'codigo:' . $usuario['email'];
+        RateLimit::requireNaoBloqueado($chaveLimite);
+
+        if ($codigo === '' || $this->usuarios->findByValidCodigoAcesso((int) $usuario['id_usuario'], $codigo) === null) {
+            RateLimit::registrarFalha($chaveLimite);
+            Response::json(['erro' => 'Código inválido ou expirado'], 400);
+            return;
+        }
+
+        // A conta pode ter sido desativada entre a senha e o código.
+        if ($usuario['status'] !== 'ativo') {
+            unset($_SESSION['login_pendente']);
+            Response::json(['erro' => 'Este usuário está inativo. Fale com o administrador da loja.'], 403);
+            return;
+        }
+
+        $this->usuarios->marcarEmailVerificadoELimparCodigo((int) $usuario['id_usuario']);
+        unset($_SESSION['login_pendente']);
+        RateLimit::limpar($chaveLimite);
+        RateLimit::limpar('envio:' . $usuario['email']);
+
+        $this->usuarios->updateUltimoAcesso((int) $usuario['id_usuario']);
+        Auth::login($usuario);
+
+        Response::json(['usuario' => $this->publicUser($usuario)]);
+    }
+
+    /** POST /api/auth/login/reenviar — reenvia o código da segunda etapa do login. */
+    public function loginReenviar(): void
+    {
+        $usuario = $this->usuarioLoginPendente();
+        if ($usuario === null) {
+            Response::json(['erro' => 'Sua verificação expirou. Faça login novamente.'], 401);
+            return;
+        }
+
+        $chaveEnvio = 'envio:' . $usuario['email'];
+        RateLimit::requireNaoBloqueado($chaveEnvio);
+        RateLimit::registrarFalha($chaveEnvio);
+
+        $_SESSION['login_pendente']['expira'] = time() + self::MINUTOS_CODIGO * 60;
+        $extra = $this->enviarCodigoAcesso(
+            $usuario,
+            'Código de acesso — Hydra PDV',
+            'Código de acesso',
+            'Use o código abaixo para concluir seu login no Hydra PDV.'
+        );
+
+        Response::json(['ok' => true] + $extra);
+    }
+
+    /** Usuário que passou pela senha e aguarda o código, ou null se não houver / tiver expirado. */
+    private function usuarioLoginPendente(): ?array
+    {
+        $pendente = $_SESSION['login_pendente'] ?? null;
+        if (!is_array($pendente) || ($pendente['expira'] ?? 0) < time()) {
+            unset($_SESSION['login_pendente']);
+            return null;
+        }
+        return $this->usuarios->find((int) $pendente['id_usuario']);
     }
 
     /** POST /api/auth/logout */
@@ -200,7 +403,13 @@ final class AuthController
         $enviado = Mailer::send(
             $email,
             'Código de recuperação de senha — Hydra PDV',
-            $this->emailCodigoHtml((string) $usuario['nome'], $codigo)
+            $this->emailCodigoHtml(
+                (string) $usuario['nome'],
+                $codigo,
+                'Recuperação de senha',
+                'Use o código abaixo para redefinir sua senha no Hydra PDV. Ele expira em 15 minutos.',
+                'Se você não solicitou essa recuperação, pode ignorar este e-mail.'
+            )
         );
 
         $resposta = ['ok' => true];
@@ -214,6 +423,38 @@ final class AuthController
         }
 
         Response::json($resposta);
+    }
+
+    /**
+     * POST /api/auth/verificar-codigo-recuperacao
+     * Primeira metade da redefinição: confere o código antes de a tela
+     * mostrar os campos de nova senha. NÃO consome o código —
+     * redefinirSenha() o valida de novo, porque pular esta etapa pelo
+     * navegador não pode bastar para trocar a senha.
+     */
+    public function verificarCodigoRecuperacao(): void
+    {
+        $dados = Request::json();
+        $email = trim(strtolower((string) ($dados['email'] ?? '')));
+        $codigo = trim((string) ($dados['codigo'] ?? ''));
+
+        if ($email === '' || $codigo === '') {
+            Response::json(['erro' => 'Preencha o código recebido'], 422);
+            return;
+        }
+
+        // Mesma chave de redefinirSenha(): as tentativas das duas etapas
+        // somam no mesmo limite.
+        $chaveLimite = 'reset:' . $email;
+        RateLimit::requireNaoBloqueado($chaveLimite);
+
+        if ($this->usuarios->findByValidResetCode($email, $codigo) === null) {
+            RateLimit::registrarFalha($chaveLimite);
+            Response::json(['erro' => 'Código inválido ou expirado'], 400);
+            return;
+        }
+
+        Response::json(['ok' => true]);
     }
 
     /** POST /api/auth/redefinir-senha */
@@ -256,16 +497,52 @@ final class AuthController
         Response::json(['ok' => true]);
     }
 
-    private function emailCodigoHtml(string $nome, string $codigo): string
+    /**
+     * Gera e envia o código de confirmação de e-mail / login do
+     * administrador. Devolve o que deve ser acrescentado à resposta: o
+     * código só volta nela em desenvolvimento (APP_ENV=local) quando o
+     * e-mail não pôde ser enviado — a mesma regra de esqueciSenha().
+     *
+     * @param array<string,mixed> $usuario
+     * @return array<string,string>
+     */
+    private function enviarCodigoAcesso(array $usuario, string $assunto, string $titulo, string $texto): array
+    {
+        $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiraEm = (new \DateTimeImmutable('+' . self::MINUTOS_CODIGO . ' minutes'))->format('Y-m-d H:i:s');
+        $this->usuarios->setCodigoAcesso((int) $usuario['id_usuario'], $codigo, $expiraEm);
+
+        $enviado = Mailer::send(
+            (string) $usuario['email'],
+            $assunto,
+            $this->emailCodigoHtml(
+                (string) $usuario['nome'],
+                $codigo,
+                $titulo,
+                $texto . ' Ele expira em ' . self::MINUTOS_CODIGO . ' minutos.',
+                'Se não foi você, ignore este e-mail e considere trocar sua senha.'
+            )
+        );
+
+        if (!$enviado && Env::get('APP_ENV', 'production') === 'local') {
+            return ['codigo_dev' => $codigo];
+        }
+        return [];
+    }
+
+    private function emailCodigoHtml(string $nome, string $codigo, string $titulo, string $texto, string $rodape): string
     {
         $primeiroNome = htmlspecialchars(explode(' ', trim($nome))[0] ?? '', ENT_QUOTES, 'UTF-8');
+        $titulo = htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8');
+        $texto = htmlspecialchars($texto, ENT_QUOTES, 'UTF-8');
+        $rodape = htmlspecialchars($rodape, ENT_QUOTES, 'UTF-8');
         return <<<HTML
             <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1B2A63;">
-                <h2 style="margin-bottom: 8px;">Recuperação de senha</h2>
+                <h2 style="margin-bottom: 8px;">{$titulo}</h2>
                 <p>Olá, {$primeiroNome}!</p>
-                <p>Use o código abaixo para redefinir sua senha no Hydra PDV. Ele expira em 15 minutos.</p>
+                <p>{$texto}</p>
                 <p style="font-size: 32px; font-weight: 700; letter-spacing: 6px; background: #F4F5F9; padding: 16px 24px; border-radius: 8px; text-align: center;">{$codigo}</p>
-                <p>Se você não solicitou essa recuperação, pode ignorar este e-mail.</p>
+                <p>{$rodape}</p>
             </div>
             HTML;
     }

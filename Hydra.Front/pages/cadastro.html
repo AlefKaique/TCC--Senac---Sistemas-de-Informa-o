@@ -24,10 +24,18 @@
     <div class="signup__form-side">
       <div class="signup__form-wrap">
 
+        <a href="index.html" class="auth-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+          Voltar ao início
+        </a>
+
         <a href="index.html" class="logo signup__logo">
           <img src="../img/logo-hydra.png" alt="Hydra PDV">
         </a>
 
+        <!-- ===== ETAPA 1: DADOS DA CONTA ===== -->
+        <div id="step-form">
         <h1 class="signup__title">Crie sua conta</h1>
         <p class="signup__subtitle">Vamos começar com seu teste gratuito de 30 dias</p>
         <p class="signup__hint">Preencha os dados para começar</p>
@@ -78,6 +86,30 @@
           <p class="signup__login">Já tem uma conta? <a href="login.html">Entrar</a></p>
 
         </form>
+        </div>
+
+        <!-- ===== ETAPA 2: CONFIRMAÇÃO DO E-MAIL ===== -->
+        <div id="step-codigo" class="is-hidden">
+          <h1 class="signup__title">Confirme seu e-mail</h1>
+          <p class="signup__subtitle">Sua conta foi criada. Enviamos um código de 6 dígitos para
+            <strong id="sent-to-email"></strong> — digite-o abaixo para confirmar o e-mail.</p>
+
+          <form class="signup__form login__form" id="codigo-form" novalidate>
+
+            <div class="field">
+              <label for="codigo">Código de verificação</label>
+              <input type="text" id="codigo" name="codigo" placeholder="000000" inputmode="numeric"
+                autocomplete="one-time-code" maxlength="6" pattern="\d{6}" required>
+            </div>
+
+            <button type="submit" class="btn btn--primary btn--block">Confirmar e-mail</button>
+
+            <p class="signup__login">
+              Não recebeu? <a href="#" id="resend-code">Reenviar código</a>
+            </p>
+
+          </form>
+        </div>
       </div>
     </div>
 
