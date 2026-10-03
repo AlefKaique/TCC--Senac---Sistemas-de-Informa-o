@@ -10,7 +10,13 @@ use Hydra\Support\Response;
 
 /**
  * Telas "Cadastro de Produto" e "Controle de Estoque" — RF02, RF03,
- * RF05, RF10, RF19. Acessível a Estoquista e Administrador.
+ * RF05, RF10, RF19.
+ *
+ * Duas permissões, porque são duas decisões diferentes: ler o catálogo e o
+ * histórico exige "estoque.consultar" (que o Operador de Caixa também tem,
+ * para montar a venda); criar, editar e excluir produto exige
+ * "produtos.gerenciar". Alterar PREÇO é mais restrito ainda e tem
+ * verificação própria dentro de update() — RN04.
  */
 final class ProdutoController
 {
@@ -25,14 +31,13 @@ final class ProdutoController
 
     /**
      * GET /api/produtos
-     * Único endpoint com requireAnyPermission: o catálogo é a tela de
-     * Estoque, mas é também o que o Caixa lê para montar a venda. Exigir
-     * "estoque.gerenciar" aqui obrigaria a dar poder de escrita no estoque
-     * a quem só opera o caixa.
+     * "estoque.consultar" é leitura pura, e tanto o Estoquista quanto o
+     * Operador de Caixa a recebem por padrão: o catálogo é a tela de
+     * Estoque, mas é também o que o Caixa lê para montar a venda.
      */
     public function index(): void
     {
-        $user = Auth::requireAnyPermission(['estoque.gerenciar', 'vendas.operar']);
+        $user = Auth::requirePermission('estoque.consultar');
         Response::json(['produtos' => $this->produtos->listByLoja($user['id_loja'])]);
     }
 
@@ -44,7 +49,7 @@ final class ProdutoController
      */
     public function store(): void
     {
-        $user = Auth::requirePermission('estoque.gerenciar');
+        $user = Auth::requirePermission('produtos.gerenciar');
         $dados = Request::json();
 
         $validado = $this->validar($dados);
@@ -87,7 +92,7 @@ final class ProdutoController
      */
     public function update(int $id): void
     {
-        $user = Auth::requirePermission('estoque.gerenciar');
+        $user = Auth::requirePermission('produtos.gerenciar');
         $produto = $this->produtos->findInLoja($id, $user['id_loja']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
@@ -135,7 +140,7 @@ final class ProdutoController
      */
     public function destroy(int $id): void
     {
-        $user = Auth::requirePermission('estoque.gerenciar');
+        $user = Auth::requirePermission('produtos.gerenciar');
         $produto = $this->produtos->findInLoja($id, $user['id_loja']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
@@ -152,10 +157,10 @@ final class ProdutoController
         Response::json(['ok' => true, 'inativado' => false]);
     }
 
-    /** GET /api/produtos/{id}/movimentacoes — RF10 */
+    /** GET /api/produtos/{id}/movimentacoes — RF10. Leitura: basta consultar o estoque. */
     public function movimentacoes(int $id): void
     {
-        $user = Auth::requirePermission('estoque.gerenciar');
+        $user = Auth::requirePermission('estoque.consultar');
         $produto = $this->produtos->findInLoja($id, $user['id_loja']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);

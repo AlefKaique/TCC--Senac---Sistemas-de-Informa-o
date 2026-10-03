@@ -6,8 +6,11 @@
   if (!window.hydraApi) return;
 
   window.hydraApi('/auth/me')
-    .then(() => {
-      if (homeLink) homeLink.setAttribute('href', 'controle-estoque.html');
+    .then(({ usuario }) => {
+      // Cada cargo tem uma "casa" diferente: mandar todo mundo para o
+      // Estoque levava quem só opera o caixa a uma tela que a guarda dela
+      // recusa.
+      if (homeLink) homeLink.setAttribute('href', window.hydraHomePorPermissao(usuario));
       if (loginBtn) loginBtn.remove();
       if (signupBtn) signupBtn.remove();
     })

@@ -11,22 +11,20 @@
         return div.innerHTML;
     }
 
-    // RN04 — os indicadores financeiros do painel vem do historico de
-    // vendas, entao a tela exige a mesma permissao que a API exige em
-    // GET /api/vendas. Antes a checagem era pelo perfil legado, que
-    // divergia do que o back-end realmente autoriza. Visitante da demo
-    // publica continua vendo a tela (sem dados reais, ver init() abaixo).
+    // RN16/RN17 — o painel mostra faturamento e indicadores financeiros, e
+    // por isso tem permissao propria ("relatorios.visualizar"). Antes ele
+    // exigia "vendas.operar": quem operava o caixa via os numeros da loja de
+    // brinde, e nao havia como dar o painel a alguem sem dar tambem o PDV.
+    // Visitante da demo publica continua vendo a tela (sem dados reais, ver
+    // init() abaixo).
     (async function guardRelatorios() {
         if (!window.hydraApi) return;
         try {
             const { usuario } = await window.hydraApi('/auth/me');
-            if (!(usuario.permissoes || []).includes('vendas.operar')) {
-                window.location.href = 'controle-estoque.html';
-                return;
-            }
             window.hydraAplicarMenuPorPermissao(usuario);
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
+            window.hydraGuardaDeTela(usuario, ['relatorios.visualizar']);
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém a tela visível.
         }
@@ -299,7 +297,11 @@
             : '<p class="hydro-chart-empty">Ainda não há produtos movimentados nos últimos 30 dias.</p>';
 
         /* ================= Alertas de estoque ================= */
+        /* "Esgotado" compartilha o vermelho de "Crítico" (os dois pedem
+           reposição), mas vem primeiro na ordenação: é o que já parou de
+           vender. */
         const STATUS_META = {
+            empty: { label: 'Esgotado', badge: 'hydro-badge-critical', qty: 'hydro-alert-qty-critical' },
             critical: { label: 'Crítico', badge: 'hydro-badge-critical', qty: 'hydro-alert-qty-critical' },
             warning: { label: 'Atenção', badge: 'hydro-badge-warning', qty: 'hydro-alert-qty-warning' },
             ok: { label: 'Em estoque', badge: 'hydro-badge-ok', qty: 'hydro-alert-qty-ok' },
@@ -310,7 +312,7 @@
             statusKey: HydroStore.stockStatus(p.quantity, p.minStock),
         }));
 
-        const severityOrder = { critical: 0, warning: 1, ok: 2 };
+        const severityOrder = { empty: 0, critical: 1, warning: 2, ok: 3 };
         const alertRows = withStatus
             .sort((a, b) => severityOrder[a.statusKey] - severityOrder[b.statusKey] || a.product.quantity - b.product.quantity)
             .slice(0, 6);
@@ -381,14 +383,15 @@
         if (window.hydraApi) {
             try {
                 await window.hydraApi('/auth/me');
-                /* allSettled, e não all: o Operador de Caixa chega até aqui
-                   (tem "vendas.operar"), mas não tem "estoque.gerenciar", então
-                   GET /api/estoque/movimentacoes responde 403. Com Promise.all
-                   esse 403 derrubava as três chamadas e o painel inteiro
-                   passava a mostrar números de DEMONSTRAÇÃO, sem avisar — o
-                   dono olharia um faturamento inventado. Agora cada parte que
-                   o cargo pode ver é real, e o gráfico de movimentações
-                   simplesmente fica vazio. */
+                /* allSettled, e não all: as três chamadas têm permissões
+                   distintas, e um cargo pode ter umas e não outras — por
+                   exemplo, "relatorios.visualizar" sem "estoque.consultar"
+                   leva 403 em GET /api/estoque/movimentacoes. Com
+                   Promise.all esse 403 derrubava as três chamadas e o painel
+                   inteiro passava a mostrar números de DEMONSTRAÇÃO, sem
+                   avisar — o dono olharia um faturamento inventado. Agora
+                   cada parte que o cargo pode ver é real, e o gráfico de
+                   movimentações simplesmente fica vazio. */
                 const [produtosRes, vendasRes, movRes] = await Promise.allSettled([
                     window.hydraApi('/produtos'),
                     window.hydraApi('/vendas'),

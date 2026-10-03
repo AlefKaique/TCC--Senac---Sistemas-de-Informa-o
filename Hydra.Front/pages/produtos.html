@@ -144,17 +144,35 @@
                         </div>
 
                         <div class="hydro-form-row">
-                            <div class="hydro-form-group">
-                                <label for="hydroProdUnit">Unidade</label>
-                                <select id="hydroProdUnit" name="unidade">
-                                    <option value="un" selected>Unidade (un)</option>
-                                    <option value="kg">Quilograma (kg)</option>
-                                    <option value="g">Grama (g)</option>
-                                    <option value="l">Litro (l)</option>
-                                    <option value="ml">Mililitro (ml)</option>
-                                    <option value="cx">Caixa (cx)</option>
-                                    <option value="pct">Pacote (pct)</option>
-                                </select>
+                            <!-- O campo condicional "unidade dentro da caixa" fica
+                                 empilhado logo abaixo de "Unidade", que é o que o
+                                 abre: solto no fim do formulário ele parecia um
+                                 campo independente. -->
+                            <div class="hydro-form-col">
+                                <div class="hydro-form-group">
+                                    <label for="hydroProdUnit">Unidade</label>
+                                    <select id="hydroProdUnit" name="unidade">
+                                        <option value="un" selected>Unidade (un)</option>
+                                        <option value="kg">Quilograma (kg)</option>
+                                        <option value="g">Grama (g)</option>
+                                        <option value="l">Litro (l)</option>
+                                        <option value="ml">Mililitro (ml)</option>
+                                        <option value="cx">Caixa (cx)</option>
+                                        <option value="pct">Pacote (pct)</option>
+                                    </select>
+                                </div>
+                                <div class="hydro-form-group" id="hydroProdBoxUnitGroup" hidden>
+                                    <label for="hydroProdBoxUnit">Qual a unidade dentro da caixa?</label>
+                                    <select id="hydroProdBoxUnit" name="unidadeCaixa">
+                                        <option value="un" selected>Unidade (un)</option>
+                                        <option value="kg">Quilograma (kg)</option>
+                                        <option value="g">Grama (g)</option>
+                                        <option value="l">Litro (l)</option>
+                                        <option value="ml">Mililitro (ml)</option>
+                                        <option value="pct">Pacote (pct)</option>
+                                    </select>
+                                    <span class="hydro-field-hint">"Caixa" não é gravada como unidade do produto — ele será cadastrado na unidade escolhida aqui.</span>
+                                </div>
                             </div>
                             <div class="hydro-form-group">
                                 <label for="hydroProdExpiry">Data de validade</label>
@@ -170,19 +188,6 @@
                                 <input type="text" id="hydroProdLote" name="lote" maxlength="50" placeholder="Ex.: L2026-0042">
                                 <span class="hydro-field-hint">Opcional — identificação da remessa do fornecedor</span>
                             </div>
-                        </div>
-
-                        <div class="hydro-form-group" id="hydroProdBoxUnitGroup" hidden>
-                            <label for="hydroProdBoxUnit">Qual a unidade dentro da caixa?</label>
-                            <select id="hydroProdBoxUnit" name="unidadeCaixa">
-                                <option value="un" selected>Unidade (un)</option>
-                                <option value="kg">Quilograma (kg)</option>
-                                <option value="g">Grama (g)</option>
-                                <option value="l">Litro (l)</option>
-                                <option value="ml">Mililitro (ml)</option>
-                                <option value="pct">Pacote (pct)</option>
-                            </select>
-                            <span class="hydro-field-hint">"Caixa" não é gravada como unidade do produto — ele será cadastrado na unidade escolhida aqui.</span>
                         </div>
                     </section>
 

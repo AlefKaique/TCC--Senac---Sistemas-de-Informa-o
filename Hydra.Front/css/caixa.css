@@ -506,6 +506,75 @@
     color: #fff;
 }
 
+/* ============ Filtro de data do Histórico de Vendas ============ */
+.hydro-history-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    padding: 12px 18px;
+    margin-bottom: 20px;
+}
+
+.hydro-history-presets {
+    display: flex;
+    gap: 6px;
+}
+
+/* Mesma linguagem visual das abas "Nova Venda"/"Histórico", em escala menor:
+   são os dois controles de navegação desta tela. */
+.hydro-history-preset {
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    background: transparent;
+    white-space: nowrap;
+    transition: background .15s, color .15s;
+}
+
+.hydro-history-preset:hover {
+    background: #f6f7fb;
+}
+
+.hydro-history-preset.hydro-active {
+    background: var(--navy-active);
+    color: #fff;
+}
+
+.hydro-history-range {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.hydro-history-range label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.hydro-history-range input[type="date"] {
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--card);
+}
+
+.hydro-history-range input[type="date"]:focus {
+    outline: none;
+    border-color: var(--navy-active);
+}
+
 /* ============ Barra de busca de produto ============ */
 .hydro-scan-bar {
     position: relative;
@@ -624,8 +693,14 @@
 /* Produto sem estoque continua visível (escondê-lo faria parecer que saiu
    do cadastro), mas não pode entrar na venda. */
 .hydro-catalog-card:disabled {
-    opacity: 0.55;
     cursor: not-allowed;
+}
+
+/* O esmaecimento fica nos filhos, e não no botão: com "opacity" no botão
+   inteiro o aviso "Esgotado" desbotava junto com o resto, justamente no
+   único card em que ele precisa saltar aos olhos. */
+.hydro-catalog-card:disabled > :not(.hydro-catalog-stock-empty) {
+    opacity: 0.55;
 }
 
 .hydro-catalog-name {
@@ -649,6 +724,13 @@
 .hydro-catalog-stock {
     font-size: 12px;
     color: var(--muted);
+}
+
+/* Mesmo vermelho do badge "Esgotado"/"Crítico" da tela de Estoque. Fica
+   fora do esmaecimento do card desabilitado (ver .hydro-catalog-card:disabled). */
+.hydro-catalog-stock-empty {
+    color: var(--red);
+    font-weight: 700;
 }
 
 .hydro-catalog-empty {

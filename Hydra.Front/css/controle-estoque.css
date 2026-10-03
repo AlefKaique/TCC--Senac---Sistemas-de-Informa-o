@@ -529,6 +529,14 @@
     flex-wrap: wrap;
 }
 
+/* Garante que o atributo "hidden" sempre vença, mesmo em elementos cuja
+   classe define "display" (é o caso de .hydro-btn logo abaixo) — sem isso,
+   a regra de classe (autor) tem prioridade sobre o [hidden] padrão do
+   navegador e o botão escondido por permissão continuaria visível. */
+[hidden] {
+    display: none !important;
+}
+
 .hydro-btn {
     display: inline-flex;
     align-items: center;

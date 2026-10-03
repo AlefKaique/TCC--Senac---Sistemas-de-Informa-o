@@ -487,6 +487,19 @@
     gap: 6px;
 }
 
+/* Empilha dois campos dentro de UMA das colunas da .hydro-form-row, para
+   que um campo condicional apareça logo abaixo do campo que o controla
+   (caso de "Qual a unidade dentro da caixa?" sob "Unidade"). O "gap" é o
+   mesmo da linha, para o espaçamento vertical casar com o horizontal.
+   "align-self: start" impede que a coluna estique até a altura do campo
+   vizinho quando o condicional está oculto. */
+.hydro-form-col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-self: start;
+}
+
 /* Garante que o atributo "hidden" sempre vença, mesmo em elementos cuja
    classe define "display" (ex.: .hydro-form-group) — sem isso, a regra de
    classe (autor) tem prioridade sobre o [hidden] padrão do navegador e

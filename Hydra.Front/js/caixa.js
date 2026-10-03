@@ -11,17 +11,10 @@
         return div.innerHTML;
     }
 
-    (async function guardAdminMenu() {
-        if (!window.hydraApi) return;
-        try {
-            const { usuario } = await window.hydraApi('/auth/me');
-            const nameEl = document.getElementById('hydroUserName');
-            if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
-            window.hydraAplicarMenuPorPermissao(usuario);
-        } catch (err) {
-            // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
-        }
-    })();
+    /* A barra lateral e a guarda de permissão são aplicadas dentro de
+       init(), que já aguarda GET /auth/me — antes havia uma IIFE separada
+       aqui em cima que repetia a mesma chamada e, por não ser aguardada,
+       corria com o primeiro render do painel do pedido. */
 
     HydroStore.seedHistoryIfNeeded();
 
@@ -76,7 +69,9 @@
         const primeiroPagamento = (v.pagamentos || [])[0];
         return {
             id: String(v.id_venda),
-            orderId: v.id_venda,
+            // O número exibido é o sequencial DA LOJA, não a chave primária
+            // (que é global e compartilhada entre lojas).
+            orderId: Number(v.numero_venda),
             date: v.data_venda,
             usuario: v.nome_usuario || 'Usuário removido',
             items: (v.itens || []).map((it) => ({
@@ -120,15 +115,37 @@
     }
 
     /* ================= Estado do pedido (Caixa aceita 1 pedido aberto por vez) =================
-       Os itens referenciam produtos reais (mesmos ids usados em Produtos/Estoque/Dashboard). */
-    let orderCounter = 7800 + HydroStore.getSales().length;
+       Os itens referenciam produtos reais (mesmos ids usados em Produtos/Estoque/Dashboard).
+
+       "proximoNumero" é o número que a próxima venda vai receber. Ele vem do
+       back-end (GET /api/vendas devolve "proximo_numero", calculado sobre as
+       vendas da loja) e é reajustado a cada venda finalizada, para bater com
+       o que o Histórico mostra. Antes isto era 7800 + a quantidade de vendas
+       de DEMONSTRAÇÃO guardadas no localStorage: um número que nunca chegava
+       ao banco, mudava de navegador para navegador e não tinha relação
+       nenhuma com o "#" exibido no histórico. */
+    let proximoNumero = 1;
 
     function createOrder() {
-        orderCounter += 1;
-        return { id: orderCounter, items: {}, payment: null, cashReceived: '' };
+        return { id: proximoNumero, items: {}, payment: null, cashReceived: '' };
     }
 
     let order = createOrder();
+
+    /* Recalcula o número do pedido aberto depois que "proximoNumero" muda
+       (carga inicial e cada venda finalizada). Só mexe em pedido vazio: se o
+       operador já começou a montar a venda, trocar o cabeçalho no meio do
+       caminho seria confuso — o número definitivo é o que o back-end gravar. */
+    function syncOrderNumber() {
+        if (!Object.keys(order.items).length) order.id = proximoNumero;
+    }
+
+    /* O número só é desconhecido (null) quando o cargo não pode ler
+       /api/vendas — ver init(). Nesse caso o pedido é identificado como
+       "Nova Venda" até ser gravado. */
+    function rotuloPedido(numero) {
+        return numero == null ? 'Nova Venda' : `Pedido #${numero}`;
+    }
 
     function getActiveOrder() {
         return order;
@@ -248,15 +265,41 @@
     const saleViewEl = document.getElementById('hydroSaleView');
     const historyViewEl = document.getElementById('hydroHistoryView');
 
-    viewTabsEl.addEventListener('click', (e) => {
-        const btn = e.target.closest('.hydro-order-tab');
-        if (!btn) return;
-        const view = btn.dataset.view;
-        viewTabsEl.querySelectorAll('.hydro-order-tab').forEach((b) => b.classList.toggle('hydro-active', b === btn));
+    function mostrarAba(view) {
+        viewTabsEl.querySelectorAll('.hydro-order-tab').forEach((b) => {
+            b.classList.toggle('hydro-active', b.dataset.view === view);
+        });
         saleViewEl.hidden = view !== 'venda';
         historyViewEl.hidden = view !== 'historico';
         if (view === 'historico') renderHistory();
+    }
+
+    viewTabsEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('.hydro-order-tab');
+        if (!btn) return;
+        mostrarAba(btn.dataset.view);
     });
+
+    /* As duas abas desta tela têm permissões diferentes: "vendas.operar"
+       abre o PDV e "vendas.historico" abre a consulta. Um cargo pode ter só
+       uma delas — por exemplo, um conferente que acompanha as vendas do dia
+       sem poder registrar nenhuma. A aba que o cargo não tem some, e se a
+       que sobrou não for a inicial, a tela já abre nela. */
+    function aplicarAbasPorPermissao(usuario) {
+        const abas = [
+            ['venda', 'vendas.operar'],
+            ['historico', 'vendas.historico'],
+        ];
+        let primeiraDisponivel = null;
+        for (const [view, permissao] of abas) {
+            const btn = viewTabsEl.querySelector(`.hydro-order-tab[data-view="${view}"]`);
+            if (!btn) continue;
+            const pode = window.hydraPode(usuario, [permissao]);
+            btn.hidden = !pode;
+            if (pode && primeiraDisponivel === null) primeiraDisponivel = view;
+        }
+        if (primeiraDisponivel && primeiraDisponivel !== 'venda') mostrarAba(primeiraDisponivel);
+    }
 
     /* ================= Vitrine: produtos em estoque =================
        A tela de Vendas abre mostrando o que há na prateleira, com busca por
@@ -315,7 +358,7 @@
                     <span class="hydro-catalog-name">${escapeHtml(p.name)}</span>
                     <span class="hydro-catalog-meta">${escapeHtml(p.category || '—')}</span>
                     <span class="hydro-catalog-price">${priceLabel}</span>
-                    <span class="hydro-catalog-stock">${outOfStock ? 'Sem estoque' : formatStock(p.quantity, p.unit)}</span>
+                    <span class="hydro-catalog-stock${outOfStock ? ' hydro-catalog-stock-empty' : ''}">${outOfStock ? 'Esgotado' : formatStock(p.quantity, p.unit)}</span>
                 </button>`;
             })
             .join('');
@@ -444,7 +487,7 @@
 
     function renderOrderPanel() {
         const order = getActiveOrder();
-        orderTitleEl.textContent = `Pedido #${order.id}`;
+        orderTitleEl.textContent = rotuloPedido(order.id);
         // Quem está operando o caixa — é esse nome que fica gravado na venda.
         orderClientEl.textContent = `Operador: ${(usuarioAtual && usuarioAtual.nome) || 'Demonstração'}`;
 
@@ -552,7 +595,7 @@
             showToast('Este pedido já está vazio', true);
             return;
         }
-        if (confirm(`Cancelar o Pedido #${order.id}? Todos os itens serão removidos.`)) {
+        if (confirm(`Cancelar ${rotuloPedido(order.id)}? Todos os itens serão removidos.`)) {
             order = createOrder();
             renderAll();
             showToast('Pedido cancelado');
@@ -605,7 +648,12 @@
                     const product = findProduct(productId);
                     if (product) product.quantity -= qty;
                 });
-                salesHistory.unshift(mapApiVenda(venda));
+                const vendaGravada = mapApiVenda(venda);
+                salesHistory.unshift(vendaGravada);
+                // O número efetivo é o que o back-end gravou — pode não ser
+                // o previsto, se outro caixa finalizou primeiro.
+                order.id = vendaGravada.orderId;
+                proximoNumero = vendaGravada.orderId + 1;
             } catch (err) {
                 showToast(err.message, true);
                 finishBtn.disabled = false;
@@ -628,10 +676,12 @@
                nesta referência em memória — sem este unshift a venda só
                apareceria no histórico depois de recarregar a página. */
             salesHistory.unshift(vendaDemo);
+            proximoNumero = order.id + 1;
         }
 
         const changeMsg = change !== null ? ` — troco: ${money(change)}` : '';
-        showToast(`Pedido #${order.id} finalizado — pagamento em ${PAYMENT_LABELS[order.payment]}${changeMsg}`);
+        // Aqui o número já é sempre conhecido: a resposta do POST o traz.
+        showToast(`${rotuloPedido(order.id)} finalizado — pagamento em ${PAYMENT_LABELS[order.payment]}${changeMsg}`);
         order = createOrder();
         renderAll();
     });
@@ -640,13 +690,39 @@
     const historySearchInput = document.getElementById('hydroHistorySearch');
     const historyBodyEl = document.getElementById('hydroHistoryBody');
     const historyWrapEl = document.getElementById('hydroHistoryTableWrap');
+    const historyPresetsEl = document.getElementById('hydroHistoryPresets');
+    const historyFromInput = document.getElementById('hydroHistoryFrom');
+    const historyToInput = document.getElementById('hydroHistoryTo');
+
+    /* Dia local de uma data, em YYYY-MM-DD, para comparar com o valor de um
+       <input type="date"> (que também é dia local).
+
+       Não dá para usar toISOString(): ele converte para UTC, e em UTC-3 uma
+       venda feita depois das 21h cairia no dia seguinte — some do filtro
+       "Hoje" na hora em que o mercadinho ainda está aberto. Mesmo cuidado
+       que todayIso() toma em controle-estoque.js. */
+    function diaLocal(valor) {
+        const d = valor instanceof Date ? valor : new Date(valor);
+        if (isNaN(d)) return '';
+        const mes = String(d.getMonth() + 1).padStart(2, '0');
+        const dia = String(d.getDate()).padStart(2, '0');
+        return `${d.getFullYear()}-${mes}-${dia}`;
+    }
 
     function renderHistory() {
         const term = (historySearchInput.value || '').trim().toLowerCase();
+        const de = historyFromInput.value;
+        const ate = historyToInput.value;
+
         const sales = salesHistory
             .slice()
             .sort((a, b) => new Date(b.date) - new Date(a.date))
             .filter((sale) => {
+                const dia = diaLocal(sale.date);
+                // Comparação de strings YYYY-MM-DD: a ordem lexicográfica
+                // coincide com a cronológica nesse formato.
+                if (de && dia < de) return false;
+                if (ate && dia > ate) return false;
                 if (!term) return true;
                 return String(sale.orderId).includes(term) || (sale.usuario || '').toLowerCase().includes(term);
             });
@@ -676,6 +752,48 @@
     }
 
     historySearchInput.addEventListener('input', renderHistory);
+
+    /* Marca visualmente o atalho que corresponde ao período atual. "Tudo" é o
+       atalho dos dois campos vazios; mexer num campo à mão normalmente não
+       bate com atalho nenhum, e aí nenhum fica marcado. */
+    function marcarPresetAtivo(preset) {
+        historyPresetsEl.querySelectorAll('.hydro-history-preset').forEach((btn) => {
+            btn.classList.toggle('hydro-active', preset !== null && btn.dataset.preset === preset);
+        });
+    }
+
+    historyPresetsEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('.hydro-history-preset');
+        if (!btn) return;
+        const preset = btn.dataset.preset;
+
+        if (preset === '') {
+            historyFromInput.value = '';
+            historyToInput.value = '';
+        } else {
+            const hoje = new Date();
+            const inicio = new Date();
+            // "7 dias" inclui hoje, então recua 6 — não 7. Com 7 o filtro
+            // pegaria oito dias e não bateria com o rótulo.
+            if (preset !== 'hoje') inicio.setDate(inicio.getDate() - (Number(preset) - 1));
+            historyFromInput.value = diaLocal(inicio);
+            historyToInput.value = diaLocal(hoje);
+        }
+
+        marcarPresetAtivo(preset);
+        renderHistory();
+    });
+
+    [historyFromInput, historyToInput].forEach((input) => {
+        input.addEventListener('change', () => {
+            // Um período digitado à mão só continua sendo "Tudo" se os dois
+            // campos ficaram vazios; nos demais casos nenhum atalho descreve
+            // o período, então todos são desmarcados.
+            const vazio = !historyFromInput.value && !historyToInput.value;
+            marcarPresetAtivo(vazio ? '' : null);
+            renderHistory();
+        });
+    });
 
     /* ================= Modal: detalhes da venda (Histórico) ================= */
     const saleDetailModalEl = document.getElementById('hydroSaleDetailModal');
@@ -770,33 +888,80 @@
         });
     }
 
+    /* Catálogo e histórico de demonstração (localStorage), usados pelo
+       visitante não autenticado. Sem back-end não há numeração de loja, então
+       o próximo número sai do próprio histórico local. */
+    function carregarDemonstracao() {
+        catalog = HydroStore.getProducts();
+        salesHistory = HydroStore.getSales();
+        proximoNumero = salesHistory.reduce((maior, s) => Math.max(maior, Number(s.orderId) || 0), 0) + 1;
+    }
+
     /* ================= Init ================= */
     (async function init() {
-        if (window.hydraApi) {
-            try {
-                /* O usuário é guardado aqui, e não no guardAdminMenu() do topo
-                   do arquivo: aquela IIFE não é aguardada e correria com o
-                   primeiro render do painel do pedido. */
-                const { usuario } = await window.hydraApi('/auth/me');
-                usuarioAtual = usuario;
-                const [produtosRes, vendasRes] = await Promise.all([
-                    window.hydraApi('/produtos'),
-                    window.hydraApi('/vendas'),
-                ]);
-                catalog = produtosRes.produtos.map(mapApiProduct);
-                salesHistory = vendasRes.vendas.map(mapApiVenda);
-                usingRealApi = true;
-            } catch (err) {
-                // Visitante não autenticado, ou perfil sem acesso a Produtos/Vendas
-                // (RF02/RN07) — usa o catálogo de demonstração local.
-                catalog = HydroStore.getProducts();
-                salesHistory = HydroStore.getSales();
-            }
-        } else {
-            catalog = HydroStore.getProducts();
-            salesHistory = HydroStore.getSales();
+        if (!window.hydraApi) {
+            carregarDemonstracao();
+            finalizarCarga();
+            return;
         }
+
+        let usuario;
+        try {
+            ({ usuario } = await window.hydraApi('/auth/me'));
+        } catch (err) {
+            // Visitante não autenticado (demo pública): a tela continua
+            // navegável com o catálogo local.
+            carregarDemonstracao();
+            finalizarCarga();
+            return;
+        }
+
+        usuarioAtual = usuario;
+        const nameEl = document.getElementById('hydroUserName');
+        if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
+        window.hydraAplicarMenuPorPermissao(usuario);
+        // Quem não opera o caixa nem consulta o histórico não tem o que
+        // fazer nesta tela. Sem esta guarda, ela abria, a API respondia 403
+        // e o catch abaixo exibia o catálogo de DEMONSTRAÇÃO — dados
+        // inventados apresentados como se fossem os da loja.
+        if (!window.hydraGuardaDeTela(usuario, ['vendas.operar', 'vendas.historico'])) return;
+        aplicarAbasPorPermissao(usuario);
+
+        /* allSettled, e não all: o Caixa e o Histórico têm permissões
+           distintas, então um cargo só de PDV leva 403 em /vendas e um cargo
+           só de histórico não deveria perder o catálogo por causa disso.
+           Cada parte da tela carrega o que lhe cabe. */
+        const [produtosRes, vendasRes] = await Promise.allSettled([
+            window.hydraApi('/produtos'),
+            window.hydraApi('/vendas'),
+        ]);
+
+        if (produtosRes.status === 'fulfilled') {
+            catalog = produtosRes.value.produtos.map(mapApiProduct);
+        }
+        if (vendasRes.status === 'fulfilled') {
+            salesHistory = vendasRes.value.vendas.map(mapApiVenda);
+            proximoNumero = Number(vendasRes.value.proximo_numero) || 1;
+        } else {
+            /* É de /api/vendas que vem o próximo número, e um cargo só de PDV
+               (sem "Histórico de Vendas") leva 403 ali. Melhor o cabeçalho
+               não mostrar número nenhum do que mostrar "#1" numa loja com 30
+               vendas — o número certo aparece assim que a venda é gravada,
+               porque o back-end o devolve na resposta. */
+            proximoNumero = null;
+        }
+        usingRealApi = true;
+        finalizarCarga();
+    })();
+
+    function finalizarCarga() {
+        syncOrderNumber();
         renderCatalogFilters();
         renderAll();
-    })();
+        /* renderAll() só cuida do PDV. Quando a tela já abriu na aba de
+           histórico — caso de um cargo que tem "vendas.historico" e não
+           "vendas.operar" —, aquela aba foi montada antes de a API
+           responder e ficaria vazia para sempre sem este render. */
+        if (!historyViewEl.hidden) renderHistory();
+    }
 })();

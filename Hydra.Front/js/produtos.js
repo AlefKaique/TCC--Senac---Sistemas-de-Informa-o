@@ -1,13 +1,17 @@
 (function () {
     'use strict';
 
-    (async function guardAdminMenu() {
+    (async function guardaDeAcesso() {
         if (!window.hydraApi) return;
         try {
             const { usuario } = await window.hydraApi('/auth/me');
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
             window.hydraAplicarMenuPorPermissao(usuario);
+            /* Esta tela só serve para cadastrar produto. Sem a permissão, o
+               formulário abria normalmente e o POST só falhava com 403 na
+               hora de salvar — depois de o usuário ter preenchido tudo. */
+            window.hydraGuardaDeTela(usuario, ['produtos.gerenciar']);
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
         }

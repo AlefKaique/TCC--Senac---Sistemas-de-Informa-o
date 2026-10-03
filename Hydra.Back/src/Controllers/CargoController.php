@@ -9,8 +9,10 @@ use Hydra\Support\Response;
 
 /**
  * Tela "Cargos" (estilo Discord: cria o cargo, marca as permissões por
- * checkbox). Restrita a quem tem as permissões de Cargos (cargos.*) — por
- * padrão, só o cargo "Administrador" a possui.
+ * checkbox). Restrita a quem tem "equipe.gerenciar" — a mesma permissão da
+ * tela de Equipe, porque são duas vistas da mesma autoridade: quem define
+ * os cargos decide, na prática, o que cada funcionário pode fazer. Por
+ * padrão só o cargo "Administrador" a possui.
  */
 final class CargoController
 {

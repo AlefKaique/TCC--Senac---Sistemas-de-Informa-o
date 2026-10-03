@@ -27,10 +27,18 @@ final class VendaController
         $this->movimentacoes = new MovimentacaoEstoqueRepository();
     }
 
-    /** GET /api/vendas — histórico de vendas (RF10), com itens e pagamentos embutidos. */
+    /**
+     * GET /api/vendas — histórico de vendas (RF10), com itens e pagamentos
+     * embutidos.
+     *
+     * Aceita também "relatorios.visualizar" porque o Dashboard calcula o
+     * faturamento a partir desta lista: um cargo criado só para acompanhar
+     * os números da loja não deve levar 403 aqui, nem precisar da permissão
+     * de abrir o histórico item a item.
+     */
     public function index(): void
     {
-        $user = Auth::requirePermission('vendas.operar');
+        $user = Auth::requireAnyPermission(['vendas.historico', 'relatorios.visualizar']);
         $vendas = $this->vendas->listByLoja($user['id_loja']);
         foreach ($vendas as &$venda) {
             $venda['itens'] = $this->vendas->listItensByVenda((int) $venda['id_venda']);
@@ -38,7 +46,12 @@ final class VendaController
         }
         unset($venda);
 
-        Response::json(['vendas' => $vendas]);
+        // O Caixa precisa saber qual número a próxima venda vai receber
+        // para montar o cabeçalho "Pedido #N" antes de a venda existir.
+        Response::json([
+            'vendas' => $vendas,
+            'proximo_numero' => $this->vendas->proximoNumero($user['id_loja']),
+        ]);
     }
 
     /**

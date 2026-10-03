@@ -11,83 +11,121 @@ namespace Hydra\Repositories;
  * (Administrador, Operador de Caixa e Estoquista) — ver ensureDefaults(),
  * que também é onde vive a migração preguiçosa do catálogo de permissões.
  *
- * O catálogo tem 5 permissões, uma por área do sistema. A granularidade
- * anterior (19 códigos, ver/criar/editar/excluir por módulo) não
- * correspondia a nenhuma decisão real de um mercadinho: configura-se "quem
- * cuida do estoque", não "quem pode editar mas não excluir produto".
+ * O catálogo tem 9 permissões, recortadas pelas funções que alguém de fato
+ * exerce no mercadinho. Ele é o meio-termo entre as duas tentativas
+ * anteriores: a primeira tinha 19 códigos (ver/criar/editar/excluir por
+ * módulo) e pedia uma decisão que ninguém toma — "pode editar mas não
+ * excluir produto"; a segunda caiu para 5 códigos grossos e juntou demais,
+ * a ponto de autorizar alguém a conferir o estoque implicar autorizá-lo a
+ * lançar movimentação e a mexer no cadastro.
+ *
+ * O corte atual separa CONSULTAR de MEXER em cada área, e separa Estoque de
+ * Caixa por inteiro: o Estoquista não recebe nenhuma permissão de venda e o
+ * Operador de Caixa não recebe nenhuma de escrita no estoque.
  */
 final class CargoRepository
 {
     /**
      * Permissões de cada cargo de sistema.
      *
-     * O Operador de Caixa não recebe "estoque.gerenciar": ele precisa
-     * enxergar o catálogo para montar a venda, e é por isso que
-     * GET /api/produtos usa Auth::requireAnyPermission() e aceita
-     * "vendas.operar" — em vez de exigir poder de escrita no estoque de
-     * quem só opera o caixa.
+     * Estoque e Caixa são áreas separadas: o Estoquista não recebe nenhuma
+     * permissão de venda, e o Operador de Caixa não recebe nenhuma de
+     * escrita no estoque. O que os dois têm em comum é "estoque.consultar",
+     * porque o Caixa precisa ler o catálogo (nome, preço, saldo) para montar
+     * a venda — ler não é mexer.
      */
     private const PERMISSOES_SISTEMA = [
         'administrador' => [
-            'estoque.gerenciar',
+            'estoque.consultar',
+            'estoque.lancar',
+            'produtos.gerenciar',
             'produtos.editar_preco',
             'vendas.operar',
+            'vendas.historico',
+            'relatorios.visualizar',
             'equipe.gerenciar',
             'loja.configurar',
         ],
         'operador_caixa' => [
+            'estoque.consultar',
             'vendas.operar',
+            'vendas.historico',
+            'relatorios.visualizar',
         ],
         'estoquista' => [
-            'estoque.gerenciar',
+            'estoque.consultar',
+            'estoque.lancar',
+            'produtos.gerenciar',
         ],
     ];
 
     /**
-     * Catálogo das 5 permissões, espelhando o bloco INSERT do schema.sql.
+     * Catálogo das 9 permissões, espelhando o bloco INSERT do schema.sql.
      * Existe também em PHP porque o INSERT do schema só roda se o arquivo
      * for reaplicado à mão: sem isto, um banco criado na versão anterior
      * ficaria com ZERO permissões no catálogo depois da aposentadoria dos
      * códigos antigos, e a tela de Cargos abriria sem nenhum checkbox.
+     *
+     * Cada código corresponde a uma função que alguém realmente exerce no
+     * mercadinho, e a uma verificação real no back-end. A divisão entre
+     * CONSULTAR e MEXER existe porque são decisões diferentes: dá para
+     * deixar alguém conferir o estoque sem autorizá-lo a lançar entrada, e
+     * é isso que separa de verdade o Estoquista do Operador de Caixa.
      *
      * Mantenha em sincronia com schema.sql.
      *
      * @var array<int,array{0:string,1:string,2:string,3:string,4:int}>
      */
     private const CATALOGO = [
-        ['estoque.gerenciar',     'Estoque e Produtos',   'Cadastrar, editar e excluir produtos e lançar entradas e saídas de estoque',              'Operação',      10],
-        ['produtos.editar_preco', 'Alterar Preços',       'Alterar preço de custo e de venda (RN04) — só tem efeito junto com "Estoque e Produtos"', 'Operação',      11],
-        ['vendas.operar',         'Vendas no Caixa',      'Operar o Caixa (PDV), finalizar vendas e consultar o histórico',                          'Operação',      12],
-        ['equipe.gerenciar',      'Equipe e Cargos',      'Gerenciar os usuários da loja e os cargos e suas permissões',                             'Administração', 20],
-        ['loja.configurar',       'Configuração da Loja', 'Ver e alterar os dados cadastrais da loja',                                               'Administração', 21],
+        ['estoque.consultar',     'Consultar Estoque',           'Ver a lista de produtos, quantidades, lotes e validades — é a base das duas permissões abaixo',    'Operação',      10],
+        ['estoque.lancar',        'Entradas e Saídas de Estoque', 'Lançar entrada e saída de mercadoria — marque também "Consultar Estoque"',                        'Operação',      11],
+        ['produtos.gerenciar',    'Cadastro de Produtos',        'Cadastrar, editar e excluir produtos — marque também "Consultar Estoque"',                         'Operação',      12],
+        ['produtos.editar_preco', 'Alterar Preços',              'Alterar preço de custo e de venda (RN04) — só tem efeito junto com "Cadastro de Produtos"',        'Operação',      13],
+        ['vendas.operar',         'Vendas no Caixa',             'Operar o Caixa (PDV) e finalizar vendas',                                                          'Operação',      20],
+        ['vendas.historico',      'Histórico de Vendas',         'Consultar as vendas já finalizadas e os detalhes de cada uma',                                     'Operação',      21],
+        ['relatorios.visualizar', 'Relatórios',                  'Abrir o Dashboard com o faturamento e os indicadores da loja (RN16, RN17)',                        'Operação',      22],
+        ['equipe.gerenciar',      'Equipe e Cargos',             'Gerenciar os usuários da loja e os cargos e suas permissões',                                      'Administração', 30],
+        ['loja.configurar',       'Configuração da Loja',        'Ver e alterar os dados cadastrais da loja',                                                        'Administração', 31],
     ];
 
     /**
-     * De onde cada permissão nova herda o acesso que o cargo já tinha na
-     * granularidade antiga (19 códigos).
+     * De onde cada permissão nova herda o acesso que o cargo já tinha.
+     * Lê-se: "quem tinha QUALQUER UM destes códigos antigos ganha este
+     * código novo". Cobre as duas gerações anteriores do catálogo — a
+     * granular de 19 códigos e a grossa de 5.
      *
-     * A regra SUB-concede de propósito: só quem tinha algum código de
-     * ESCRITA na área ganha a permissão grossa, porque ela também concede
-     * escrita. "produtos.visualizar" e "estoque.visualizar" sozinhos não
-     * geram nada — um cargo que só tinha esses dois termina sem permissão
-     * alguma, porque "só olhar o estoque" deixou de existir. O
-     * administrador remarca esses cargos na tela de Cargos.
+     * A regra SOBRE-concede de propósito, ao contrário da migração
+     * anterior: quem tinha "estoque.gerenciar" (que juntava consultar,
+     * movimentar e cadastrar) recebe os três códigos que o substituem, e
+     * quem tinha "vendas.operar" (que incluía histórico e dava acesso ao
+     * Dashboard) recebe também "vendas.historico" e "relatorios.visualizar".
+     * Ninguém perde acesso que já exercia; o administrador reduz o que
+     * sobrou na tela de Cargos, que é uma operação reversível — ao
+     * contrário de descobrir que o estoquista ficou trancado do lado de
+     * fora.
      *
-     * "loja.configurar" e "produtos.editar_preco" não aparecem como
-     * destino de si mesmos: as linhas deles em "permissoes" sobrevivem à
-     * migração com o mesmo id_permissao, então quem já os tinha continua
-     * tendo, sem remap.
+     * "vendas.operar" ganha "estoque.consultar" porque o Caixa sempre pôde
+     * ler o catálogo (era o requireAnyPermission de GET /api/produtos).
+     *
+     * "produtos.editar_preco", "equipe.gerenciar" e "loja.configurar" não
+     * precisam de remap para si mesmos: as linhas deles em "permissoes"
+     * sobrevivem com o mesmo id_permissao, então as linhas de
+     * cargo_permissoes que apontam para elas continuam valendo.
      *
      * @var array<string,string[]>
      */
     private const MIGRACAO_PERMISSOES = [
-        'estoque.gerenciar' => ['produtos.criar', 'produtos.editar', 'produtos.excluir', 'estoque.movimentar'],
-        'vendas.operar'     => ['vendas.visualizar', 'vendas.registrar'],
-        'equipe.gerenciar'  => [
+        'estoque.consultar'     => ['estoque.gerenciar', 'vendas.operar', 'estoque.visualizar', 'produtos.visualizar'],
+        'estoque.lancar'        => ['estoque.gerenciar', 'estoque.movimentar'],
+        'produtos.gerenciar'    => ['estoque.gerenciar', 'produtos.criar', 'produtos.editar', 'produtos.excluir'],
+        'vendas.operar'         => ['vendas.registrar'],
+        'vendas.historico'      => ['vendas.operar', 'vendas.visualizar'],
+        'relatorios.visualizar' => ['vendas.operar'],
+        'equipe.gerenciar'      => [
             'usuarios.visualizar', 'usuarios.criar', 'usuarios.editar', 'usuarios.excluir',
             'cargos.visualizar', 'cargos.criar', 'cargos.editar', 'cargos.excluir',
         ],
-        'loja.configurar'   => ['loja.visualizar'],
+        'loja.configurar'       => ['loja.visualizar'],
     ];
 
     private const NOMES_SISTEMA = [
@@ -167,15 +205,19 @@ final class CargoRepository
      *
      * - "vendas.aplicar_desconto": o PDV não tem campo de desconto, então
      *   a permissão nunca chegou a ser usada.
-     * - os 17 códigos granulares da versão anterior. Dos 19, sobrevivem só
-     *   "produtos.editar_preco" e "loja.configurar", reaproveitados como
-     *   códigos novos (ver CATALOGO).
+     * - "estoque.gerenciar": a permissão grossa da geração anterior, agora
+     *   dividida em "estoque.consultar", "estoque.lancar" e
+     *   "produtos.gerenciar". É a presença dela que faz
+     *   temPermissoesAposentadas() disparar o remap nos bancos que
+     *   pararam na geração de 5 códigos.
+     * - os 17 códigos granulares da primeira geração.
      *
      * CUIDADO: este DELETE só pode rodar DEPOIS de
      * remapearPermissoesDosCargos(). Ver o docblock de ensureDefaults().
      */
     private const PERMISSOES_APOSENTADAS = [
         'vendas.aplicar_desconto',
+        'estoque.gerenciar',
         'produtos.visualizar', 'produtos.criar', 'produtos.editar', 'produtos.excluir',
         'estoque.visualizar', 'estoque.movimentar',
         'vendas.visualizar', 'vendas.registrar',
@@ -471,15 +513,20 @@ final class CargoRepository
     public static function nivelEquivalente(array $codigos): string
     {
         // Qualquer permissão administrativa caracteriza o nível
-        // "administrador". Com permissões grossas não existe mais o caso
-        // "só ver a tela de Equipe": quem vê, gerencia.
+        // "administrador": não existe o caso "só ver a tela de Equipe" —
+        // quem vê, gerencia.
         if (array_intersect(['equipe.gerenciar', 'loja.configurar'], $codigos) !== []) {
             return 'administrador';
         }
+        // Operar o caixa define o nível antes do estoque porque é a função
+        // mais restrita das duas no ENUM legado.
         if (in_array('vendas.operar', $codigos, true)) {
             return 'operador_caixa';
         }
-        if (in_array('estoque.gerenciar', $codigos, true)) {
+        // Qualquer poder de escrita no estoque caracteriza o estoquista.
+        // "estoque.consultar" sozinho não entra: é leitura, e o Operador de
+        // Caixa também a tem.
+        if (array_intersect(['estoque.lancar', 'produtos.gerenciar'], $codigos) !== []) {
             return 'estoquista';
         }
         return 'operador_caixa';

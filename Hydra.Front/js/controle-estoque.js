@@ -150,6 +150,10 @@
 
     function getStatus(product) {
         const { quantity, minStock } = product;
+        // Prateleira vazia tem nome próprio: antes caía em "Crítico" junto
+        // com o que ainda tem alguma unidade, e o estoquista não distinguia
+        // "acabou" de "está acabando" sem ler a coluna de quantidade.
+        if (quantity <= 0) return 'Esgotado';
         if (quantity <= minStock * 0.4) return 'Crítico';
         // "Baixo" vale só abaixo do mínimo; atingir o mínimo exato já
         // conta como "Atenção", não como falta.
@@ -158,8 +162,10 @@
         return 'Em estoque';
     }
 
+    /* "Esgotado" divide o vermelho com "Crítico": são os dois estados que
+       exigem reposição, e inventar uma terceira cor só diluiria o alerta. */
     function statusBadgeClass(status) {
-        if (status === 'Crítico') return 'hydro-badge-critical';
+        if (status === 'Esgotado' || status === 'Crítico') return 'hydro-badge-critical';
         if (status === 'Baixo') return 'hydro-badge-low';
         if (status === 'Atenção') return 'hydro-badge-attention';
         return 'hydro-badge-ok';
@@ -340,9 +346,9 @@
             <td class="hydro-col-actions" data-label="Ações">
               <div class="hydro-row-actions">
                 <button class="hydro-action-btn hydro-action-view" title="Ver detalhes" data-id="${p.id}"><i class="hydro-ic hydro-ic-eye"></i></button>
-                <button class="hydro-action-btn hydro-action-edit" title="Editar produto" data-id="${p.id}"><i class="hydro-ic hydro-ic-pencil"></i></button>
+                ${podeGerenciarProdutos() ? `<button class="hydro-action-btn hydro-action-edit" title="Editar produto" data-id="${p.id}"><i class="hydro-ic hydro-ic-pencil"></i></button>` : ''}
                 <button class="hydro-action-btn hydro-action-history" title="Histórico de movimentações" data-id="${p.id}"><i class="hydro-ic hydro-ic-history"></i></button>
-                <button class="hydro-action-btn hydro-action-delete" title="Excluir produto" data-id="${p.id}"><i class="hydro-ic hydro-ic-trash"></i></button>
+                ${podeGerenciarProdutos() ? `<button class="hydro-action-btn hydro-action-delete" title="Excluir produto" data-id="${p.id}"><i class="hydro-ic hydro-ic-trash"></i></button>` : ''}
               </div>
             </td>
           </tr>`;
@@ -499,6 +505,19 @@
         </div>`
             : '';
 
+        /* Alterar a quantidade por aqui gera uma movimentação de estoque
+           (RF12/RN11), que exige "estoque.lancar". Sem a permissão o campo
+           sai do formulário, em vez de aparecer e falhar com 403 ao salvar —
+           mesmo tratamento dado aos campos de preço acima. */
+        const podeLancar = usuarioPermissoes.includes('estoque.lancar');
+        const quantityFieldHtml = podeLancar
+            ? `
+        <div class="hydro-form-group">
+          <label for="hydroEditQuantity">Quantidade</label>
+          <input type="number" id="hydroEditQuantity" min="0" value="${p.quantity}">
+        </div>`
+            : '';
+
         openModal({
             title: 'Editar produto',
             bodyHtml: `
@@ -517,11 +536,7 @@
           <datalist id="hydroEditCategoryList">
             ${categories.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('')}
           </datalist>
-        </div>${priceFieldsHtml}
-        <div class="hydro-form-group">
-          <label for="hydroEditQuantity">Quantidade</label>
-          <input type="number" id="hydroEditQuantity" min="0" value="${p.quantity}">
-        </div>
+        </div>${priceFieldsHtml}${quantityFieldHtml}
         <div class="hydro-form-group">
           <label for="hydroEditMin">Estoque mínimo</label>
           <input type="number" id="hydroEditMin" min="0" value="${p.minStock}">
@@ -543,7 +558,13 @@
             const name = document.getElementById('hydroEditName').value.trim();
             const desc = document.getElementById('hydroEditDesc').value.trim();
             const category = normalizeCategory(document.getElementById('hydroEditCategory').value, categories);
-            const quantity = Math.max(0, Number(document.getElementById('hydroEditQuantity').value) || 0);
+            // Só existe no formulário para quem tem estoque.lancar: mudar a
+            // quantidade aqui vira uma movimentação de estoque (ver abaixo).
+            // Sem o campo, reenvia o saldo atual, que gera delta zero.
+            const quantityInput = document.getElementById('hydroEditQuantity');
+            const quantity = quantityInput
+                ? Math.max(0, Number(quantityInput.value) || 0)
+                : p.quantity;
             const minStock = Math.max(0, Number(document.getElementById('hydroEditMin').value) || 0);
             const validade = document.getElementById('hydroEditValidade').value || null;
             // Só existem no formulário para quem tem produtos.editar_preco (RN04).
@@ -858,9 +879,8 @@
     });
 
     /* ================= Guarda de sessão + carga de produtos =================
-       RN04: os itens "Equipe" e "Configurações" só aparecem para o Administrador.
-       Visitantes não autenticados (demo pública) continuam vendo todas as telas,
-       com o catálogo de demonstração local (RF02: produtos reais exigem login). */
+       Visitantes não autenticados (demo pública) continuam vendo a tela com o
+       catálogo de demonstração local (RF02: produtos reais exigem login). */
     (async function initAuthAndProducts() {
         if (!window.hydraApi) {
             products = seedProducts();
@@ -868,12 +888,9 @@
             return;
         }
 
+        let usuario;
         try {
-            const { usuario } = await window.hydraApi('/auth/me');
-            usuarioPermissoes = usuario.permissoes || [];
-            const nameEl = document.getElementById('hydroUserName');
-            if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
-            window.hydraAplicarMenuPorPermissao(usuario);
+            ({ usuario } = await window.hydraApi('/auth/me'));
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
             products = seedProducts();
@@ -881,15 +898,47 @@
             return;
         }
 
+        usuarioPermissoes = usuario.permissoes || [];
+        const nameEl = document.getElementById('hydroUserName');
+        if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
+        window.hydraAplicarMenuPorPermissao(usuario);
+        // Quem não pode nem consultar o estoque não tem o que ver aqui.
+        if (!window.hydraGuardaDeTela(usuario, ['estoque.consultar'])) return;
+        aplicarBotoesPorPermissao();
+
         try {
             const { produtos } = await window.hydraApi('/produtos');
             products = produtos.map(mapApiProduct);
             usingRealApi = true;
         } catch (err) {
-            products = seedProducts();
+            /* O usuário está autenticado e passou pela guarda, então um erro
+               aqui é falha de rede ou do servidor — NÃO é falta de permissão.
+               Cair no catálogo de demonstração mostraria produtos inventados
+               como se fossem os da loja, e o estoquista tomaria decisão de
+               compra em cima deles. Melhor a tela vazia com o aviso. */
+            products = [];
+            showToast('Não foi possível carregar os produtos. Recarregue a página.');
         }
         refreshAll();
     })();
+
+    /* Ver detalhes e histórico são leitura e ficam para todo mundo que
+       chegou até aqui; editar e excluir exigem "produtos.gerenciar". O
+       visitante da demo pública (sem permissão nenhuma carregada) continua
+       com os botões, porque ali nada chega ao banco. */
+    function podeGerenciarProdutos() {
+        return !usingRealApi || usuarioPermissoes.includes('produtos.gerenciar');
+    }
+
+    /* Botões de ação conforme o cargo: "Consultar Estoque" sozinho dá uma
+       tela de leitura, sem cadastrar produto nem lançar movimentação. */
+    function aplicarBotoesPorPermissao() {
+        const podeCadastrar = usuarioPermissoes.includes('produtos.gerenciar');
+        const podeLancar = usuarioPermissoes.includes('estoque.lancar');
+        document.getElementById('hydroBtnNovoProduto').hidden = !podeCadastrar;
+        document.getElementById('hydroBtnEntrada').hidden = !podeLancar;
+        document.getElementById('hydroBtnSaida').hidden = !podeLancar;
+    }
 
     /* ================= Mobile sidebar ================= */
     const sidebar = document.getElementById('hydroSidebar');
