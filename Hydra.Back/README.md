@@ -73,6 +73,31 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | POST   | `/api/vendas`                        | `vendas.operar` | Finaliza venda (itens, pagamentos e desconto) |
 | GET    | `/api/loja`                          | `loja.configurar` | Dados da loja (Configurações da Loja) |
 | PUT    | `/api/loja`                          | `loja.configurar` | Atualiza dados da loja |
+| GET    | `/api/filiais/minhas`                | logado | Filiais ativas que o usuário pode acessar e a filial ativa da sessão |
+| POST   | `/api/filiais/trocar`                | logado | Troca a filial ativa (`{ "id_filial": N }`): 403 sem acesso, 404 inexistente, 422 inativa |
+| GET    | `/api/filiais`                       | `loja.configurar` **ou** `equipe.gerenciar` | Todas as filiais da loja (seção Filiais e tela Equipe) |
+| POST   | `/api/filiais`                       | `loja.configurar` | Cria filial |
+| PUT    | `/api/filiais/{id}`                  | `loja.configurar` | Edita filial; recusa inativar a única ativa ou a da própria sessão |
+
+### Filiais
+
+Produtos, estoque, vendas e promoções são **por filial**. Todos os
+endpoints dessas áreas (`/api/produtos*`, `/api/estoque/*`, `/api/vendas`,
+`/api/promocoes*`) filtram pela filial ativa **guardada na sessão**, nunca
+por um id enviado pelo navegador, e revalidam a cada requisição que o
+usuário ainda tem acesso a ela (`Auth::requirePermissionNaFilial`). Sem
+filial ativa válida eles respondem **409** com `"codigo":
+"filial_nao_selecionada"`, e o front-end abre a janela de escolha.
+
+O Administrador (cargo de nível administrador, pelo mesmo critério de
+`CargoRepository::nivelEquivalente`) acessa todas as filiais ativas; os
+demais, só as marcadas para eles na tela de Equipe (`usuario_filiais`).
+Usuário não administrador sem nenhuma filial ativa vinculada não consegue
+fazer login. Usuários, cargos e Configurações da Loja valem para a rede
+inteira e não dependem da filial.
+
+Banco criado antes deste módulo: rode `sql/migracao_filiais.sql` (com
+backup antes; instruções no próprio arquivo).
 
 Não há `DELETE /api/usuarios/{id}`: **funcionário não se exclui**. As
 vendas (`vendas.id_usuario`) e as movimentações de estoque

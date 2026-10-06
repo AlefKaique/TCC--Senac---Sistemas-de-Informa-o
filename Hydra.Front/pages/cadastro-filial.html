@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydra · Cadastrar nova Filial</title>
+  <link rel="icon" type="image/png" href="../img/logo-hydra.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/controle-estoque.css">
+    <link rel="stylesheet" href="../css/gerenciar-usuarios.css">
+    <link rel="stylesheet" href="../css/configuracoes-loja.css">
+    <link rel="stylesheet" href="../css/filiais.css">
+    <link rel="stylesheet" href="../css/menu-submenu.css">
+    <link rel="stylesheet" href="../css/public-demo.css">
+    <link rel="stylesheet" href="../css/font-size.css">
+</head>
+
+<body>
+
+    <!-- Tudo isolado dentro de .hydro-stock para não colidir com o CSS/JS do restante do sistema -->
+    <div class="hydro-stock">
+
+        <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+        </button>
+        <div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+
+        <div class="hydro-app">
+
+            <!-- Sidebar -->
+            <aside class="hydro-sidebar" id="hydroSidebar">
+                <a class="hydro-brand" href="controle-estoque.html" aria-label="Ir para o início">
+                    <img src="../img/logo-hydra.png" alt="Hydra PDV">
+                </a>
+
+                <nav class="hydro-menu">
+                    <p class="hydro-menu-label">Menu</p>
+                    <ul>
+                        <li><a href="#" data-view="caixa"><i class="hydro-ic hydro-ic-drawer"></i><span>Vendas</span></a>
+                        </li>
+                        <li><a href="controle-estoque.html"><i
+                                    class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
+                        <li><a href="#" data-view="dashboard"><i
+                                    class="hydro-ic hydro-ic-home"></i><span>Relatório</span></a></li>
+                    </ul>
+                </nav>
+
+                <div class="hydro-menu hydro-menu-admin">
+                    <p class="hydro-menu-label" id="hydroMenuAdminLabel"><span class="hydro-menu-restricted">Admin</span></p>
+                    <ul>
+                        <li id="hydroLiEquipe"><a href="gerenciar-usuarios.html"><i
+                                    class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
+                        <li id="hydroLiConfig">
+                            <details class="hydro-submenu" open>
+                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
+                                <ul class="hydro-submenu-itens">
+                                    <li><a href="configuracoes-loja.html">Dados da loja</a></li>
+                                    <li><a href="filiais.html">Filiais</a></li>
+                                    <li><a href="cadastro-filial.html" class="hydro-active" aria-current="page">Cadastrar nova Filial</a></li>
+                                </ul>
+                            </details>
+                        </li>
+                        <li id="hydroLiCargos"><a href="cargos.html"><i
+                                    class="hydro-ic hydro-ic-shield"></i><span>Cargos</span></a></li>
+                        <li id="hydroLiPromocoes"><a href="promocoes.html"><i
+                                    class="hydro-ic hydro-ic-tag"></i><span>Promoções</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="hydro-menu hydro-menu-bottom">
+                    <p class="hydro-menu-label">Geral</p>
+                    <ul>
+                        <li><a href="#" data-view="sair"><i class="hydro-ic hydro-ic-exit"></i><span>Sair</span></a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Main -->
+            <main class="hydro-main">
+                <header class="hydro-topbar">
+                    <div class="hydro-topbar-title">
+                        <h1>Cadastrar nova Filial</h1>
+                        <span class="hydro-restricted-badge"><i class="hydro-ic hydro-ic-lock"></i> Apenas Administrador</span>
+                    </div>
+                    <div class="hydro-topbar-actions">
+                        <a class="hydro-icon-btn" href="gerenciar-usuarios.html" aria-label="Equipe"><i
+                                class="hydro-ic hydro-ic-users"></i></a>
+                        <button class="hydro-icon-btn" aria-label="Notificações">
+                            <i class="hydro-ic hydro-ic-bell"></i>
+                            <span class="hydro-notif-dot"></span>
+                        </button>
+                        <div class="hydro-user">
+                            <img class="hydro-avatar" src="https://i.pravatar.cc/64?img=13" alt="Foto do usuário">
+                            <span class="hydro-user-name" id="hydroUserName"></span>
+                        </div>
+                    </div>
+                </header>
+
+                <p class="hydro-settings-intro" id="hydroFilialIntro">Preencha os dados da nova filial. Ela começa com estoque, vendas e promoções vazios — cada filial tem os seus.</p>
+
+                <form id="hydroFilialForm" novalidate>
+
+                    <p class="hydro-filial-form-erro" id="hydroFilialFormErro" role="alert" hidden></p>
+
+                    <section class="hydro-card">
+                        <div class="hydro-card-header">
+                            <h2>Identidade da filial</h2>
+                            <p>Nome e logo exibidos no sistema e na janela "Trocar Filial".</p>
+                        </div>
+                        <div class="hydro-card-body">
+                            <div class="hydro-logo-row">
+                                <div class="hydro-logo-preview" id="hydroLogoPreview">
+                                    <i class="hydro-ic hydro-ic-image"></i>
+                                </div>
+                                <div class="hydro-logo-actions">
+                                    <label class="hydro-btn hydro-btn-outline hydro-btn-sm hydro-upload-btn" for="hydroLogoInput">
+                                        <i class="hydro-ic hydro-ic-upload"></i> Enviar logo
+                                    </label>
+                                    <input type="file" id="hydroLogoInput" accept="image/*" hidden>
+                                    <span class="hydro-logo-hint">PNG ou JPG, até 2MB</span>
+                                </div>
+                            </div>
+                            <div class="hydro-form-group">
+                                <label for="hydroFilialNome">Nome da filial</label>
+                                <input type="text" id="hydroFilialNome" maxlength="120" placeholder="Ex.: Centro" required>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="hydro-card">
+                        <div class="hydro-card-header">
+                            <h2>Dados cadastrais</h2>
+                            <p>Usados em relatórios financeiros e documentos fiscais.</p>
+                        </div>
+                        <div class="hydro-card-body hydro-settings-grid">
+                            <div class="hydro-form-group">
+                                <label for="hydroFilialCnpj"><i class="hydro-ic hydro-ic-building"></i> CNPJ</label>
+                                <input type="text" id="hydroFilialCnpj" maxlength="18" inputmode="numeric" placeholder="00.000.000/0000-00">
+                            </div>
+                            <div class="hydro-form-group">
+                                <label for="hydroFilialTelefone"><i class="hydro-ic hydro-ic-phone"></i> Telefone</label>
+                                <input type="text" id="hydroFilialTelefone" maxlength="15" inputmode="tel" placeholder="(00) 00000-0000">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="hydro-card">
+                        <div class="hydro-card-header">
+                            <h2>Endereço</h2>
+                            <p>Endereço físico da filial.</p>
+                        </div>
+                        <div class="hydro-card-body hydro-settings-grid">
+                            <div class="hydro-form-group">
+                                <label for="hydroFilialCep">CEP</label>
+                                <input type="text" id="hydroFilialCep" maxlength="10" inputmode="numeric" placeholder="00000-000">
+                            </div>
+                            <div class="hydro-form-group hydro-span-2">
+                                <label for="hydroFilialEndereco"><i class="hydro-ic hydro-ic-map-pin"></i> Endereço</label>
+                                <input type="text" id="hydroFilialEndereco" maxlength="150" placeholder="Rua, número, bairro">
+                            </div>
+                            <div class="hydro-form-group">
+                                <label for="hydroFilialCidade">Cidade</label>
+                                <input type="text" id="hydroFilialCidade" maxlength="60" placeholder="Cidade">
+                            </div>
+                            <div class="hydro-form-group">
+                                <label for="hydroFilialEstado">Estado</label>
+                                <select id="hydroFilialEstado">
+                                    <option value="SP" selected>São Paulo</option>
+                                    <option value="RJ">Rio de Janeiro</option>
+                                    <option value="MG">Minas Gerais</option>
+                                    <option value="PR">Paraná</option>
+                                    <option value="SC">Santa Catarina</option>
+                                    <option value="RS">Rio Grande do Sul</option>
+                                    <option value="BA">Bahia</option>
+                                    <option value="">Outro</option>
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="hydro-card">
+                        <div class="hydro-card-header">
+                            <h2>Situação</h2>
+                            <p>Filial desativada some da janela "Trocar Filial" e ninguém consegue entrar nela.</p>
+                        </div>
+                        <div class="hydro-card-body hydro-settings-grid">
+                            <div class="hydro-form-group">
+                                <label for="hydroFilialStatus">Situação da filial</label>
+                                <select id="hydroFilialStatus">
+                                    <option value="ativa">Ativa — pode ser usada</option>
+                                    <option value="inativa">Desativada — ninguém entra nela</option>
+                                </select>
+                                <span class="hydro-filial-status-dica" id="hydroFilialStatusDica" hidden></span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="hydro-settings-footer">
+                        <a class="hydro-btn hydro-btn-outline" href="filiais.html" id="hydroBtnCancelar">Cancelar</a>
+                        <button type="submit" class="hydro-btn hydro-btn-primary" id="hydroBtnSalvar">Cadastrar filial</button>
+                    </div>
+                </form>
+            </main>
+        </div>
+
+        <div class="hydro-toast" id="hydroToast"></div>
+
+    </div>
+
+    <div class="accessibility-widget">
+        <button id="font-plus" data-font-action="increase">A+</button>
+        <button id="font-minus" data-font-action="decrease">A−</button>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/trocar-filial.js"></script>
+    <script src="../js/public-demo.js"></script>
+    <script src="../js/font-size.js"></script>
+    <script src="../js/cadastro-filial.js"></script>
+</body>
+
+</html>

@@ -27,14 +27,14 @@ final class EstoqueController
     /** GET /api/estoque/movimentacoes — usado pelo Dashboard (RF06). Leitura. */
     public function index(): void
     {
-        $user = Auth::requirePermission('estoque.consultar');
-        Response::json(['movimentacoes' => $this->movimentacoes->listByLoja($user['id_loja'])]);
+        $user = Auth::requirePermissionNaFilial('estoque.consultar');
+        Response::json(['movimentacoes' => $this->movimentacoes->listByFilial($user['id_filial'])]);
     }
 
     /** POST /api/estoque/movimentacoes — é aqui que o saldo muda, daí "estoque.lancar". */
     public function store(): void
     {
-        $user = Auth::requirePermission('estoque.lancar');
+        $user = Auth::requirePermissionNaFilial('estoque.lancar');
         $dados = Request::json();
 
         $idProduto = (int) ($dados['id_produto'] ?? 0);
@@ -55,7 +55,7 @@ final class EstoqueController
             return;
         }
 
-        $produto = $this->produtos->findInLoja($idProduto, $user['id_loja']);
+        $produto = $this->produtos->findInFilial($idProduto, $user['id_filial']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
             return;
@@ -83,6 +83,7 @@ final class EstoqueController
             }
             $this->movimentacoes->create(
                 $user['id_loja'],
+                $user['id_filial'],
                 $idProduto,
                 $user['id_usuario'],
                 null,
@@ -97,6 +98,6 @@ final class EstoqueController
             return;
         }
 
-        Response::json(['produto' => $this->produtos->findInLoja($idProduto, $user['id_loja'])], 201);
+        Response::json(['produto' => $this->produtos->findInFilial($idProduto, $user['id_filial'])], 201);
     }
 }

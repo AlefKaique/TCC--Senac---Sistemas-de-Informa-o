@@ -6,13 +6,18 @@
 -- Controle de Estoque, Vendas (PDV) e Movimentações Financeiras.
 --
 -- Telas cobertas por este schema:
---   - Cadastro (Fig. 13)        -> INSERT em lojas + INSERT em usuarios (perfil = administrador)
+--   - Cadastro (Fig. 13)        -> INSERT em lojas + INSERT em filiais (Matriz)
+--                                  + INSERT em usuarios (perfil = administrador)
 --                                  + confirmação do e-mail por código (email_verificado)
 --   - Login (Fig. 14)           -> SELECT em usuarios (email, senha) + UPDATE ultimo_acesso
 --                                  + código por e-mail para Administradores (codigo_acesso)
 --   - Recuperar senha (Fig. 15) -> UPDATE reset_token / reset_token_expira_em
 --   - Gerenciar Usuários        -> CRUD em usuarios (perfil = operador_caixa/estoquista)
---   - Configurações da Loja     -> UPDATE em lojas
+--   - Configurações da Loja     -> UPDATE em lojas + CRUD em filiais (seção Filiais)
+--   - Trocar Filial             -> SELECT em filiais/usuario_filiais + UPDATE usuarios.id_ultima_filial
+--
+-- Banco JÁ EM USO, criado antes do módulo de Filiais: rode
+-- sql/migracao_filiais.sql (faça backup antes — instruções no arquivo).
 --
 -- Este arquivo é a VERSÃO DEFINITIVA do modelo: descreve o estado final
 -- do banco, sem blocos de migração incremental. Ele pressupõe um banco
@@ -44,6 +49,50 @@ CREATE TABLE IF NOT EXISTS lojas (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
+-- ============================================================
+-- Filiais
+--   Uma loja (a rede, criada no Cadastro) tem uma ou mais filiais. O
+--   Cadastro cria a primeira, "Matriz"; as demais são criadas pelo
+--   Administrador em Configuração Loja > Cadastrar nova Filial.
+--
+--   Usuários, cargos e Configurações da Loja valem para a rede inteira.
+--   Produtos, estoque, vendas, promoções e movimentações pertencem a uma
+--   filial (coluna id_filial), e o back-end filtra cada consulta pela
+--   filial ativa NA SESSÃO — nunca por um id enviado pelo navegador.
+--
+--   Filial não é excluída, só inativada (status): ela tem vendas e
+--   movimentações que precisam continuar consultáveis.
+--
+--   uq_filiais_loja_id (id_loja, id_filial) parece redundante, já que
+--   id_filial sozinho é a chave primária, mas é ela que permite às tabelas
+--   de dados referenciarem (id_loja, id_filial) juntos — o banco passa a
+--   garantir que um produto nunca aponte para a filial de OUTRA loja.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS filiais (
+    id_filial       INT AUTO_INCREMENT PRIMARY KEY,
+    id_loja         INT NOT NULL,
+    nome            VARCHAR(120) NOT NULL,
+    -- Mesmos dados cadastrais de "lojas" (tela Cadastrar nova Filial).
+    cnpj            VARCHAR(18)  NULL,
+    telefone        VARCHAR(15)  NULL,
+    endereco        VARCHAR(150) NULL,
+    cidade          VARCHAR(60)  NULL,
+    estado          VARCHAR(2)   NULL,
+    cep             VARCHAR(10)  NULL,
+    status          ENUM('ativa', 'inativa') NOT NULL DEFAULT 'ativa',
+    data_criacao    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
+        ON DELETE CASCADE,
+
+    UNIQUE KEY uq_filiais_loja_id (id_loja, id_filial),
+    UNIQUE KEY uq_filiais_loja_nome (id_loja, nome),
+    -- NULL não conta para UNIQUE: várias filiais sem CNPJ são permitidas.
+    UNIQUE KEY uq_filiais_cnpj (cnpj)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
 CREATE TABLE IF NOT EXISTS usuarios (
     id_usuario              INT AUTO_INCREMENT PRIMARY KEY,
     id_loja                 INT NOT NULL,
@@ -59,7 +108,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
     -- declarada depois desta.
     id_cargo                INT NULL,
 
-    status                  ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo',
+    -- Última filial em que o usuário trabalhou: o login volta para ela.
+    id_ultima_filial        INT NULL,
+
+    status                 ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo',
     data_criacao            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ultimo_acesso           DATETIME NULL,
 
@@ -92,7 +144,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
     codigo_acesso_expira_em DATETIME NULL,
 
     FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_usuarios_ultima_filial
+        FOREIGN KEY (id_ultima_filial) REFERENCES filiais(id_filial)
+        ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
@@ -100,6 +155,22 @@ CREATE TABLE IF NOT EXISTS usuarios (
 CREATE INDEX idx_usuarios_id_loja  ON usuarios (id_loja);
 CREATE INDEX idx_usuarios_perfil   ON usuarios (perfil);
 CREATE INDEX idx_usuarios_id_cargo ON usuarios (id_cargo);
+
+
+-- Filiais que cada usuário NÃO administrador pode acessar (tela
+-- Gerenciar Usuários). O Administrador — cargo de nível "administrador",
+-- ver CargoRepository::nivelEquivalente() — acessa todas as filiais
+-- ativas da loja sem precisar de linha aqui.
+CREATE TABLE IF NOT EXISTS usuario_filiais (
+    id_usuario      INT NOT NULL,
+    id_filial       INT NOT NULL,
+
+    PRIMARY KEY (id_usuario, id_filial),
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
+        ON DELETE CASCADE,
+    FOREIGN KEY (id_filial) REFERENCES filiais(id_filial)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 -- ============================================================
@@ -163,12 +234,18 @@ CREATE INDEX idx_clientes_email   ON clientes (email);
 -- A ordem importa: o índice era composto (id_loja, codigo_barras).
 -- Soltar a coluna primeiro faria o MySQL reduzir o índice a
 -- UNIQUE (id_loja), o que passaria a permitir só UM produto por loja.
+--
+-- O catálogo é POR FILIAL: cada filial tem o próprio cadastro, com sua
+-- quantidade, lote e validade. Não há restrição de unicidade em produtos
+-- (o nome não é único nem dentro da filial); se uma for criada no
+-- futuro, deve ser composta por (id_filial, ...), e não por id_loja.
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS produtos (
     id_produto      INT AUTO_INCREMENT PRIMARY KEY,
     id_loja         INT NOT NULL,
-    nome            VARCHAR(150) NOT NULL,
+    id_filial       INT NOT NULL,
+    nome           VARCHAR(150) NOT NULL,
     descricao       VARCHAR(255) NULL,
     -- Digitada livremente pelo usuário no cadastro, com as categorias já
     -- usadas na loja oferecidas como sugestão (não há lista fixa).
@@ -184,6 +261,10 @@ CREATE TABLE IF NOT EXISTS produtos (
     data_criacao    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
+        ON DELETE CASCADE,
+    INDEX idx_produtos_loja_filial (id_loja, id_filial),
+    CONSTRAINT fk_produtos_filial
+        FOREIGN KEY (id_loja, id_filial) REFERENCES filiais(id_loja, id_filial)
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -215,7 +296,9 @@ CREATE INDEX idx_produtos_validade  ON produtos (validade);
 -- "numero_venda" é o número do pedido que o Caixa e o Histórico exibem.
 -- Ele existe porque "id_venda" é AUTO_INCREMENT GLOBAL, compartilhado por
 -- todas as lojas: a primeira venda de uma loja nova sairia com um número
--- alto e cheio de buracos. O número é por loja e começa em 1.
+-- alto e cheio de buracos. O número é por FILIAL e começa em 1 (era por
+-- loja antes do módulo de Filiais; sql/migracao_filiais.sql troca a
+-- chave única).
 --
 -- Em um banco JÁ EM USO (criado antes desta coluna), execute os comandos
 -- abaixo NESTA ORDEM — o UPDATE precisa rodar antes do índice UNIQUE,
@@ -235,7 +318,8 @@ CREATE INDEX idx_produtos_validade  ON produtos (validade);
 CREATE TABLE IF NOT EXISTS vendas (
     id_venda        INT AUTO_INCREMENT PRIMARY KEY,
     id_loja         INT NOT NULL,
-    -- Número do pedido exibido na tela, sequencial DENTRO da loja.
+    id_filial       INT NOT NULL,
+    -- Número do pedido exibido na tela, sequencial DENTRO da filial.
     numero_venda    INT NOT NULL,
     id_usuario      INT NOT NULL,
     id_cliente      INT NULL,
@@ -250,11 +334,15 @@ CREATE TABLE IF NOT EXISTS vendas (
         ON DELETE RESTRICT,
     FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
         ON DELETE SET NULL,
+    INDEX idx_vendas_loja_filial (id_loja, id_filial),
+    CONSTRAINT fk_vendas_filial
+        FOREIGN KEY (id_loja, id_filial) REFERENCES filiais(id_loja, id_filial)
+        ON DELETE CASCADE,
 
     -- Garantia real contra número repetido: o SELECT MAX(...)+1 que o
     -- VendaRepository faz é protegido por FOR UPDATE, mas é esta chave que
     -- impede de verdade duas vendas simultâneas receberem o mesmo número.
-    UNIQUE KEY uq_vendas_loja_numero (id_loja, numero_venda)
+    UNIQUE KEY uq_vendas_filial_numero (id_filial, numero_venda)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX idx_vendas_id_loja    ON vendas (id_loja);
@@ -279,6 +367,46 @@ CREATE TABLE IF NOT EXISTS itens_venda (
 
 CREATE INDEX idx_itens_venda_id_venda   ON itens_venda (id_venda);
 CREATE INDEX idx_itens_venda_id_produto ON itens_venda (id_produto);
+
+
+-- ============================================================
+-- Promoções (tela "Promoções", bloco Admin)
+--   Preço promocional temporário, pensado para escoar produtos prestes
+--   a vencer antes que virem perda. Vigente quando status = 'ativa' e a
+--   data de hoje está entre data_inicio e data_fim: é esse preço que o
+--   Caixa exibe e que VendaController cobra no lugar de preco_venda.
+--   Encerrar uma promoção muda o status em vez de apagar a linha.
+--   Exige a permissão "produtos.editar_preco" (RN04: alterar preço).
+--
+-- Em um banco já em uso, a tabela é criada sozinha na primeira
+-- requisição (PromocaoRepository::garantirTabela()).
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS promocoes (
+    id_promocao       INT AUTO_INCREMENT PRIMARY KEY,
+    id_loja           INT NOT NULL,
+    id_filial         INT NOT NULL,
+    id_produto        INT NOT NULL,
+    id_usuario        INT NULL,
+    preco_promocional DECIMAL(10,2) NOT NULL,
+    data_inicio       DATE NOT NULL,
+    data_fim          DATE NOT NULL,
+    status            ENUM('ativa', 'encerrada') NOT NULL DEFAULT 'ativa',
+    data_criacao      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
+        ON DELETE CASCADE,
+    FOREIGN KEY (id_produto) REFERENCES produtos(id_produto)
+        ON DELETE CASCADE,
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
+        ON DELETE SET NULL,
+    INDEX idx_promocoes_loja_produto (id_loja, id_produto),
+    INDEX idx_promocoes_periodo (data_inicio, data_fim),
+    INDEX idx_promocoes_loja_filial (id_loja, id_filial),
+    CONSTRAINT fk_promocoes_filial
+        FOREIGN KEY (id_loja, id_filial) REFERENCES filiais(id_loja, id_filial)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 CREATE TABLE IF NOT EXISTS pagamentos (
@@ -310,6 +438,7 @@ CREATE INDEX idx_pagamentos_id_venda ON pagamentos (id_venda);
 CREATE TABLE IF NOT EXISTS movimentacoes_estoque (
     id_movimentacao   INT AUTO_INCREMENT PRIMARY KEY,
     id_loja           INT NOT NULL,
+    id_filial         INT NOT NULL,
     id_produto        INT NOT NULL,
     id_usuario        INT NULL,
     id_venda          INT NULL,
@@ -319,6 +448,10 @@ CREATE TABLE IF NOT EXISTS movimentacoes_estoque (
     data_movimentacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
+        ON DELETE CASCADE,
+    INDEX idx_movimentacoes_estoque_loja_filial (id_loja, id_filial),
+    CONSTRAINT fk_movimentacoes_estoque_filial
+        FOREIGN KEY (id_loja, id_filial) REFERENCES filiais(id_loja, id_filial)
         ON DELETE CASCADE,
     FOREIGN KEY (id_produto) REFERENCES produtos(id_produto)
         ON DELETE CASCADE,
@@ -352,6 +485,7 @@ CREATE INDEX idx_movimentacoes_estoque_data        ON movimentacoes_estoque (dat
 CREATE TABLE IF NOT EXISTS movimentacoes_financeiras (
     id_movimentacao_financeira INT AUTO_INCREMENT PRIMARY KEY,
     id_loja           INT NOT NULL,
+    id_filial         INT NOT NULL,
     id_venda          INT NULL,
     id_usuario        INT NULL,
     tipo              ENUM('entrada', 'saida') NOT NULL,
@@ -360,6 +494,10 @@ CREATE TABLE IF NOT EXISTS movimentacoes_financeiras (
     data_movimentacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
+        ON DELETE CASCADE,
+    INDEX idx_movimentacoes_financeiras_loja_filial (id_loja, id_filial),
+    CONSTRAINT fk_movimentacoes_financeiras_filial
+        FOREIGN KEY (id_loja, id_filial) REFERENCES filiais(id_loja, id_filial)
         ON DELETE CASCADE,
     FOREIGN KEY (id_venda) REFERENCES vendas(id_venda)
         ON DELETE SET NULL,
@@ -487,7 +625,7 @@ INSERT INTO permissoes (codigo, nome, descricao, categoria, ordem) VALUES
     ('estoque.consultar',     'Consultar Estoque',            'Ver a lista de produtos, quantidades, lotes e validades — é a base das duas permissões abaixo', 'Operação',   10),
     ('estoque.lancar',        'Entradas e Saídas de Estoque', 'Lançar entrada e saída de mercadoria — marque também "Consultar Estoque"',                   'Operação',      11),
     ('produtos.gerenciar',    'Cadastro de Produtos',         'Cadastrar, editar e excluir produtos — marque também "Consultar Estoque"',                   'Operação',      12),
-    ('produtos.editar_preco', 'Alterar Preços',               'Alterar preço de custo e de venda (RN04) — só tem efeito junto com "Cadastro de Produtos"', 'Operação',      13),
+    ('produtos.editar_preco', 'Alterar Preços e Promoções',   'Criar promoções e, junto com "Cadastro de Produtos", alterar preço de custo e de venda (RN04)', 'Operação',      13),
     ('vendas.operar',         'Vendas no Caixa',              'Operar o Caixa (PDV) e finalizar vendas',                                                   'Operação',      20),
     ('vendas.historico',      'Histórico de Vendas',          'Consultar as vendas já finalizadas e os detalhes de cada uma',                              'Operação',      21),
     ('relatorios.visualizar', 'Relatórios',                   'Abrir o Dashboard com o faturamento e os indicadores da loja (RN16, RN17)',                 'Operação',      22),

@@ -3,6 +3,7 @@
 namespace Hydra\Support;
 
 use Hydra\Repositories\CargoRepository;
+use Hydra\Repositories\FilialRepository;
 use Hydra\Repositories\UsuarioRepository;
 
 /**
@@ -18,6 +19,13 @@ use Hydra\Repositories\UsuarioRepository;
  * módulo de Cargos no schema.sql e Hydra\Repositories\CargoRepository):
  * no login, as permissões do cargo são carregadas na sessão e cada
  * endpoint restrito chama requirePermission() com o código exigido.
+ *
+ * Filial ativa: os dados de produtos, estoque, vendas e promoções são por
+ * filial. A filial em que o usuário está trabalhando fica SÓ na sessão
+ * ($_SESSION['id_filial']), definida no login ou em POST /api/filiais/trocar
+ * — o back-end nunca lê um id de filial enviado pelo navegador nas demais
+ * requisições. Os endpoints desses dados usam requirePermissionNaFilial(),
+ * que revalida o acesso à filial a cada requisição.
  */
 final class Auth
 {
@@ -59,6 +67,9 @@ final class Auth
         $_SESSION['permissoes'] = $_SESSION['id_cargo'] !== null
             ? (new CargoRepository())->permissoesDoCargo($_SESSION['id_cargo'])
             : [];
+        // Sem isto, logar com outra conta no mesmo navegador (sem passar
+        // pelo "Sair") herdaria a filial escolhida pela conta anterior.
+        unset($_SESSION['id_filial']);
     }
 
     public static function logout(): void
@@ -72,7 +83,7 @@ final class Auth
         return isset($_SESSION['id_usuario']);
     }
 
-    /** @return array{id_usuario:int,id_loja:int,perfil:string,nome:string,email:string,id_cargo:?int,permissoes:string[]}|null */
+    /** @return array{id_usuario:int,id_loja:int,id_filial:?int,perfil:string,nome:string,email:string,id_cargo:?int,permissoes:string[]}|null */
     public static function user(): ?array
     {
         if (!self::check()) {
@@ -81,12 +92,85 @@ final class Auth
         return [
             'id_usuario' => $_SESSION['id_usuario'],
             'id_loja' => $_SESSION['id_loja'],
+            'id_filial' => $_SESSION['id_filial'] ?? null,
             'perfil' => $_SESSION['perfil'],
             'nome' => $_SESSION['nome'],
             'email' => $_SESSION['email'],
             'id_cargo' => $_SESSION['id_cargo'] ?? null,
             'permissoes' => $_SESSION['permissoes'] ?? [],
         ];
+    }
+
+    /**
+     * O usuário logado é Administrador? Mesmo critério do cargo
+     * (CargoRepository::nivelEquivalente), calculado sobre as permissões
+     * reespelhadas por requireLogin() — e não sobre usuarios.perfil, para
+     * valer na hora em que o cargo muda na tela Cargos.
+     */
+    public static function ehAdministrador(): bool
+    {
+        return CargoRepository::nivelEquivalente($_SESSION['permissoes'] ?? []) === 'administrador';
+    }
+
+    /** Grava a filial ativa na sessão. Quem chama já validou o acesso. */
+    public static function definirFilial(int $idFilial): void
+    {
+        $_SESSION['id_filial'] = $idFilial;
+    }
+
+    /**
+     * Encerra a requisição com 409 se não houver filial ativa na sessão ou
+     * se o usuário tiver perdido o acesso a ela (filial inativada, vínculo
+     * removido na tela Equipe). O front-end reconhece o código
+     * "filial_nao_selecionada" e abre a janela de escolha de filial.
+     *
+     * @param array<string,mixed> $user retorno de requireLogin()
+     * @return array<string,mixed> o mesmo usuário, com id_filial garantido
+     */
+    public static function requireFilial(array $user): array
+    {
+        $idFilial = $_SESSION['id_filial'] ?? null;
+        if ($idFilial === null) {
+            Response::json([
+                'erro' => 'Escolha a filial em que você vai trabalhar.',
+                'codigo' => 'filial_nao_selecionada',
+            ], 409);
+            exit;
+        }
+
+        $temAcesso = (new FilialRepository())->podeAcessar(
+            (int) $user['id_usuario'],
+            (int) $user['id_loja'],
+            self::ehAdministrador(),
+            (int) $idFilial
+        );
+        if (!$temAcesso) {
+            unset($_SESSION['id_filial']);
+            Response::json([
+                'erro' => 'Você não tem mais acesso a esta filial, ou ela foi desativada. Escolha outra filial.',
+                'codigo' => 'filial_nao_selecionada',
+            ], 409);
+            exit;
+        }
+
+        $user['id_filial'] = (int) $idFilial;
+        return $user;
+    }
+
+    /** requirePermission() + requireFilial(): para os endpoints de dados por filial. */
+    public static function requirePermissionNaFilial(string $codigo): array
+    {
+        return self::requireFilial(self::requirePermission($codigo));
+    }
+
+    /**
+     * requireAnyPermission() + requireFilial().
+     *
+     * @param string[] $codigos
+     */
+    public static function requireAnyPermissionNaFilial(array $codigos): array
+    {
+        return self::requireFilial(self::requireAnyPermission($codigos));
     }
 
     /**

@@ -4,40 +4,46 @@ namespace Hydra\Repositories;
 
 /**
  * Tela "Produtos" / "Controle de Estoque" — RF02, RF03, RF05, RF19.
+ *
+ * O catálogo é por filial: toda leitura filtra pela filial ativa da sessão
+ * (Auth::requirePermissionNaFilial). Os métodos que recebem só id_produto
+ * (update, baixa de estoque...) são chamados depois de findInFilial() ter
+ * confirmado que o produto é da filial.
  */
 final class ProdutoRepository
 {
     /** @return array<int,array<string,mixed>> */
-    public function listByLoja(int $idLoja): array
+    public function listByFilial(int $idFilial): array
     {
         $stmt = db()->prepare(
-            'SELECT * FROM produtos WHERE id_loja = :id_loja ORDER BY nome ASC'
+            'SELECT * FROM produtos WHERE id_filial = :id_filial ORDER BY nome ASC'
         );
-        $stmt->execute(['id_loja' => $idLoja]);
+        $stmt->execute(['id_filial' => $idFilial]);
         return $stmt->fetchAll();
     }
 
-    public function findInLoja(int $idProduto, int $idLoja): ?array
+    public function findInFilial(int $idProduto, int $idFilial): ?array
     {
-        $stmt = db()->prepare('SELECT * FROM produtos WHERE id_produto = :id AND id_loja = :id_loja');
-        $stmt->execute(['id' => $idProduto, 'id_loja' => $idLoja]);
+        $stmt = db()->prepare('SELECT * FROM produtos WHERE id_produto = :id AND id_filial = :id_filial');
+        $stmt->execute(['id' => $idProduto, 'id_filial' => $idFilial]);
         $row = $stmt->fetch();
         return $row ?: null;
     }
 
     /** @param array<string,mixed> $dados */
-    public function create(int $idLoja, array $dados): int
+    public function create(int $idLoja, int $idFilial, array $dados): int
     {
         $stmt = db()->prepare(
             'INSERT INTO produtos
-                (id_loja, nome, descricao, categoria, preco_custo, preco_venda,
+                (id_loja, id_filial, nome, descricao, categoria, preco_custo, preco_venda,
                  quantidade, estoque_minimo, unidade, lote, validade)
              VALUES
-                (:id_loja, :nome, :descricao, :categoria, :preco_custo, :preco_venda,
+                (:id_loja, :id_filial, :nome, :descricao, :categoria, :preco_custo, :preco_venda,
                  :quantidade, :estoque_minimo, :unidade, :lote, :validade)'
         );
         $stmt->execute([
             'id_loja' => $idLoja,
+            'id_filial' => $idFilial,
             'nome' => $dados['nome'],
             'descricao' => $dados['descricao'],
             'categoria' => $dados['categoria'],

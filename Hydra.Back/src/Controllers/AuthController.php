@@ -3,6 +3,7 @@
 namespace Hydra\Controllers;
 
 use Hydra\Repositories\CargoRepository;
+use Hydra\Repositories\FilialRepository;
 use Hydra\Repositories\LojaRepository;
 use Hydra\Repositories\UsuarioRepository;
 use Hydra\Support\Auth;
@@ -24,12 +25,14 @@ final class AuthController
     private UsuarioRepository $usuarios;
     private LojaRepository $lojas;
     private CargoRepository $cargos;
+    private FilialRepository $filiais;
 
     public function __construct()
     {
         $this->usuarios = new UsuarioRepository();
         $this->lojas = new LojaRepository();
         $this->cargos = new CargoRepository();
+        $this->filiais = new FilialRepository();
     }
 
     /**
@@ -69,6 +72,9 @@ final class AuthController
         $pdo->beginTransaction();
         try {
             $idLoja = $this->lojas->create($nomeLoja);
+            // Toda loja nasce com uma filial; as demais são criadas depois
+            // em Configurações da Loja > Filiais.
+            $idFilial = $this->filiais->create($idLoja, ['nome' => 'Matriz']);
             // Cria os 3 cargos de sistema da loja (Administrador, Operador
             // de Caixa, Estoquista) antes do primeiro usuário, para já
             // vinculá-lo ao cargo Administrador.
@@ -89,6 +95,11 @@ final class AuthController
                 $idCargoAdmin,
                 false
             );
+            // O Administrador não precisa do vínculo (acessa todas as
+            // filiais), mas o mantém caso um dia deixe de ser Administrador
+            // — o mesmo que sql/migracao_filiais.sql faz.
+            $this->filiais->vincular($idUsuario, $idFilial);
+            $this->usuarios->updateUltimaFilial($idUsuario, $idFilial);
             $pdo->commit();
         } catch (\Throwable $e) {
             $pdo->rollBack();
@@ -226,6 +237,14 @@ final class AuthController
             $usuario = $this->usuarios->findByEmail($email);
         }
 
+        // Antes do código por e-mail: não faz sentido mandar o código a
+        // quem não vai conseguir entrar em filial nenhuma.
+        $semFilial = $this->bloqueioSemFilial($usuario);
+        if ($semFilial !== null) {
+            Response::json(['erro' => $semFilial, 'codigo' => 'sem_filial'], 403);
+            return;
+        }
+
         // Segunda etapa por código no e-mail: obrigatória para quem ainda
         // não confirmou o e-mail e para o Administrador, que controla a
         // equipe, os preços e os dados da loja. Operador de Caixa e
@@ -272,7 +291,7 @@ final class AuthController
         $this->usuarios->updateUltimoAcesso((int) $usuario['id_usuario']);
         Auth::login($usuario);
 
-        Response::json(['usuario' => $this->publicUser($usuario)]);
+        Response::json($this->respostaDeLogin($usuario));
     }
 
     /**
@@ -305,6 +324,13 @@ final class AuthController
             Response::json(['erro' => 'Este usuário está inativo. Fale com o administrador da loja.'], 403);
             return;
         }
+        // Os vínculos podem ter sido retirados enquanto o código era digitado.
+        $semFilial = $this->bloqueioSemFilial($usuario);
+        if ($semFilial !== null) {
+            unset($_SESSION['login_pendente']);
+            Response::json(['erro' => $semFilial, 'codigo' => 'sem_filial'], 403);
+            return;
+        }
 
         $this->usuarios->marcarEmailVerificadoELimparCodigo((int) $usuario['id_usuario']);
         unset($_SESSION['login_pendente']);
@@ -314,7 +340,80 @@ final class AuthController
         $this->usuarios->updateUltimoAcesso((int) $usuario['id_usuario']);
         Auth::login($usuario);
 
-        Response::json(['usuario' => $this->publicUser($usuario)]);
+        Response::json($this->respostaDeLogin($usuario));
+    }
+
+    /**
+     * Mensagem de bloqueio quando o usuário não tem nenhuma filial ativa
+     * para entrar, ou null se puder seguir com o login. O Administrador
+     * (mesmo critério do cargo, CargoRepository::nivelEquivalente) não
+     * precisa de vínculo, mas a loja precisa ter ao menos uma filial ativa.
+     *
+     * @param array<string,mixed> $usuario linha de "usuarios"
+     */
+    private function bloqueioSemFilial(array $usuario): ?string
+    {
+        $administrador = $this->ehAdministrador($usuario);
+        $permitidas = $this->filiais->permitidas((int) $usuario['id_usuario'], (int) $usuario['id_loja'], $administrador);
+        if ($permitidas !== []) {
+            return null;
+        }
+        return $administrador
+            ? 'A loja não tem nenhuma filial ativa. Verifique a instalação do sistema.'
+            : 'Usuário sem filial vinculada. Procure o administrador.';
+    }
+
+    /** @param array<string,mixed> $usuario linha de "usuarios" */
+    private function ehAdministrador(array $usuario): bool
+    {
+        $permissoes = !empty($usuario['id_cargo'])
+            ? $this->cargos->permissoesDoCargo((int) $usuario['id_cargo'])
+            : [];
+        return CargoRepository::nivelEquivalente($permissoes) === 'administrador';
+    }
+
+    /**
+     * Resposta do login concluído (depois de Auth::login()), já escolhendo
+     * a filial quando dá:
+     *   - uma filial só: entra nela;
+     *   - várias: volta para a última usada, se ela ainda estiver liberada;
+     *   - senão: "escolher_filial" = true e o front-end abre a janela de
+     *     escolha (até lá, os endpoints de dados respondem 409).
+     *
+     * @param array<string,mixed> $usuario linha de "usuarios"
+     */
+    private function respostaDeLogin(array $usuario): array
+    {
+        $permitidas = $this->filiais->permitidas(
+            (int) $usuario['id_usuario'],
+            (int) $usuario['id_loja'],
+            Auth::ehAdministrador()
+        );
+
+        $escolhida = null;
+        if (count($permitidas) === 1) {
+            $escolhida = $permitidas[0];
+        } else {
+            foreach ($permitidas as $filial) {
+                if ((int) $filial['id_filial'] === (int) ($usuario['id_ultima_filial'] ?? 0)) {
+                    $escolhida = $filial;
+                    break;
+                }
+            }
+        }
+
+        if ($escolhida !== null) {
+            Auth::definirFilial((int) $escolhida['id_filial']);
+            $this->usuarios->updateUltimaFilial((int) $usuario['id_usuario'], (int) $escolhida['id_filial']);
+        }
+
+        return [
+            'usuario' => $this->publicUser($usuario),
+            'filial' => $escolhida !== null
+                ? ['id_filial' => (int) $escolhida['id_filial'], 'nome' => $escolhida['nome']]
+                : null,
+            'escolher_filial' => $escolhida === null,
+        ];
     }
 
     /** POST /api/auth/login/reenviar — reenvia o código da segunda etapa do login. */

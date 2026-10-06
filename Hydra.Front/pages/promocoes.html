@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydra · Promoções</title>
+    <link rel="icon" type="image/png" href="../img/logo-hydra.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/controle-estoque.css">
+    <link rel="stylesheet" href="../css/gerenciar-usuarios.css">
+    <link rel="stylesheet" href="../css/configuracoes-loja.css">
+    <link rel="stylesheet" href="../css/promocoes.css">
+    <link rel="stylesheet" href="../css/menu-submenu.css">
+    <link rel="stylesheet" href="../css/public-demo.css">
+    <link rel="stylesheet" href="../css/font-size.css">
+</head>
+
+<body>
+
+    <!-- Tudo isolado dentro de .hydro-stock para não colidir com o CSS/JS do restante do sistema -->
+    <div class="hydro-stock">
+
+        <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+        </button>
+        <div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+
+        <div class="hydro-app">
+
+            <!-- Sidebar -->
+            <aside class="hydro-sidebar" id="hydroSidebar">
+                <a class="hydro-brand" href="controle-estoque.html" aria-label="Ir para o início">
+                    <img src="../img/logo-hydra.png" alt="Hydra PDV">
+                </a>
+
+                <nav class="hydro-menu">
+                    <p class="hydro-menu-label">Menu</p>
+                    <ul>
+                        <li><a href="caixa.html" data-view="caixa"><i class="hydro-ic hydro-ic-drawer"></i><span>Vendas</span></a>
+                        </li>
+                        <li><a href="controle-estoque.html" data-view="estoque"><i
+                                    class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
+                        <li><a href="dashboard.html" data-view="dashboard"><i
+                                    class="hydro-ic hydro-ic-home"></i><span>Relatório</span></a></li>
+                    </ul>
+                </nav>
+
+                <div class="hydro-menu hydro-menu-admin">
+                    <p class="hydro-menu-label" id="hydroMenuAdminLabel"><span class="hydro-menu-restricted">Admin</span></p>
+                    <ul>
+                        <li id="hydroLiEquipe"><a href="gerenciar-usuarios.html"><i
+                                    class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
+                        <li id="hydroLiConfig">
+                            <details class="hydro-submenu">
+                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
+                                <ul class="hydro-submenu-itens">
+                                    <li><a href="configuracoes-loja.html">Dados da loja</a></li>
+                                    <li><a href="filiais.html">Filiais</a></li>
+                                    <li><a href="cadastro-filial.html">Cadastrar nova Filial</a></li>
+                                </ul>
+                            </details>
+                        </li>
+                        <li id="hydroLiCargos"><a href="cargos.html"><i
+                                    class="hydro-ic hydro-ic-shield"></i><span>Cargos</span></a></li>
+                        <li id="hydroLiPromocoes"><a href="#" class="hydro-active"><i
+                                    class="hydro-ic hydro-ic-tag"></i><span>Promoções</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="hydro-menu hydro-menu-bottom">
+                    <p class="hydro-menu-label">Geral</p>
+                    <ul>
+                        <li><a href="#" data-view="sair"><i class="hydro-ic hydro-ic-exit"></i><span>Sair</span></a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Main -->
+            <main class="hydro-main">
+                <header class="hydro-topbar">
+                    <div class="hydro-topbar-title">
+                        <h1>Promoções</h1>
+                        <span class="hydro-restricted-badge"><i class="hydro-ic hydro-ic-lock"></i> Alterar Preços e Promoções</span>
+                    </div>
+                    <div class="hydro-topbar-actions">
+                        <button class="hydro-icon-btn" aria-label="Notificações">
+                            <i class="hydro-ic hydro-ic-bell"></i>
+                            <span class="hydro-notif-dot"></span>
+                        </button>
+                        <div class="hydro-user">
+                            <img class="hydro-avatar" src="https://i.pravatar.cc/64?img=13" alt="Foto do usuário">
+                            <span class="hydro-user-name" id="hydroUserName"></span>
+                        </div>
+                    </div>
+                </header>
+
+                <p class="hydro-settings-intro">Coloque em promoção os produtos que vencem nos próximos 30 dias, para vendê-los antes que virem perda. O preço promocional vale no Caixa automaticamente durante o período escolhido.</p>
+
+                <!-- Produtos prestes a vencer -->
+                <section class="hydro-card">
+                    <div class="hydro-card-header">
+                        <h2>Produtos prestes a vencer</h2>
+                        <p>Produtos com estoque que vencem nos próximos 30 dias, do que vence primeiro para o último.</p>
+                    </div>
+                    <div class="hydro-table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Validade</th>
+                                    <th>Estoque</th>
+                                    <th>Preço normal</th>
+                                    <th>Custo</th>
+                                    <th class="hydro-col-actions">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hydroExpiringBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="hydro-empty-state" id="hydroExpiringEmpty">
+                        <i class="hydro-ic hydro-ic-package"></i>
+                        <p>Nenhum produto prestes a vencer</p>
+                        <span>Nenhum produto com estoque vence nos próximos 30 dias.</span>
+                    </div>
+                </section>
+
+                <!-- Promoções criadas -->
+                <section class="hydro-card">
+                    <div class="hydro-card-header">
+                        <h2>Promoções</h2>
+                        <p>Promoções em andamento, agendadas e o histórico das que já terminaram.</p>
+                    </div>
+                    <div class="hydro-table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Preço</th>
+                                    <th>Desconto</th>
+                                    <th>Período</th>
+                                    <th>Situação</th>
+                                    <th>Criada por</th>
+                                    <th class="hydro-col-actions">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hydroPromoBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="hydro-empty-state" id="hydroPromoEmpty">
+                        <i class="hydro-ic hydro-ic-tag"></i>
+                        <p>Nenhuma promoção criada</p>
+                        <span>Use o botão "Criar promoção" na lista de produtos prestes a vencer.</span>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Modal: criar promoção -->
+        <div class="hydro-modal-overlay" id="hydroPromoModal">
+            <form class="hydro-modal" id="hydroPromoForm" novalidate>
+                <div class="hydro-modal-header">
+                    <h2>Criar promoção</h2>
+                </div>
+                <div class="hydro-modal-body">
+                    <div class="hydro-promo-product">
+                        <p class="hydro-product-name" id="hydroPromoProductName"></p>
+                        <p class="hydro-product-desc" id="hydroPromoProductInfo"></p>
+                    </div>
+                    <div class="hydro-promo-grid">
+                        <div class="hydro-form-group">
+                            <label for="hydroPromoDesconto">Desconto (%)</label>
+                            <input type="number" id="hydroPromoDesconto" min="1" max="99" step="1" inputmode="decimal">
+                        </div>
+                        <div class="hydro-form-group">
+                            <label for="hydroPromoPreco">Preço promocional (R$)</label>
+                            <input type="number" id="hydroPromoPreco" min="0.01" step="0.01" inputmode="decimal" required>
+                        </div>
+                        <div class="hydro-form-group">
+                            <label for="hydroPromoInicio">Início</label>
+                            <input type="date" id="hydroPromoInicio" required>
+                        </div>
+                        <div class="hydro-form-group">
+                            <label for="hydroPromoFim">Fim</label>
+                            <input type="date" id="hydroPromoFim" required>
+                        </div>
+                    </div>
+                    <p class="hydro-promo-margin" id="hydroPromoMargin"></p>
+                </div>
+                <div class="hydro-modal-footer">
+                    <button type="button" class="hydro-btn hydro-btn-outline" id="hydroPromoCancel">Cancelar</button>
+                    <button type="submit" class="hydro-btn hydro-btn-primary" id="hydroPromoSave">Criar promoção</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="hydro-toast" id="hydroToast"></div>
+
+    </div>
+
+    <div class="accessibility-widget">
+        <button id="font-plus" data-font-action="increase">A+</button>
+        <button id="font-minus" data-font-action="decrease">A−</button>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/trocar-filial.js"></script>
+    <script src="../js/public-demo.js"></script>
+    <script src="../js/font-size.js"></script>
+    <script src="../js/promocoes.js"></script>
+</body>
+
+</html>

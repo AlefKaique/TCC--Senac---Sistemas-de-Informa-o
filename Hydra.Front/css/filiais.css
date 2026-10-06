@@ -1,0 +1,212 @@
+/* ===================================================================
+   Telas "Filiais" (lista) e "Cadastrar nova Filial" (formulário).
+   Complementa controle-estoque.css + gerenciar-usuarios.css +
+   configuracoes-loja.css, de onde vêm os cartões de resumo (.hydro-stats),
+   a barra de filtros (.hydro-toolbar), botões, selos e o formulário.
+   Escopado em .hydro-stock como eles.
+   =================================================================== */
+
+/* Botão que é <a>: ".hydro-stock a { color: inherit }" (controle-estoque.css)
+   é mais específica que ".hydro-btn-primary" e deixava o texto escuro
+   sobre o fundo azul. */
+.hydro-stock a.hydro-btn-primary,
+.hydro-stock a.hydro-btn-primary:hover {
+    color: #fff;
+}
+
+.hydro-stock a.hydro-btn-outline {
+    color: var(--navy-900);
+}
+
+/* ============ Cartões de filial (perfil) ============ */
+.hydro-stock .hydro-filiais-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 18px;
+}
+
+.hydro-stock .hydro-filial-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--card);
+    box-shadow: var(--shadow-card);
+}
+
+.hydro-stock .hydro-filial-card-inativa {
+    background: #f6f7fa;
+    box-shadow: none;
+}
+
+/* Topo do cartão: logo à esquerda, nome e cidade ao lado — como um perfil. */
+.hydro-stock .hydro-filial-perfil {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.hydro-stock .hydro-filial-logo {
+    display: flex;
+    flex: 0 0 64px;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    color: #fff;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: .5px;
+}
+
+.hydro-stock .hydro-filial-card-inativa .hydro-filial-logo {
+    filter: grayscale(1);
+    opacity: .6;
+}
+
+.hydro-stock .hydro-filial-ident {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.hydro-stock .hydro-filial-nome {
+    overflow: hidden;
+    color: var(--navy-900);
+    font-size: 18px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hydro-stock .hydro-filial-local {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.hydro-stock .hydro-filial-selos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.hydro-stock .hydro-filial-aqui {
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--green-bg);
+    color: var(--green);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+/* Lucro do mês em destaque, logo abaixo do perfil. */
+.hydro-stock .hydro-filial-lucro {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    background: var(--bg);
+}
+
+.hydro-stock .hydro-filial-lucro-rotulo {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.hydro-stock .hydro-filial-lucro-valor {
+    color: var(--navy-900);
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.hydro-stock .hydro-filial-lucro-valor.hydro-positivo {
+    color: var(--green);
+}
+
+.hydro-stock .hydro-filial-lucro-valor.hydro-negativo {
+    color: var(--red);
+}
+
+.hydro-stock .hydro-filial-lucro-sub {
+    color: var(--muted);
+    font-size: 13.5px;
+}
+
+/* Dados cadastrais em linhas "rótulo: valor". */
+.hydro-stock .hydro-filial-dados {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 12px;
+    margin: 0;
+    font-size: 14px;
+}
+
+.hydro-stock .hydro-filial-dados dt {
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.hydro-stock .hydro-filial-dados dd {
+    margin: 0;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+}
+
+.hydro-stock .hydro-filial-acoes {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: auto;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.hydro-stock .hydro-filiais-mensagem {
+    margin-bottom: 18px;
+    padding: 28px 20px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+    background: var(--card);
+    color: var(--muted);
+    font-size: 15px;
+    text-align: center;
+}
+
+.hydro-stock .hydro-filiais-mensagem a {
+    color: var(--blue);
+    font-weight: 700;
+}
+
+/* ============ Cadastro / edição ============ */
+.hydro-stock .hydro-filial-status-dica {
+    display: block;
+    margin-top: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--amber);
+}
+
+.hydro-stock .hydro-filial-form-erro {
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    border: 1px solid #f5c2c8;
+    border-radius: 10px;
+    background: var(--red-bg);
+    color: #a32336;
+    font-size: 14.5px;
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .hydro-stock .hydro-filiais-grid {
+        grid-template-columns: 1fr;
+    }
+}

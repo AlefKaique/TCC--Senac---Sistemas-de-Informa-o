@@ -4,6 +4,7 @@ namespace Hydra\Controllers;
 
 use Hydra\Repositories\MovimentacaoEstoqueRepository;
 use Hydra\Repositories\ProdutoRepository;
+use Hydra\Repositories\PromocaoRepository;
 use Hydra\Repositories\VendaRepository;
 use Hydra\Support\Auth;
 use Hydra\Support\Request;
@@ -19,12 +20,16 @@ final class VendaController
     private VendaRepository $vendas;
     private ProdutoRepository $produtos;
     private MovimentacaoEstoqueRepository $movimentacoes;
+    private PromocaoRepository $promocoes;
 
     public function __construct()
     {
         $this->vendas = new VendaRepository();
         $this->produtos = new ProdutoRepository();
         $this->movimentacoes = new MovimentacaoEstoqueRepository();
+        // Instanciado aqui, antes da transação de store(): o construtor pode
+        // criar a tabela, e DDL no MySQL faz commit implícito.
+        $this->promocoes = new PromocaoRepository();
     }
 
     /**
@@ -38,8 +43,8 @@ final class VendaController
      */
     public function index(): void
     {
-        $user = Auth::requireAnyPermission(['vendas.historico', 'relatorios.visualizar']);
-        $vendas = $this->vendas->listByLoja($user['id_loja']);
+        $user = Auth::requireAnyPermissionNaFilial(['vendas.historico', 'relatorios.visualizar']);
+        $vendas = $this->vendas->listByFilial($user['id_filial']);
         foreach ($vendas as &$venda) {
             $venda['itens'] = $this->vendas->listItensByVenda((int) $venda['id_venda']);
             $venda['pagamentos'] = $this->vendas->listPagamentosByVenda((int) $venda['id_venda']);
@@ -50,7 +55,7 @@ final class VendaController
         // para montar o cabeçalho "Pedido #N" antes de a venda existir.
         Response::json([
             'vendas' => $vendas,
-            'proximo_numero' => $this->vendas->proximoNumero($user['id_loja']),
+            'proximo_numero' => $this->vendas->proximoNumero($user['id_filial']),
         ]);
     }
 
@@ -64,7 +69,7 @@ final class VendaController
      */
     public function store(): void
     {
-        $user = Auth::requirePermission('vendas.operar');
+        $user = Auth::requirePermissionNaFilial('vendas.operar');
         $dados = Request::json();
 
         $itensEntrada = $dados['itens'] ?? [];
@@ -122,7 +127,7 @@ final class VendaController
         $itensValidados = [];
         $subtotal = 0.0;
         foreach ($quantidadePorProduto as $idProduto => $quantidade) {
-            $produto = $this->produtos->findInLoja($idProduto, $user['id_loja']);
+            $produto = $this->produtos->findInFilial($idProduto, $user['id_filial']);
             if ($produto === null || $produto['status'] !== 'ativo') {
                 Response::json(['erro' => 'Produto indisponível para venda'], 422);
                 return;
@@ -133,7 +138,9 @@ final class VendaController
                 return;
             }
 
-            $precoUnitario = (float) $produto['preco_venda'];
+            // Promoção vigente hoje (tela Promoções) substitui o preço normal.
+            $precoPromocional = $this->promocoes->precoVigente($idProduto, $user['id_filial']);
+            $precoUnitario = $precoPromocional ?? (float) $produto['preco_venda'];
             $subtotal += $precoUnitario * $quantidade;
             $itensValidados[] = [
                 'id_produto' => $idProduto,
@@ -157,6 +164,7 @@ final class VendaController
         try {
             $idVenda = $this->vendas->create(
                 $user['id_loja'],
+                $user['id_filial'],
                 $user['id_usuario'],
                 $idCliente,
                 round($subtotal, 2),
@@ -174,6 +182,7 @@ final class VendaController
                 $this->vendas->addItem($idVenda, $item['id_produto'], $item['quantidade'], $item['preco_unitario']);
                 $this->movimentacoes->create(
                     $user['id_loja'],
+                    $user['id_filial'],
                     $item['id_produto'],
                     $user['id_usuario'],
                     $idVenda,
@@ -200,7 +209,7 @@ final class VendaController
             return;
         }
 
-        $venda = $this->vendas->findInLoja($idVenda, $user['id_loja']);
+        $venda = $this->vendas->findInFilial($idVenda, $user['id_filial']);
         $venda['itens'] = $this->vendas->listItensByVenda($idVenda);
         $venda['pagamentos'] = $this->vendas->listPagamentosByVenda($idVenda);
 

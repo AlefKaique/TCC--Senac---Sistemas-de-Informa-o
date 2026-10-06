@@ -11,6 +11,89 @@
     let lojaAtual = null;
     let users = [];
     let cargosDisponiveis = [];
+    let filiaisDisponiveis = [];
+
+    const AVISO_ADMIN_FILIAIS = 'Administrador acessa todas as filiais';
+
+    /* O cargo é de Administrador? A API manda "administrador" em cada cargo,
+       calculado por CargoRepository::nivelEquivalente — o mesmo critério que
+       o back-end usa para liberar todas as filiais. A tela não recalcula. */
+    function cargoEhAdmin(idCargo) {
+        const cargo = cargosDisponiveis.find((c) => Number(c.id_cargo) === Number(idCargo));
+        return Boolean(cargo && cargo.administrador);
+    }
+
+    /* Caixas "Filiais que pode acessar" dos modais de novo/editar usuário. */
+    function filiaisFieldHtml(marcadas) {
+        if (filiaisDisponiveis.length === 0) {
+            return `
+        <div class="hydro-form-group">
+          <span class="hydro-filiais-legenda">Filiais que pode acessar</span>
+          <p class="hydro-filiais-vazio">Nenhuma filial cadastrada. Crie as filiais em <a href="cadastro-filial.html">Configuração Loja › Cadastrar nova Filial</a>.</p>
+        </div>`;
+        }
+        const ids = (marcadas || []).map(Number);
+        return `
+        <fieldset class="hydro-filiais-field" id="hydroFiliaisField">
+          <legend class="hydro-filiais-legenda">Filiais que pode acessar</legend>
+          <div class="hydro-filiais-lista">
+            ${filiaisDisponiveis.map((f) => `
+            <label class="hydro-filial-check">
+              <input type="checkbox" value="${f.id_filial}" ${ids.includes(Number(f.id_filial)) ? 'checked' : ''}>
+              <span>${escapeHtml(f.nome)}${f.status === 'inativa' ? ' <em>(desativada)</em>' : ''}</span>
+            </label>`).join('')}
+          </div>
+          <p class="hydro-filiais-aviso-admin" id="hydroFiliaisAvisoAdmin" hidden>${AVISO_ADMIN_FILIAIS}</p>
+        </fieldset>`;
+    }
+
+    /* Desabilita as caixas de filial quando o cargo escolhido é de Administrador. */
+    function ligarFiliaisAoCargo(selectCargo) {
+        const atualizar = () => {
+            const admin = cargoEhAdmin(selectCargo.value);
+            document.querySelectorAll('#hydroFiliaisField input[type="checkbox"]').forEach((cb) => {
+                cb.disabled = admin;
+            });
+            const aviso = document.getElementById('hydroFiliaisAvisoAdmin');
+            if (aviso) aviso.hidden = !admin;
+            const field = document.getElementById('hydroFiliaisField');
+            if (field) field.classList.toggle('hydro-filiais-travado', admin);
+        };
+        selectCargo.addEventListener('change', atualizar);
+        atualizar();
+    }
+
+    function filiaisMarcadas() {
+        return Array.from(document.querySelectorAll('#hydroFiliaisField input[type="checkbox"]:checked'))
+            .map((cb) => Number(cb.value));
+    }
+
+    /**
+     * Corpo do POST/PUT com as filiais, ou null se o administrador desistir.
+     * Para cargo de Administrador as filiais não vão: ele acessa todas, e o
+     * back-end mantém os vínculos que já existiam.
+     */
+    function comFiliais(body) {
+        if (cargoEhAdmin(body.id_cargo) || filiaisDisponiveis.length === 0) return body;
+        const filiais = filiaisMarcadas();
+        if (filiais.length === 0 && !window.confirm(
+            'Nenhuma filial foi marcada. Sem filial, este usuário NÃO conseguirá entrar no sistema.\n\nSalvar mesmo assim?'
+        )) {
+            return null;
+        }
+        return { ...body, filiais };
+    }
+
+    function filiaisCellHtml(u) {
+        if (cargoEhAdmin(u.id_cargo)) return '<span class="hydro-user-filiais">Todas</span>';
+        const nomes = (u.filiais || [])
+            .map((id) => filiaisDisponiveis.find((f) => Number(f.id_filial) === Number(id)))
+            .filter(Boolean)
+            .map((f) => escapeHtml(f.nome));
+        return nomes.length
+            ? `<span class="hydro-user-filiais">${nomes.join(', ')}</span>`
+            : '<span class="hydro-user-filiais hydro-user-filiais-nenhuma">Nenhuma — não consegue entrar</span>';
+    }
 
     /**
      * Opções do seletor de cargo, usadas tanto em "Novo usuário" quanto em
@@ -123,7 +206,7 @@
               </div>
             </td>
             <td data-label="Cargo">${cargoCellHtml(u)}</td>
-            <td data-label="Loja">${escapeHtml(lojaAtual ? lojaAtual.nome_loja : '')}</td>
+            <td data-label="Filiais">${filiaisCellHtml(u)}</td>
             <td data-label="Status"><span class="hydro-badge ${statusBadgeClass(u.status)}">${STATUS_LABEL[u.status]}</span></td>
             <td data-label="Criado em">${formatDate(u.data_criacao)}</td>
             <!-- Só editar. Funcionário não se exclui: as vendas e as
@@ -256,12 +339,14 @@
           </select>
           <span class="hydro-cargo-select-hint">As permissões do usuário vêm do cargo — crie ou ajuste cargos na tela <a href="cargos.html" target="_blank" rel="noopener">Cargos</a>.</span>
         </div>
+        ${filiaisFieldHtml(filiaisDisponiveis.length === 1 ? [filiaisDisponiveis[0].id_filial] : [])}
       `,
             footerHtml: `
         <button class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroModalCancelBtn">Cancelar</button>
         <button class="hydro-btn hydro-btn-primary hydro-btn-sm" id="hydroModalSaveBtn">Cadastrar usuário</button>
       `,
             onMount: () => {
+                ligarFiliaisAoCargo(document.getElementById('hydroNewCargo'));
                 if (!window.HydraPasswordRules) return;
                 window.HydraPasswordRules.ligarChecklist(
                     document.getElementById('hydroNewSenha'),
@@ -297,10 +382,13 @@
                 return;
             }
 
+            const body = comFiliais({ nome, email, senha, id_cargo: idCargo });
+            if (!body) return;
+
             try {
                 const { usuario } = await window.hydraApi('/usuarios', {
                     method: 'POST',
-                    body: { nome, email, senha, id_cargo: idCargo },
+                    body,
                 });
                 users.push(usuario);
                 closeModal();
@@ -344,11 +432,13 @@
             <option value="inativo" ${u.status === 'inativo' ? 'selected' : ''}>Inativo</option>
           </select>
         </div>
+        ${filiaisFieldHtml(u.filiais)}
       `,
             footerHtml: `
         <button class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroModalCancelBtn">Cancelar</button>
         <button class="hydro-btn hydro-btn-primary hydro-btn-sm" id="hydroModalSaveBtn">Salvar alterações</button>
       `,
+            onMount: () => ligarFiliaisAoCargo(document.getElementById('hydroEditUserCargo')),
         });
 
         document.getElementById('hydroModalCancelBtn').addEventListener('click', closeModal);
@@ -367,10 +457,13 @@
                 return;
             }
 
+            const body = comFiliais({ nome, email, id_cargo: idCargo, status });
+            if (!body) return;
+
             try {
                 const { usuario } = await window.hydraApi(`/usuarios/${id}`, {
                     method: 'PUT',
-                    body: { nome, email, id_cargo: idCargo, status },
+                    body,
                 });
                 Object.assign(u, usuario);
                 closeModal();
@@ -492,6 +585,7 @@
         }
         users = usersRes.value.usuarios;
         cargosDisponiveis = usersRes.value.cargos || [];
+        filiaisDisponiveis = usersRes.value.filiais || [];
         renderFiltroCargo();
         renderStats();
         renderTable();

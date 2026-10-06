@@ -110,6 +110,13 @@ final class UsuarioRepository
         $stmt->execute(['id' => $idUsuario]);
     }
 
+    /** Lembra a filial em que o usuário trabalhou por último: o próximo login volta para ela. */
+    public function updateUltimaFilial(int $idUsuario, int $idFilial): void
+    {
+        $stmt = db()->prepare('UPDATE usuarios SET id_ultima_filial = :id_filial WHERE id_usuario = :id');
+        $stmt->execute(['id_filial' => $idFilial, 'id' => $idUsuario]);
+    }
+
     /** @param array<string,mixed> $dados */
     public function update(int $idUsuario, array $dados): void
     {

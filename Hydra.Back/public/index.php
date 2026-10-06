@@ -47,8 +47,10 @@ require $appRoot . '/config/database.php';
 use Hydra\Controllers\AuthController;
 use Hydra\Controllers\CargoController;
 use Hydra\Controllers\EstoqueController;
+use Hydra\Controllers\FilialController;
 use Hydra\Controllers\LojaController;
 use Hydra\Controllers\ProdutoController;
+use Hydra\Controllers\PromocaoController;
 use Hydra\Controllers\UsuarioController;
 use Hydra\Controllers\VendaController;
 use Hydra\Support\Auth;
@@ -132,6 +134,14 @@ $routes = [
     ['GET', '#^/api/loja$#', fn () => (new LojaController())->show()],
     ['PUT', '#^/api/loja$#', fn () => (new LojaController())->update()],
 
+    // "minhas" e "trocar" antes de "/api/filiais/(\d+)" só por clareza:
+    // o padrão numérico não as capturaria de qualquer forma.
+    ['GET', '#^/api/filiais/minhas$#', fn () => (new FilialController())->minhas()],
+    ['POST', '#^/api/filiais/trocar$#', fn () => (new FilialController())->trocar()],
+    ['GET', '#^/api/filiais$#', fn () => (new FilialController())->index()],
+    ['POST', '#^/api/filiais$#', fn () => (new FilialController())->store()],
+    ['PUT', '#^/api/filiais/(\d+)$#', fn ($id) => (new FilialController())->update((int) $id)],
+
     ['GET', '#^/api/cargos$#', fn () => (new CargoController())->index()],
     ['POST', '#^/api/cargos$#', fn () => (new CargoController())->store()],
     ['PUT', '#^/api/cargos/(\d+)$#', fn ($id) => (new CargoController())->update((int) $id)],
@@ -148,6 +158,10 @@ $routes = [
 
     ['GET', '#^/api/vendas$#', fn () => (new VendaController())->index()],
     ['POST', '#^/api/vendas$#', fn () => (new VendaController())->store()],
+
+    ['GET', '#^/api/promocoes$#', fn () => (new PromocaoController())->index()],
+    ['POST', '#^/api/promocoes$#', fn () => (new PromocaoController())->store()],
+    ['POST', '#^/api/promocoes/(\d+)/encerrar$#', fn ($id) => (new PromocaoController())->encerrar((int) $id)],
 ];
 
 foreach ($routes as [$routeMethod, $pattern, $handler]) {

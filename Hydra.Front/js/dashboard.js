@@ -46,6 +46,7 @@
             quantity: Number(p.quantidade),
             minStock: Number(p.estoque_minimo),
             validade: p.validade,
+            costPrice: p.preco_custo == null ? null : Number(p.preco_custo),
         };
     }
 
@@ -53,6 +54,12 @@
         return {
             date: v.data_venda,
             total: Number(v.valor_total),
+            items: (v.itens || []).map((i) => ({
+                productId: String(i.id_produto),
+                name: i.nome_produto,
+                qty: Number(i.quantidade),
+                cost: i.custo_unitario == null ? null : Number(i.custo_unitario),
+            })),
         };
     }
 
@@ -64,6 +71,15 @@
             productId: String(m.id_produto),
         };
     }
+
+    /* Produtos que precisam de reposição (Esgotado, Crítico, Atenção), já
+       ordenados por gravidade. Preenchido por renderDashboard e usado pelo
+       botão "Imprimir lista de compras". */
+    let purchaseList = [];
+
+    /* Produtos vencidos ou a vencer, já ordenados (vencidos primeiro, depois
+       pela data de validade). Usado pelo botão "Imprimir relatório de validade". */
+    let expiryList = [];
 
     /**
      * Renderiza todo o dashboard (KPIs, gráficos e tabelas de alerta) a
@@ -89,7 +105,8 @@
         function pctChange(current, previous) {
             if (previous === null || previous === undefined) return null;
             if (previous === 0) return current > 0 ? 100 : null;
-            return ((current - previous) / previous) * 100;
+            // Math.abs: com base negativa (mês anterior no prejuízo) o sinal sairia invertido.
+            return ((current - previous) / Math.abs(previous)) * 100;
         }
 
         function deltaHtml(pct) {
@@ -108,13 +125,48 @@
         const vendasHoje = salesToday.reduce((sum, s) => sum + s.total, 0);
         const vendasOntem = salesYesterday.reduce((sum, s) => sum + s.total, 0);
 
-        const ticketHoje = salesToday.length ? vendasHoje / salesToday.length : 0;
-        const ticketOntem = salesYesterday.length ? vendasOntem / salesYesterday.length : 0;
+        /* Vendas do mês: do dia 1 até hoje. O comparativo é com o mesmo
+           trecho do mês anterior (dia 1 até o mesmo dia), e não com o mês
+           anterior inteiro — senão todo começo de mês pareceria uma queda. */
+        const now = new Date();
+        const monthStart = HydroStore.todayKey(new Date(now.getFullYear(), now.getMonth(), 1));
+        const prevMonthStart = HydroStore.todayKey(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+        const prevMonthLastDay = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+        const prevMonthSameDay = HydroStore.todayKey(
+            new Date(now.getFullYear(), now.getMonth() - 1, Math.min(now.getDate(), prevMonthLastDay))
+        );
 
-        const totalProdutos = products.length;
-        const totalEstoque = products.reduce((sum, p) => sum + (p.quantity || 0), 0);
+        const salesMonth = sales.filter((s) => dateKey(s.date) >= monthStart && dateKey(s.date) <= today);
+        const salesPrevMonth = sales.filter((s) => dateKey(s.date) >= prevMonthStart && dateKey(s.date) <= prevMonthSameDay);
 
-        const prevSnapshot = HydroStore.getPreviousSnapshot();
+        const vendasMes = salesMonth.reduce((sum, s) => sum + s.total, 0);
+        const vendasMesAnterior = salesPrevMonth.reduce((sum, s) => sum + s.total, 0);
+
+        /* Lucro bruto = valor da venda (já com desconto) − custo dos itens
+           vendidos. O custo vem do item (API) ou, na demonstração, do
+           cadastro do produto; produto sem preço de custo entra com custo 0. */
+        const costByProduct = Object.fromEntries(products.map((p) => [String(p.id), p.costPrice]));
+        function grossProfit(list) {
+            return list.reduce((sum, s) => {
+                const custo = (s.items || []).reduce((c, it) => {
+                    const unit = it.cost != null ? it.cost : costByProduct[String(it.productId)];
+                    return c + it.qty * (Number(unit) || 0);
+                }, 0);
+                return sum + s.total - custo;
+            }, 0);
+        }
+        /* Vendas do mês passado: o mês anterior INTEIRO (fechado), comparado
+           com o mês retrasado também inteiro. */
+        const prevMonthEnd = HydroStore.todayKey(new Date(now.getFullYear(), now.getMonth(), 0));
+        const prev2MonthStart = HydroStore.todayKey(new Date(now.getFullYear(), now.getMonth() - 2, 1));
+        const prev2MonthEnd = HydroStore.todayKey(new Date(now.getFullYear(), now.getMonth() - 1, 0));
+        const salesLastMonth = sales.filter((s) => dateKey(s.date) >= prevMonthStart && dateKey(s.date) <= prevMonthEnd);
+        const salesMonthBefore = sales.filter((s) => dateKey(s.date) >= prev2MonthStart && dateKey(s.date) <= prev2MonthEnd);
+        const vendasMesPassado = salesLastMonth.reduce((sum, s) => sum + s.total, 0);
+        const vendasMesRetrasado = salesMonthBefore.reduce((sum, s) => sum + s.total, 0);
+
+        const lucroMes = grossProfit(salesMonth);
+        const lucroMesAnterior = grossProfit(salesPrevMonth);
 
         const kpis = [
             {
@@ -125,25 +177,25 @@
                 delta: pctChange(vendasHoje, salesYesterday.length ? vendasOntem : null),
             },
             {
-                title: 'Ticket Médio',
+                title: 'Vendas do Mês',
                 icon: 'hydro-ic-receipt',
                 iconClass: 'hydro-icon-green',
-                value: money(ticketHoje),
-                delta: pctChange(ticketHoje, salesYesterday.length ? ticketOntem : null),
+                value: money(vendasMes),
+                delta: pctChange(vendasMes, salesPrevMonth.length ? vendasMesAnterior : null),
             },
             {
-                title: 'Total produtos',
-                icon: 'hydro-ic-box',
-                iconClass: 'hydro-icon-blue',
-                value: totalProdutos.toLocaleString('pt-BR'),
-                delta: prevSnapshot ? pctChange(totalProdutos, prevSnapshot.totalProdutos) : null,
+                title: 'Lucro Bruto do Mês',
+                icon: 'hydro-ic-cash',
+                iconClass: 'hydro-icon-green',
+                value: money(lucroMes),
+                delta: pctChange(lucroMes, salesPrevMonth.length ? lucroMesAnterior : null),
             },
             {
-                title: 'Total estoque',
-                icon: 'hydro-ic-inventory',
+                title: 'Vendas Mês Passado',
+                icon: 'hydro-ic-receipt',
                 iconClass: 'hydro-icon-amber',
-                value: totalEstoque.toLocaleString('pt-BR'),
-                delta: prevSnapshot ? pctChange(totalEstoque, prevSnapshot.totalEstoque) : null,
+                value: money(vendasMesPassado),
+                delta: pctChange(vendasMesPassado, salesMonthBefore.length ? vendasMesRetrasado : null),
             },
         ];
 
@@ -166,90 +218,82 @@
             )
             .join('');
 
-        HydroStore.snapshotToday({ totalProdutos, totalEstoque });
+        /* ================= Gráfico: Produtos prestes a vencer (próximos 30 dias) ================= */
+        /* Só os que ainda não venceram (os vencidos ficam na tabela de
+           validade): ainda dá tempo de vender com promoção. A barra enche
+           conforme o vencimento se aproxima; até 7 dias fica vermelha. */
+        const EXPIRING_WINDOW = 30;
+        const EXPIRING_URGENT = 7;
+        const EXPIRING_MAX_ROWS = 6;
 
-        /* ================= Gráfico: Entradas x Saídas (últimos 30 dias) ================= */
-        function buildDailySeries() {
-            const days = [];
-            for (let d = 29; d >= 0; d--) {
-                const date = new Date();
-                date.setDate(date.getDate() - d);
-                days.push({ key: HydroStore.todayKey(date), date, entradas: 0, saidas: 0 });
-            }
-            const byKey = Object.fromEntries(days.map((d) => [d.key, d]));
-
-            movements.forEach((m) => {
-                const bucket = byKey[dateKey(m.date)];
-                if (!bucket) return;
-                if (m.type === 'entrada') bucket.entradas += m.qty;
-                else bucket.saidas += m.qty;
-            });
-
-            return days;
+        function daysUntil(validade) {
+            const todayDate = new Date();
+            todayDate.setHours(0, 0, 0, 0);
+            return Math.round((new Date(validade + 'T00:00:00') - todayDate) / 86400000);
         }
 
-        function lineChartSvg(days) {
-            const width = 720;
-            const height = 230;
-            const padding = { top: 16, right: 16, bottom: 26, left: 34 };
-            const chartW = width - padding.left - padding.right;
-            const chartH = height - padding.top - padding.bottom;
+        const expiring = products
+            .filter((p) => p.validade && p.quantity > 0)
+            .map((p) => ({ product: p, days: daysUntil(p.validade) }))
+            .filter(({ days }) => days >= 0 && days <= EXPIRING_WINDOW)
+            .sort((a, b) => a.days - b.days);
 
-            const maxVal = Math.max(1, ...days.map((d) => Math.max(d.entradas, d.saidas)));
-            const stepX = chartW / (days.length - 1);
-
-            function pointsFor(key) {
-                return days
-                    .map((d, i) => {
-                        const x = padding.left + i * stepX;
-                        const y = padding.top + chartH - (d[key] / maxVal) * chartH;
-                        return `${x.toFixed(1)},${y.toFixed(1)}`;
-                    })
-                    .join(' ');
-            }
-
-            const gridLines = [0, 0.25, 0.5, 0.75, 1]
-                .map((f) => {
-                    const y = padding.top + chartH * f;
-                    return `<line x1="${padding.left}" y1="${y.toFixed(1)}" x2="${width - padding.right}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" />`;
-                })
-                .join('');
-
-            const labelIdx = [0, 7, 14, 21, 29].filter((i) => i < days.length);
-            const labels = labelIdx
-                .map((i) => {
-                    const x = padding.left + i * stepX;
-                    const d = days[i].date;
-                    const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-                    return `<text x="${x.toFixed(1)}" y="${height - 6}" font-size="10.5" fill="var(--muted-soft)" text-anchor="middle">${label}</text>`;
-                })
-                .join('');
-
-            return `
-        <svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-            ${gridLines}
-            <polyline points="${pointsFor('entradas')}" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
-            <polyline points="${pointsFor('saidas')}" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
-            ${labels}
-        </svg>`;
+        function expiringDaysLabel(days) {
+            if (days === 0) return 'Hoje';
+            return `${days} ${days === 1 ? 'dia' : 'dias'}`;
         }
 
-        const dailySeries = buildDailySeries();
-        const hasFlowData = dailySeries.some((d) => d.entradas > 0 || d.saidas > 0);
-        document.getElementById('hydroFlowChart').innerHTML = hasFlowData
-            ? lineChartSvg(dailySeries)
-            : '<p class="hydro-chart-empty">Ainda não há movimentações registradas nos últimos 30 dias.</p>';
+        function expiringListHtml(items) {
+            const rows = items
+                .slice(0, EXPIRING_MAX_ROWS)
+                .map(({ product, days }) => {
+                    const urgent = days <= EXPIRING_URGENT ? ' hydro-expiring-urgent' : '';
+                    const fill = Math.max(8, Math.round(((EXPIRING_WINDOW - days) / EXPIRING_WINDOW) * 100));
+                    return `
+                <a class="hydro-expiring-row" href="promocoes.html?produto=${encodeURIComponent(product.id)}" title="Criar promoção para ${escapeHtml(product.name)}">
+                    <span class="hydro-expiring-name">${escapeHtml(product.name)}</span>
+                    <span class="hydro-expiring-bar"><span class="hydro-expiring-fill${urgent}" style="width:${fill}%"></span></span>
+                    <span class="hydro-expiring-days${urgent}">${expiringDaysLabel(days)}</span>
+                </a>`;
+                })
+                .join('');
+            const rest = items.length - EXPIRING_MAX_ROWS;
+            const more = rest > 0
+                ? `<p class="hydro-expiring-more">+ ${rest} ${rest === 1 ? 'produto' : 'produtos'} vencendo nos próximos 30 dias</p>`
+                : '';
+            return `<div class="hydro-expiring-list">${rows}${more}</div>`;
+        }
 
-        /* ================= Gráfico: Top produtos mais movimentados ================= */
+        document.getElementById('hydroExpiringChart').innerHTML = expiring.length
+            ? expiringListHtml(expiring)
+            : '<p class="hydro-chart-empty">Nenhum produto vencendo nos próximos 30 dias.</p>';
+        const expiringCta = document.getElementById('hydroExpiringCta');
+        if (expiringCta) expiringCta.hidden = !expiring.length;
+
+        /* ================= Gráfico: Top produtos mais vendidos ================= */
+        /* Soma a quantidade vendida de cada produto nos itens das vendas dos
+           últimos 30 dias (não as movimentações de estoque, que misturam
+           entradas, ajustes e perdas com as vendas). */
         function buildTopProducts() {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - 29);
+            const cutoff = HydroStore.todayKey(cutoffDate);
+
             const totals = {};
-            movements.forEach((m) => {
-                totals[m.productId] = (totals[m.productId] || 0) + m.qty;
-            });
+            sales
+                .filter((s) => dateKey(s.date) >= cutoff)
+                .forEach((s) => {
+                    (s.items || []).forEach((it) => {
+                        const id = String(it.productId);
+                        if (!totals[id]) totals[id] = { qty: 0, name: it.name };
+                        totals[id].qty += Number(it.qty) || 0;
+                    });
+                });
             return Object.entries(totals)
-                .map(([productId, qty]) => {
-                    const product = products.find((p) => p.id === productId);
-                    return { name: product ? product.name : 'Produto removido', qty };
+                .map(([productId, t]) => {
+                    const product = products.find((p) => String(p.id) === productId);
+                    // Arredonda para não exibir "2.4999999" em produtos vendidos por kg.
+                    return { name: product ? product.name : t.name || 'Produto removido', qty: Math.round(t.qty * 1000) / 1000 };
                 })
                 .sort((a, b) => b.qty - a.qty)
                 .slice(0, 8);
@@ -279,7 +323,7 @@
                     const opacity = isTop ? '1' : '.35';
                     return `
                 <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="5" fill="${fill}" fill-opacity="${opacity}" />
-                <text x="${(x + barW / 2).toFixed(1)}" y="${(y - 6).toFixed(1)}" font-size="11" font-weight="700" fill="var(--navy-900)" text-anchor="middle">${item.qty}</text>
+                <text x="${(x + barW / 2).toFixed(1)}" y="${(y - 6).toFixed(1)}" font-size="11" font-weight="700" fill="var(--navy-900)" text-anchor="middle">${item.qty.toLocaleString('pt-BR')}</text>
                 <text x="${(x + barW / 2).toFixed(1)}" y="${height - 20}" font-size="10" fill="var(--muted-soft)" text-anchor="middle">${escapeHtml(shortName(item.name))}</text>`;
                 })
                 .join('');
@@ -294,7 +338,7 @@
         const topProducts = buildTopProducts();
         document.getElementById('hydroTopChart').innerHTML = topProducts.length
             ? barChartSvg(topProducts)
-            : '<p class="hydro-chart-empty">Ainda não há produtos movimentados nos últimos 30 dias.</p>';
+            : '<p class="hydro-chart-empty">Ainda não há produtos vendidos nos últimos 30 dias.</p>';
 
         /* ================= Alertas de estoque ================= */
         /* "Esgotado" compartilha o vermelho de "Crítico" (os dois pedem
@@ -313,9 +357,14 @@
         }));
 
         const severityOrder = { empty: 0, critical: 1, warning: 2, ok: 3 };
-        const alertRows = withStatus
-            .sort((a, b) => severityOrder[a.statusKey] - severityOrder[b.statusKey] || a.product.quantity - b.product.quantity)
-            .slice(0, 6);
+        withStatus.sort((a, b) => severityOrder[a.statusKey] - severityOrder[b.statusKey] || a.product.quantity - b.product.quantity);
+        const alertRows = withStatus.slice(0, 6);
+
+        // A tabela mostra só os 6 piores; a lista de compras impressa leva
+        // todos os que precisam de reposição, na mesma ordem de gravidade.
+        purchaseList = withStatus
+            .filter(({ statusKey }) => statusKey !== 'ok')
+            .map(({ product, statusKey }) => ({ product, statusKey, label: STATUS_META[statusKey].label }));
 
         const alertsBody = document.getElementById('hydroAlertsBody');
         const alertsEmpty = document.getElementById('hydroAlertsEmpty');
@@ -350,11 +399,19 @@
         }
 
         const expirySeverity = { expired: 0, warning: 1 };
-        const expiryRows = products
+        const allExpiryRows = products
             .map((p) => ({ product: p, statusKey: HydroStore.expiryStatus(p.validade) }))
             .filter(({ statusKey }) => statusKey === 'expired' || statusKey === 'warning')
-            .sort((a, b) => expirySeverity[a.statusKey] - expirySeverity[b.statusKey] || a.product.validade.localeCompare(b.product.validade))
-            .slice(0, 6);
+            .sort((a, b) => expirySeverity[a.statusKey] - expirySeverity[b.statusKey] || a.product.validade.localeCompare(b.product.validade));
+        const expiryRows = allExpiryRows.slice(0, 6);
+
+        // Mesma ideia da lista de compras: a tabela mostra 6, o relatório impresso leva todos.
+        expiryList = allExpiryRows.map(({ product, statusKey }) => ({
+            product,
+            statusKey,
+            label: EXPIRY_STATUS_META[statusKey].label,
+            validadeFmt: formatDate(product.validade),
+        }));
 
         const expiryBody = document.getElementById('hydroExpiryBody');
         const expiryEmpty = document.getElementById('hydroExpiryEmpty');
@@ -417,6 +474,234 @@
         }
         renderDashboard(HydroStore.getProducts(), HydroStore.getSales(), HydroStore.getMovements());
     })();
+
+    /* ================= Relatórios impressos (lista de compras e validade) ================= */
+
+    /* Documento comum aos dois relatórios: cabeçalho com título e data de
+       emissão, as seções por status e uma nota de rodapé. */
+    function reportDocument({ title, summary, sections, footer }) {
+        const now = new Date();
+        const emitido = now.toLocaleDateString('pt-BR') + ' às ' +
+            now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>${title} - ${now.toLocaleDateString('pt-BR')}</title>
+<style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 24px; font-size: 12px; }
+    header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #152e6d; padding-bottom: 8px; margin-bottom: 16px; }
+    h1 { font-size: 20px; margin: 0; color: #152e6d; }
+    .meta { font-size: 11px; color: #555; text-align: right; }
+    h2 { font-size: 14px; margin: 18px 0 6px; color: #152e6d; }
+    h2 small { font-weight: normal; color: #555; }
+    table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+    tr { page-break-inside: avoid; }
+    th, td { border: 1px solid #bbb; padding: 6px 8px; text-align: left; }
+    th { background: #eef1f7; font-size: 11px; text-transform: uppercase; }
+    .num { text-align: right; white-space: nowrap; }
+    .strong { font-weight: bold; }
+    .check { width: 28px; text-align: center; font-size: 14px; }
+    footer { margin-top: 18px; font-size: 10.5px; color: #555; }
+    @page { margin: 14mm; }
+</style>
+</head>
+<body>
+    <header>
+        <h1>${title}</h1>
+        <div class="meta">Emitido em ${emitido}<br>${summary}</div>
+    </header>
+    ${sections}
+    <footer>${footer}</footer>
+</body>
+</html>`;
+    }
+
+    function sectionHtml(title, count, headCells, bodyRows) {
+        return `
+                <h2>${title} <small>(${count} ${count === 1 ? 'item' : 'itens'})</small></h2>
+                <table>
+                    <thead><tr><th class="check"></th>${headCells}</tr></thead>
+                    <tbody>${bodyRows}</tbody>
+                </table>`;
+    }
+
+    function buildPurchaseReportHtml(items) {
+        const groups = [
+            { title: 'Esgotado', key: 'empty' },
+            { title: 'Crítico', key: 'critical' },
+            { title: 'Atenção', key: 'warning' },
+        ];
+
+        const sections = groups
+            .map((g) => {
+                const rows = items.filter((i) => i.statusKey === g.key);
+                if (!rows.length) return '';
+                const body = rows
+                    .map(({ product, label }) => {
+                        const comprar = Math.max(product.minStock - product.quantity, 0);
+                        return `
+                    <tr>
+                        <td class="check">&#9744;</td>
+                        <td>${escapeHtml(product.name)}</td>
+                        <td>${label}</td>
+                        <td class="num">${product.quantity}</td>
+                        <td class="num">${product.minStock}</td>
+                        <td class="num strong">${comprar}</td>
+                    </tr>`;
+                    })
+                    .join('');
+                return sectionHtml(
+                    g.title,
+                    rows.length,
+                    '<th>Produto</th><th>Status</th><th class="num">Estoque atual</th><th class="num">Estoque mínimo</th><th class="num">Comprar (mín.)</th>',
+                    body
+                );
+            })
+            .join('');
+
+        return reportDocument({
+            title: 'Lista de compras',
+            summary: `${items.length} ${items.length === 1 ? 'produto' : 'produtos'} para repor`,
+            sections,
+            footer: '"Comprar (mín.)" é a quantidade que falta para o produto voltar ao estoque mínimo.',
+        });
+    }
+
+    /* "Vencido há 3 dias", "Vence hoje", "Vence em 12 dias" — mesma conta de
+       dias usada por HydroStore.expiryStatus. */
+    function expiryDaysText(validade) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const days = Math.round((new Date(validade + 'T00:00:00') - today) / 86400000);
+        if (days < 0) return `Vencido há ${-days} ${days === -1 ? 'dia' : 'dias'}`;
+        if (days === 0) return 'Vence hoje';
+        return `Vence em ${days} ${days === 1 ? 'dia' : 'dias'}`;
+    }
+
+    function buildExpiryReportHtml(items) {
+        const groups = [
+            { title: 'Vencidos', key: 'expired' },
+            { title: 'Vencem em breve', key: 'warning' },
+        ];
+
+        const sections = groups
+            .map((g) => {
+                const rows = items.filter((i) => i.statusKey === g.key);
+                if (!rows.length) return '';
+                const body = rows
+                    .map(({ product, label, validadeFmt }) => `
+                    <tr>
+                        <td class="check">&#9744;</td>
+                        <td>${escapeHtml(product.name)}</td>
+                        <td>${label}</td>
+                        <td class="num">${product.quantity}</td>
+                        <td class="num">${validadeFmt}</td>
+                        <td class="strong">${expiryDaysText(product.validade)}</td>
+                    </tr>`)
+                    .join('');
+                return sectionHtml(
+                    g.title,
+                    rows.length,
+                    '<th>Produto</th><th>Status</th><th class="num">Quantidade</th><th class="num">Validade</th><th>Situação</th>',
+                    body
+                );
+            })
+            .join('');
+
+        return reportDocument({
+            title: 'Produtos vencidos ou a vencer',
+            summary: `${items.length} ${items.length === 1 ? 'produto' : 'produtos'} para conferir`,
+            sections,
+            footer: `"Vencem em breve" são os produtos com validade nos próximos 30 dias. Vencidos devem ser retirados da venda.`,
+        });
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById('hydroToast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add('hydro-show');
+        setTimeout(() => toast.classList.remove('hydro-show'), 3000);
+    }
+
+    // Iframe oculto em vez de window.open: não é barrado por bloqueador de pop-up.
+    function printHtml(html) {
+        const frame = document.createElement('iframe');
+        frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+        document.body.appendChild(frame);
+        const doc = frame.contentWindow.document;
+        doc.open();
+        doc.write(html);
+        doc.close();
+        frame.contentWindow.onafterprint = () => frame.remove();
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+    }
+
+    /* Liga um botão de impressão às caixas de status ao lado dele. A escolha
+       das caixas fica salva só neste navegador, para o dono não precisar
+       desmarcar tudo de novo toda vez. */
+    function setupPrintButton({ buttonId, filterId, storageKey, getItems, buildHtml, noneSelectedMsg, emptyMsg }) {
+        const button = document.getElementById(buttonId);
+        const boxes = Array.from(document.querySelectorAll(`#${filterId} input[type="checkbox"]`));
+        if (!button) return;
+
+        const selectedValues = () => boxes.filter((b) => b.checked).map((b) => b.value);
+
+        try {
+            const saved = JSON.parse(localStorage.getItem(storageKey));
+            if (Array.isArray(saved)) {
+                boxes.forEach((box) => { box.checked = saved.includes(box.value); });
+            }
+        } catch (err) {
+            // Sem localStorage (aba anônima, etc.): fica com todas marcadas.
+        }
+
+        boxes.forEach((box) => {
+            box.addEventListener('change', () => {
+                try {
+                    localStorage.setItem(storageKey, JSON.stringify(selectedValues()));
+                } catch (err) { /* ignora */ }
+            });
+        });
+
+        button.addEventListener('click', () => {
+            const selected = selectedValues();
+            if (!selected.length) {
+                showToast(noneSelectedMsg);
+                return;
+            }
+            const items = getItems().filter((i) => selected.includes(i.statusKey));
+            if (!items.length) {
+                showToast(emptyMsg);
+                return;
+            }
+            printHtml(buildHtml(items));
+        });
+    }
+
+    setupPrintButton({
+        buttonId: 'hydroPrintPurchase',
+        filterId: 'hydroPrintFilter',
+        storageKey: 'hydra.listaCompras.status',
+        getItems: () => purchaseList,
+        buildHtml: buildPurchaseReportHtml,
+        noneSelectedMsg: 'Marque pelo menos um status (Esgotado, Crítico ou Atenção).',
+        emptyMsg: 'Nenhum produto nos status marcados — não há o que comprar.',
+    });
+
+    setupPrintButton({
+        buttonId: 'hydroPrintExpiry',
+        filterId: 'hydroPrintExpiryFilter',
+        storageKey: 'hydra.relatorioValidade.status',
+        getItems: () => expiryList,
+        buildHtml: buildExpiryReportHtml,
+        noneSelectedMsg: 'Marque pelo menos um status (Vencido ou Vence em breve).',
+        emptyMsg: 'Nenhum produto nos status marcados.',
+    });
 
     /* ================= Busca (atalho para Estoque) ================= */
     document.getElementById('hydroSearchInput').addEventListener('keydown', (e) => {

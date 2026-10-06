@@ -3,6 +3,7 @@
 namespace Hydra\Controllers;
 
 use Hydra\Repositories\CargoRepository;
+use Hydra\Repositories\FilialRepository;
 use Hydra\Repositories\UsuarioRepository;
 use Hydra\Support\Auth;
 use Hydra\Support\PasswordPolicy;
@@ -21,26 +22,50 @@ final class UsuarioController
 {
     private UsuarioRepository $usuarios;
     private CargoRepository $cargos;
+    private FilialRepository $filiais;
 
     public function __construct()
     {
         $this->usuarios = new UsuarioRepository();
         $this->cargos = new CargoRepository();
+        $this->filiais = new FilialRepository();
     }
 
     /**
      * GET /api/usuarios
      * Devolve também os cargos da loja (id, nome, cor) para preencher o
-     * seletor de cargo da tela, poupando uma segunda chamada a
-     * GET /api/cargos.
+     * seletor de cargo da tela, e as filiais da loja para as caixas de
+     * "Filiais que pode acessar" — poupando chamadas a GET /api/cargos e
+     * GET /api/filiais. Cada usuário vem com "filiais" (ids vinculados) e
+     * cada cargo com "administrador", calculado por
+     * CargoRepository::nivelEquivalente: é o que a tela usa para travar as
+     * caixas de filial, com o mesmo critério do back-end.
      */
     public function index(): void
     {
         $admin = Auth::requirePermission('equipe.gerenciar');
         $this->cargos->ensureDefaults($admin['id_loja']);
+
+        $vinculos = $this->filiais->idsPorUsuarioDaLoja($admin['id_loja']);
+        $usuarios = $this->usuarios->listByLoja($admin['id_loja']);
+        foreach ($usuarios as &$usuario) {
+            $usuario['filiais'] = $vinculos[(int) $usuario['id_usuario']] ?? [];
+        }
+        unset($usuario);
+
+        $cargos = $this->cargos->listByLoja($admin['id_loja']);
+        foreach ($cargos as &$cargo) {
+            $cargo['administrador'] = CargoRepository::nivelEquivalente($cargo['permissoes'] ?? []) === 'administrador';
+        }
+        unset($cargo);
+
         Response::json([
-            'usuarios' => $this->usuarios->listByLoja($admin['id_loja']),
-            'cargos' => $this->cargos->listByLoja($admin['id_loja']),
+            'usuarios' => $usuarios,
+            'cargos' => $cargos,
+            'filiais' => array_map(
+                fn ($f) => ['id_filial' => (int) $f['id_filial'], 'nome' => $f['nome'], 'status' => $f['status']],
+                $this->filiais->listByLoja($admin['id_loja'])
+            ),
         ]);
     }
 
@@ -91,17 +116,36 @@ final class UsuarioController
             Response::json(['erro' => 'Já existe uma conta com este e-mail'], 409);
             return;
         }
+        $idsFiliais = $this->filiaisInformadas($dados, $admin['id_loja']);
+        if ($idsFiliais === false) {
+            Response::json(['erro' => 'Uma das filiais selecionadas não existe'], 422);
+            return;
+        }
 
-        $id = $this->usuarios->create(
-            $admin['id_loja'],
-            $nome,
-            $email,
-            password_hash($senha, PASSWORD_BCRYPT),
-            $perfil,
-            $idCargo
-        );
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $id = $this->usuarios->create(
+                $admin['id_loja'],
+                $nome,
+                $email,
+                password_hash($senha, PASSWORD_BCRYPT),
+                $perfil,
+                $idCargo
+            );
+            // Administrador acessa todas as filiais pelo cargo: as caixas de
+            // filial chegam desabilitadas da tela e não são gravadas.
+            if ($perfil !== 'administrador' && $idsFiliais !== null) {
+                $this->filiais->definirVinculos($id, $idsFiliais);
+            }
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            Response::json(['erro' => 'Não foi possível cadastrar o usuário'], 500);
+            return;
+        }
 
-        Response::json(['usuario' => $this->usuarios->findPublic($id)], 201);
+        Response::json(['usuario' => $this->usuarioComFiliais($id)], 201);
     }
 
     /** PUT /api/usuarios/{id} */
@@ -164,14 +208,65 @@ final class UsuarioController
             return;
         }
 
-        $this->usuarios->update($id, [
-            'nome' => $nome,
-            'email' => $email,
-            'perfil' => $perfil,
-            'status' => $status,
-            'id_cargo' => $idCargo,
-        ]);
-        Response::json(['usuario' => $this->usuarios->findPublic($id)]);
+        $idsFiliais = $this->filiaisInformadas($dados, $admin['id_loja']);
+        if ($idsFiliais === false) {
+            Response::json(['erro' => 'Uma das filiais selecionadas não existe'], 422);
+            return;
+        }
+
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $this->usuarios->update($id, [
+                'nome' => $nome,
+                'email' => $email,
+                'perfil' => $perfil,
+                'status' => $status,
+                'id_cargo' => $idCargo,
+            ]);
+            // Para o Administrador os vínculos ficam como estão: ele não
+            // precisa deles, e eles voltam a valer se um dia deixar de ser.
+            if ($perfil !== 'administrador' && $idsFiliais !== null) {
+                $this->filiais->definirVinculos($id, $idsFiliais);
+            }
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            Response::json(['erro' => 'Não foi possível salvar o usuário'], 500);
+            return;
+        }
+
+        Response::json(['usuario' => $this->usuarioComFiliais($id)]);
+    }
+
+    /**
+     * Lista "filiais" (ids) enviada pela tela, já validada: null quando a
+     * chave não veio (os vínculos ficam como estão), false quando algum id
+     * não é filial desta loja.
+     *
+     * @param array<string,mixed> $dados
+     * @return int[]|null|false
+     */
+    private function filiaisInformadas(array $dados, int $idLoja): array|null|false
+    {
+        if (!array_key_exists('filiais', $dados)) {
+            return null;
+        }
+        if (!is_array($dados['filiais'])) {
+            return false;
+        }
+        $pedidos = array_values(array_unique(array_map('intval', $dados['filiais'])));
+        $validos = $this->filiais->filtrarDaLoja($idLoja, $pedidos);
+        return count($validos) === count($pedidos) ? $validos : false;
+    }
+
+    private function usuarioComFiliais(int $id): ?array
+    {
+        $usuario = $this->usuarios->findPublic($id);
+        if ($usuario !== null) {
+            $usuario['filiais'] = $this->filiais->idsDoUsuario($id);
+        }
+        return $usuario;
     }
 
     /*
