@@ -189,3 +189,99 @@
         min-width: 0;
     }
 }
+
+/* ============ Filiais que o usuário pode acessar (modais) ============
+   Caixas grandes e texto legível: quem configura isto é o dono da loja. */
+.hydro-filiais-field {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+.hydro-filiais-legenda {
+    display: block;
+    margin-bottom: 8px;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.hydro-filiais-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.hydro-filial-check {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    color: var(--ink);
+    cursor: pointer;
+}
+
+.hydro-filial-check:hover {
+    background: #f6f7fb;
+}
+
+.hydro-filial-check input {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    margin: 0;
+    accent-color: var(--navy-900);
+    cursor: pointer;
+}
+
+.hydro-filial-check em {
+    color: var(--muted);
+    font-style: normal;
+    font-size: 13px;
+}
+
+.hydro-filiais-travado .hydro-filial-check {
+    background: #f3f4f8;
+    color: var(--muted);
+    cursor: not-allowed;
+}
+
+.hydro-filiais-travado .hydro-filial-check input {
+    cursor: not-allowed;
+}
+
+.hydro-filiais-aviso-admin {
+    margin-top: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--blue-bg);
+    color: var(--navy-900);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.hydro-filiais-vazio {
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.hydro-filiais-vazio a {
+    color: var(--blue);
+    font-weight: 600;
+}
+
+.hydro-user-filiais {
+    font-size: 13.5px;
+    color: var(--ink);
+}
+
+.hydro-user-filiais-nenhuma {
+    color: var(--red);
+    font-weight: 600;
+}

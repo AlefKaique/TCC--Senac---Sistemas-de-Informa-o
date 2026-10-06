@@ -26,6 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (err) err.remove();
   }
 
+  /* A filial e escolhida pelo back-end no login (uma so, ou a ultima
+     usada). Quando ele nao consegue escolher, responde escolher_filial e a
+     propria tela inicial abre a janela de escolha (js/trocar-filial.js) —
+     nao ha nada a fazer aqui alem de seguir para ela. */
   function entrar(usuario) {
     /* Antes todo login caía em controle-estoque.html. Com as permissoes
        separadas por area, um operador de caixa seria mandado para uma tela
@@ -132,7 +136,10 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.disabled = false;
       btn.textContent = originalText;
       // 401: a etapa pendente expirou — precisa digitar a senha de novo.
-      if (err.status === 401) {
+      // "sem_filial": o vinculo com as filiais foi retirado enquanto o
+      // codigo era digitado; o login nao vai acontecer, entao a mensagem
+      // ("Usuario sem filial vinculada...") vai para o formulario inicial.
+      if (err.status === 401 || (err.data && err.data.codigo === 'sem_filial')) {
         voltarParaLogin();
         showError(form, err.message);
         return;

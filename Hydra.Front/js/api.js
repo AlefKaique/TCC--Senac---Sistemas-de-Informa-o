@@ -24,6 +24,12 @@ window.hydraApi = async function hydraApi(path, options = {}) {
   }
 
   if (!res.ok) {
+    // Sessão sem filial ativa (ou com uma que foi desativada/desvinculada):
+    // abre a janela de escolha de filial (js/trocar-filial.js), se a tela
+    // a carregou. O erro continua sendo lançado para a tela tratar.
+    if (res.status === 409 && data.codigo === 'filial_nao_selecionada' && window.hydraTrocarFilial) {
+      window.hydraTrocarFilial.abrir({ obrigatorio: true });
+    }
     const err = new Error(data.erro || 'Erro ao comunicar com o servidor');
     err.status = res.status;
     err.data = data;
@@ -48,6 +54,7 @@ const HYDRA_TELAS = [
   { pagina: 'gerenciar-usuarios.html', li: 'hydroLiEquipe', permissoes: ['equipe.gerenciar'] },
   { pagina: 'configuracoes-loja.html', li: 'hydroLiConfig', permissoes: ['loja.configurar'] },
   { pagina: 'cargos.html', li: 'hydroLiCargos', permissoes: ['equipe.gerenciar'] },
+  { pagina: 'promocoes.html', li: 'hydroLiPromocoes', permissoes: ['produtos.editar_preco'] },
 ];
 
 /** Verdadeiro se o usuario tem ao menos uma das permissoes informadas. */

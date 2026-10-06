@@ -54,12 +54,18 @@
     // Os ids viram string para bater com as chaves usadas em order.items
     // (toda chave de objeto em JS é string) e com dataset.productId.
     function mapApiProduct(p) {
+        // Em promoção (tela Promoções), "price" já é o preço promocional:
+        // é o que o back-end vai cobrar, então é com ele que o total e o
+        // troco precisam ser calculados. "regularPrice" só serve para
+        // mostrar o preço normal riscado.
+        const promo = p.preco_promocional != null ? Number(p.preco_promocional) : null;
         return {
             id: String(p.id_produto),
             name: p.nome,
             desc: p.descricao || '',
             category: p.categoria,
-            price: Number(p.preco_venda),
+            price: promo != null ? promo : Number(p.preco_venda),
+            regularPrice: promo != null ? Number(p.preco_venda) : null,
             quantity: Number(p.quantidade),
             unit: p.unidade,
         };
@@ -353,10 +359,15 @@
         catalogGridEl.innerHTML = items
             .map((p) => {
                 const outOfStock = p.quantity <= 0;
-                const priceLabel = isWeightUnit(p.unit) ? `${money(p.price)}/kg` : money(p.price);
-                return `<button type="button" class="hydro-catalog-card" data-product-id="${p.id}" ${outOfStock ? 'disabled' : ''}>
+                const perKg = isWeightUnit(p.unit) ? '/kg' : '';
+                const priceLabel = `${money(p.price)}${perKg}`;
+                const promoLabel = p.regularPrice != null
+                    ? `<span class="hydro-catalog-promo"><s>${money(p.regularPrice)}${perKg}</s> Promoção</span>`
+                    : '';
+                return `<button type="button" class="hydro-catalog-card${p.regularPrice != null ? ' hydro-catalog-card-promo' : ''}" data-product-id="${p.id}" ${outOfStock ? 'disabled' : ''}>
                     <span class="hydro-catalog-name">${escapeHtml(p.name)}</span>
                     <span class="hydro-catalog-meta">${escapeHtml(p.category || '—')}</span>
+                    ${promoLabel}
                     <span class="hydro-catalog-price">${priceLabel}</span>
                     <span class="hydro-catalog-stock${outOfStock ? ' hydro-catalog-stock-empty' : ''}">${outOfStock ? 'Esgotado' : formatStock(p.quantity, p.unit)}</span>
                 </button>`;
@@ -528,7 +539,7 @@
                         <p class="hydro-item-desc">${escapeHtml(product.desc || product.category)}</p>
                     </td>
                     <td data-label="Qtd">${qtyCell}</td>
-                    <td data-label="Unitário" class="hydro-item-unit">${weighty ? `${money(product.price)}/kg` : money(product.price)}</td>
+                    <td data-label="Unitário" class="hydro-item-unit">${weighty ? `${money(product.price)}/kg` : money(product.price)}${product.regularPrice != null ? '<span class="hydro-item-promo">Promoção</span>' : ''}</td>
                     <td data-label="Total" class="hydro-item-total">${money(lineTotal)}</td>
                     <td data-label="Ações">
                         <button type="button" class="hydro-item-remove" data-remove-id="${productId}" aria-label="Remover item">

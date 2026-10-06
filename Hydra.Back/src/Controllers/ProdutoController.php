@@ -4,6 +4,7 @@ namespace Hydra\Controllers;
 
 use Hydra\Repositories\MovimentacaoEstoqueRepository;
 use Hydra\Repositories\ProdutoRepository;
+use Hydra\Repositories\PromocaoRepository;
 use Hydra\Support\Auth;
 use Hydra\Support\Request;
 use Hydra\Support\Response;
@@ -37,8 +38,20 @@ final class ProdutoController
      */
     public function index(): void
     {
-        $user = Auth::requirePermission('estoque.consultar');
-        Response::json(['produtos' => $this->produtos->listByLoja($user['id_loja'])]);
+        $user = Auth::requirePermissionNaFilial('estoque.consultar');
+        $produtos = $this->produtos->listByFilial($user['id_filial']);
+
+        // Promoção vigente hoje (tela Promoções): o Caixa cobra este preço no
+        // lugar de preco_venda. null quando o produto não está em promoção.
+        $vigentes = (new PromocaoRepository())->vigentesPorProduto($user['id_filial']);
+        foreach ($produtos as &$produto) {
+            $promo = $vigentes[(int) $produto['id_produto']] ?? null;
+            $produto['preco_promocional'] = $promo['preco_promocional'] ?? null;
+            $produto['promocao_ate'] = $promo['data_fim'] ?? null;
+        }
+        unset($produto);
+
+        Response::json(['produtos' => $produtos]);
     }
 
     /**
@@ -49,7 +62,7 @@ final class ProdutoController
      */
     public function store(): void
     {
-        $user = Auth::requirePermission('produtos.gerenciar');
+        $user = Auth::requirePermissionNaFilial('produtos.gerenciar');
         $dados = Request::json();
 
         $validado = $this->validar($dados);
@@ -62,10 +75,11 @@ final class ProdutoController
         $pdo = db();
         $pdo->beginTransaction();
         try {
-            $id = $this->produtos->create($user['id_loja'], $campos);
+            $id = $this->produtos->create($user['id_loja'], $user['id_filial'], $campos);
             if ($campos['quantidade'] > 0) {
                 $this->movimentacoes->create(
                     $user['id_loja'],
+                    $user['id_filial'],
                     $id,
                     $user['id_usuario'],
                     null,
@@ -81,7 +95,7 @@ final class ProdutoController
             return;
         }
 
-        Response::json(['produto' => $this->produtos->findInLoja($id, $user['id_loja'])], 201);
+        Response::json(['produto' => $this->produtos->findInFilial($id, $user['id_filial'])], 201);
     }
 
     /**
@@ -92,8 +106,8 @@ final class ProdutoController
      */
     public function update(int $id): void
     {
-        $user = Auth::requirePermission('produtos.gerenciar');
-        $produto = $this->produtos->findInLoja($id, $user['id_loja']);
+        $user = Auth::requirePermissionNaFilial('produtos.gerenciar');
+        $produto = $this->produtos->findInFilial($id, $user['id_filial']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
             return;
@@ -128,7 +142,7 @@ final class ProdutoController
         }
 
         $this->produtos->update($id, $campos);
-        Response::json(['produto' => $this->produtos->findInLoja($id, $user['id_loja'])]);
+        Response::json(['produto' => $this->produtos->findInFilial($id, $user['id_filial'])]);
     }
 
     /**
@@ -140,8 +154,8 @@ final class ProdutoController
      */
     public function destroy(int $id): void
     {
-        $user = Auth::requirePermission('produtos.gerenciar');
-        $produto = $this->produtos->findInLoja($id, $user['id_loja']);
+        $user = Auth::requirePermissionNaFilial('produtos.gerenciar');
+        $produto = $this->produtos->findInFilial($id, $user['id_filial']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
             return;
@@ -160,14 +174,14 @@ final class ProdutoController
     /** GET /api/produtos/{id}/movimentacoes — RF10. Leitura: basta consultar o estoque. */
     public function movimentacoes(int $id): void
     {
-        $user = Auth::requirePermission('estoque.consultar');
-        $produto = $this->produtos->findInLoja($id, $user['id_loja']);
+        $user = Auth::requirePermissionNaFilial('estoque.consultar');
+        $produto = $this->produtos->findInFilial($id, $user['id_filial']);
         if ($produto === null) {
             Response::json(['erro' => 'Produto não encontrado'], 404);
             return;
         }
 
-        Response::json(['movimentacoes' => $this->movimentacoes->listByProduto($id, $user['id_loja'])]);
+        Response::json(['movimentacoes' => $this->movimentacoes->listByProduto($id, $user['id_filial'])]);
     }
 
     /**

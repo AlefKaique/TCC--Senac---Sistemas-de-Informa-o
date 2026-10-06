@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="../css/controle-estoque.css">
     <link rel="stylesheet" href="../css/gerenciar-usuarios.css">
     <link rel="stylesheet" href="../css/cargos.css">
+    <link rel="stylesheet" href="../css/menu-submenu.css">
     <link rel="stylesheet" href="../css/public-demo.css">
     <link rel="stylesheet" href="../css/font-size.css">
 </head>
@@ -39,10 +40,10 @@
                 <nav class="hydro-menu">
                     <p class="hydro-menu-label">Menu</p>
                     <ul>
-                        <li><a href="controle-estoque.html"><i
-                                    class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
                         <li><a href="caixa.html"><i class="hydro-ic hydro-ic-drawer"></i><span>Vendas</span></a>
                         </li>
+                        <li><a href="controle-estoque.html"><i
+                                    class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
                         <li><a href="dashboard.html"><i
                                     class="hydro-ic hydro-ic-home"></i><span>Relatório</span></a></li>
                     </ul>
@@ -53,10 +54,20 @@
                     <ul>
                         <li id="hydroLiEquipe"><a href="gerenciar-usuarios.html"><i
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
-                        <li id="hydroLiConfig"><a href="configuracoes-loja.html"><i
-                                    class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span></a></li>
+                        <li id="hydroLiConfig">
+                            <details class="hydro-submenu">
+                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
+                                <ul class="hydro-submenu-itens">
+                                    <li><a href="configuracoes-loja.html">Dados da loja</a></li>
+                                    <li><a href="filiais.html">Filiais</a></li>
+                                    <li><a href="cadastro-filial.html">Cadastrar nova Filial</a></li>
+                                </ul>
+                            </details>
+                        </li>
                         <li id="hydroLiCargos"><a href="#" class="hydro-active" data-view="cargos"><i
                                     class="hydro-ic hydro-ic-shield"></i><span>Cargos</span></a></li>
+                        <li id="hydroLiPromocoes"><a href="promocoes.html"><i
+                                    class="hydro-ic hydro-ic-tag"></i><span>Promoções</span></a></li>
                     </ul>
                 </div>
 
@@ -204,6 +215,7 @@
     </div>
 
     <script src="../js/api.js"></script>
+    <script src="../js/trocar-filial.js"></script>
     <script src="../js/public-demo.js"></script>
     <script src="../js/font-size.js"></script>
     <script src="../js/cargos.js"></script>

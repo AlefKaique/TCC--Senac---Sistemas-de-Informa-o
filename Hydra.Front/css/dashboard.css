@@ -651,6 +651,93 @@
     background: var(--red);
 }
 
+.hydro-legend-soon {
+    background: var(--amber);
+}
+
+/* ============ Gráfico: produtos prestes a vencer ============
+   Uma barra por produto; quanto mais perto do vencimento, mais cheia.
+   Cada linha leva à tela Promoções já com o produto selecionado. */
+.hydro-expiring-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.hydro-expiring-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 72px;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    color: var(--ink);
+    text-decoration: none;
+}
+
+a.hydro-expiring-row:hover {
+    background: var(--bg);
+}
+
+.hydro-expiring-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy-900);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hydro-expiring-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.hydro-expiring-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--amber);
+}
+
+.hydro-expiring-fill.hydro-expiring-urgent {
+    background: var(--red);
+}
+
+.hydro-expiring-days {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--amber);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.hydro-expiring-days.hydro-expiring-urgent {
+    color: var(--red);
+}
+
+.hydro-expiring-more {
+    font-size: 12.5px;
+    color: var(--muted);
+    padding: 4px 8px 0;
+}
+
+.hydro-chart-cta {
+    margin-left: auto;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--navy-900);
+    text-decoration: none;
+}
+
+.hydro-chart-cta:hover {
+    text-decoration: underline;
+}
+
 .hydro-chart-empty {
     margin: auto;
     color: var(--muted);
@@ -666,6 +753,49 @@
 
 .hydro-alerts-header {
     padding: 0 22px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.hydro-print-tools {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.hydro-print-filter {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    font-size: 13px;
+    color: var(--ink);
+}
+
+.hydro-print-filter legend {
+    float: left;
+    padding: 0;
+    color: var(--muted);
+}
+
+.hydro-print-filter label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.hydro-btn-sm {
+    padding: 7px 12px;
+    font-size: 13px;
+    cursor: pointer;
 }
 
 .hydro-alerts-header h2 {
@@ -914,4 +1044,10 @@
     .hydro-topbar h1 {
         font-size: 22px;
     }
+}
+
+/* Ícone do item "Promoções" do menu Admin */
+.hydro-ic-tag {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z'/%3E%3Ccircle cx='7' cy='7' r='1.5'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z'/%3E%3Ccircle cx='7' cy='7' r='1.5'/%3E%3C/svg%3E");
 }

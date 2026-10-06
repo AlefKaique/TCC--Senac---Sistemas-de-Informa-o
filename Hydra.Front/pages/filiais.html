@@ -4,13 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hydra · Controle de Estoque</title>
-    <link rel="icon" type="image/png" href="../img/logo-hydra.png">
+    <title>Hydra · Filiais</title>
+  <link rel="icon" type="image/png" href="../img/logo-hydra.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/controle-estoque.css">
     <link rel="stylesheet" href="../css/gerenciar-usuarios.css">
+    <link rel="stylesheet" href="../css/configuracoes-loja.css">
+    <link rel="stylesheet" href="../css/filiais.css">
     <link rel="stylesheet" href="../css/menu-submenu.css">
     <link rel="stylesheet" href="../css/public-demo.css">
     <link rel="stylesheet" href="../css/font-size.css">
@@ -41,7 +43,7 @@
                     <ul>
                         <li><a href="#" data-view="caixa"><i class="hydro-ic hydro-ic-drawer"></i><span>Vendas</span></a>
                         </li>
-                        <li><a href="#" class="hydro-active" data-view="estoque"><i
+                        <li><a href="controle-estoque.html"><i
                                     class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
                         <li><a href="#" data-view="dashboard"><i
                                     class="hydro-ic hydro-ic-home"></i><span>Relatório</span></a></li>
@@ -54,11 +56,11 @@
                         <li id="hydroLiEquipe"><a href="gerenciar-usuarios.html"><i
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
                         <li id="hydroLiConfig">
-                            <details class="hydro-submenu">
+                            <details class="hydro-submenu" open>
                                 <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
                                 <ul class="hydro-submenu-itens">
                                     <li><a href="configuracoes-loja.html">Dados da loja</a></li>
-                                    <li><a href="filiais.html">Filiais</a></li>
+                                    <li><a href="filiais.html" class="hydro-active" aria-current="page">Filiais</a></li>
                                     <li><a href="cadastro-filial.html">Cadastrar nova Filial</a></li>
                                 </ul>
                             </details>
@@ -82,8 +84,13 @@
             <!-- Main -->
             <main class="hydro-main">
                 <header class="hydro-topbar">
-                    <h1>Controle de Estoque</h1>
+                    <div class="hydro-topbar-title">
+                        <h1>Filiais</h1>
+                        <span class="hydro-restricted-badge"><i class="hydro-ic hydro-ic-lock"></i> Apenas Administrador</span>
+                    </div>
                     <div class="hydro-topbar-actions">
+                        <a class="hydro-icon-btn" href="gerenciar-usuarios.html" aria-label="Equipe"><i
+                                class="hydro-ic hydro-ic-users"></i></a>
                         <button class="hydro-icon-btn" aria-label="Notificações">
                             <i class="hydro-ic hydro-ic-bell"></i>
                             <span class="hydro-notif-dot"></span>
@@ -95,128 +102,60 @@
                     </div>
                 </header>
 
+                <!-- Mesma estrutura da tela Equipe (gerenciar-usuarios.html):
+                     cartões de resumo, barra de filtros e a listagem. -->
                 <section class="hydro-stats">
                     <div class="hydro-stat-card">
-                        <div class="hydro-stat-icon hydro-icon-blue"><i class="hydro-ic hydro-ic-box"></i></div>
+                        <div class="hydro-stat-icon hydro-icon-blue"><i class="hydro-ic hydro-ic-building"></i></div>
                         <div class="hydro-stat-copy">
-                            <p class="hydro-stat-label">Total de itens</p>
-                            <p class="hydro-stat-value" id="hydroStatTotalItens">0</p>
+                            <p class="hydro-stat-label">Total de filiais</p>
+                            <p class="hydro-stat-value" id="hydroStatTotalFiliais">0</p>
                         </div>
                     </div>
                     <div class="hydro-stat-card">
-                        <div class="hydro-stat-icon hydro-icon-green"><i class="hydro-ic hydro-ic-dollar"></i></div>
+                        <div class="hydro-stat-icon hydro-icon-green"><i class="hydro-ic hydro-ic-home"></i></div>
                         <div class="hydro-stat-copy">
-                            <p class="hydro-stat-label">Valor em estoque</p>
-                            <p class="hydro-stat-value hydro-value-green" id="hydroStatValorEstoque">R$ 0,00</p>
+                            <p class="hydro-stat-label">Filiais ativas</p>
+                            <p class="hydro-stat-value" id="hydroStatFiliaisAtivas">0</p>
                         </div>
                     </div>
                     <div class="hydro-stat-card">
-                        <div class="hydro-stat-icon hydro-icon-amber"><i class="hydro-ic hydro-ic-warning"></i></div>
+                        <div class="hydro-stat-icon hydro-icon-amber"><i class="hydro-ic hydro-ic-dollar"></i></div>
                         <div class="hydro-stat-copy">
-                            <p class="hydro-stat-label">Itens com estoque baixo</p>
-                            <p class="hydro-stat-value hydro-value-amber" id="hydroStatBaixo">0</p>
-                        </div>
-                    </div>
-                    <div class="hydro-stat-card">
-                        <div class="hydro-stat-icon hydro-icon-amber"><i class="hydro-ic hydro-ic-warning"></i></div>
-                        <div class="hydro-stat-copy">
-                            <p class="hydro-stat-label">Produtos a vencer</p>
-                            <p class="hydro-stat-value hydro-value-amber" id="hydroStatVencendo">0</p>
+                            <p class="hydro-stat-label" id="hydroStatLucroLabel">Lucro do mês (todas)</p>
+                            <p class="hydro-stat-value" id="hydroStatLucroTotal">—</p>
                         </div>
                     </div>
                 </section>
 
                 <section class="hydro-toolbar">
                     <div class="hydro-filters">
-                        <div class="hydro-select-field">
+                        <label class="hydro-select-field hydro-search-field">
                             <span class="hydro-select-label">Buscar</span>
-                            <div class="hydro-search">
+                            <span class="hydro-search">
                                 <i class="hydro-ic hydro-ic-search"></i>
-                                <input type="text" id="hydroSearchInput" placeholder="Buscar produto pelo nome">
-                            </div>
-                        </div>
-                        <label class="hydro-select-field">
-                            <span class="hydro-select-label">Categoria</span>
-                            <select id="hydroFilterCategoria">
-                                <option value="">Todas as categorias</option>
-                            </select>
+                                <input type="text" id="hydroFiliaisBusca" placeholder="Nome, cidade ou CNPJ" autocomplete="off">
+                            </span>
                         </label>
                         <label class="hydro-select-field">
-                            <span class="hydro-select-label">Status</span>
-                            <select id="hydroFilterStatus">
-                                <option value="">Todos os status</option>
-                                <option value="Em estoque">Em estoque</option>
-                                <option value="Atenção">Atenção</option>
-                                <option value="Baixo">Baixo</option>
-                                <option value="Crítico">Crítico</option>
-                                <option value="Esgotado">Esgotado</option>
-                            </select>
-                        </label>
-                        <label class="hydro-select-field">
-                            <span class="hydro-select-label">Validade</span>
-                            <select id="hydroFilterValidade">
+                            <span class="hydro-select-label">Situação</span>
+                            <select id="hydroFiltroSituacao">
                                 <option value="">Todas</option>
-                                <option value="Vencido">Vencido</option>
-                                <option value="Vence em breve">Vence em breve</option>
-                                <option value="Válido">Válido</option>
+                                <option value="ativa">Ativas</option>
+                                <option value="inativa">Desativadas</option>
                             </select>
                         </label>
                     </div>
                     <div class="hydro-toolbar-buttons">
-                        <button class="hydro-btn hydro-btn-primary" id="hydroBtnNovoProduto">
-                            <i class="hydro-ic hydro-ic-plus"></i> Cadastrar Produto
-                        </button>
-                        <button class="hydro-btn hydro-btn-outline" id="hydroBtnEntrada">
-                            <i class="hydro-ic hydro-ic-arrow-down"></i> Entrada de Estoque
-                        </button>
-                        <button class="hydro-btn hydro-btn-outline" id="hydroBtnSaida">
-                            <i class="hydro-ic hydro-ic-arrow-up"></i> Saída de Estoque
-                        </button>
+                        <a class="hydro-btn hydro-btn-primary" href="cadastro-filial.html">
+                            <i class="hydro-ic hydro-ic-plus"></i> Cadastrar nova Filial
+                        </a>
                     </div>
                 </section>
 
-                <section class="hydro-table-card">
-                    <div class="hydro-table-scroll">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Produto</th>
-                                    <th>Lote</th>
-                                    <th>Categoria</th>
-                                    <th>Quantidade</th>
-                                    <th>Estoque mínimo</th>
-                                    <th>Validade</th>
-                                    <th>Status</th>
-                                    <th class="hydro-col-actions">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="hydroTableBody">
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="hydro-empty-state" id="hydroEmptyState">
-                        <i class="hydro-ic hydro-ic-box"></i>
-                        <p>Nenhum produto encontrado</p>
-                        <span>Ajuste os filtros ou o termo de busca para ver resultados.</span>
-                    </div>
-
-                    <div class="hydro-table-footer">
-                        <p id="hydroFooterCount">Mostrando 0 a 0 de 0 itens</p>
-                        <div class="hydro-pagination" id="hydroPagination"></div>
-                    </div>
-                </section>
+                <p class="hydro-filiais-mensagem" id="hydroFiliaisMensagem" role="status">Carregando filiais…</p>
+                <ul class="hydro-filiais-grid" id="hydroFiliaisGrid"></ul>
             </main>
-        </div>
-
-        <!-- Modal -->
-        <div class="hydro-modal-overlay" id="hydroModalOverlay">
-            <div class="hydro-modal" role="dialog" aria-modal="true">
-                <div class="hydro-modal-header">
-                    <h2 id="hydroModalTitle">Título</h2>
-                </div>
-                <div class="hydro-modal-body" id="hydroModalBody"></div>
-                <div class="hydro-modal-footer" id="hydroModalFooter"></div>
-            </div>
         </div>
 
         <div class="hydro-toast" id="hydroToast"></div>
@@ -232,7 +171,7 @@
     <script src="../js/trocar-filial.js"></script>
     <script src="../js/public-demo.js"></script>
     <script src="../js/font-size.js"></script>
-    <script src="../js/controle-estoque.js"></script>
+    <script src="../js/filiais.js"></script>
 </body>
 
 </html>

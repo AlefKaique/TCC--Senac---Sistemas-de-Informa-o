@@ -1,0 +1,96 @@
+/* ===================================================================
+   Submenu "Configuração Loja" da barra lateral (bloco Admin).
+
+   Feito com <details>/<summary> nativos: abre e fecha sem JavaScript,
+   então o menu funciona mesmo que algum script da tela falhe. Nas telas
+   do próprio grupo (Dados da loja, Filiais, Cadastrar nova Filial) o
+   <details> já vem com o atributo "open".
+
+   Arquivo próprio, incluído em todas as telas internas, porque cada tela
+   carrega um CSS diferente (controle-estoque.css, caixa.css,
+   dashboard.css...). As cores usam var(--x, reserva) pelo mesmo motivo.
+   =================================================================== */
+
+.hydro-submenu {
+    margin: 0;
+}
+
+/* O título do grupo tem a mesma aparência de um item do menu. */
+.hydro-submenu > summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    border-radius: 10px;
+    color: var(--navy-900, #152e6d);
+    font-size: 14.5px;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+    transition: background .15s ease;
+}
+
+/* Some com o triângulo padrão do navegador (Chrome/Safari e Firefox). */
+.hydro-submenu > summary::-webkit-details-marker {
+    display: none;
+}
+
+.hydro-submenu > summary::marker {
+    content: '';
+}
+
+.hydro-submenu > summary:hover {
+    background: var(--bg, #fafafa);
+}
+
+.hydro-submenu > summary:focus-visible {
+    outline: 3px solid #5e81f4;
+    outline-offset: 2px;
+}
+
+/* Seta à direita: aponta para baixo fechado, para cima aberto. */
+.hydro-submenu-seta {
+    width: 9px;
+    height: 9px;
+    margin-left: auto;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform .15s ease;
+}
+
+.hydro-submenu[open] > summary .hydro-submenu-seta {
+    transform: translateY(2px) rotate(-135deg);
+}
+
+/* Itens do grupo, recuados e ligados ao título por uma linha vertical. */
+.hydro-submenu-itens {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 2px 0 6px 21px;
+    padding: 0 0 0 12px;
+    border-left: 2px solid var(--border, #e7e9f2);
+    list-style: none;
+}
+
+.hydro-menu .hydro-submenu-itens a {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: var(--navy-900, #152e6d);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.hydro-menu .hydro-submenu-itens a:hover {
+    background: var(--bg, #fafafa);
+}
+
+.hydro-menu .hydro-submenu-itens a.hydro-active {
+    background: var(--navy-active, #152e6d);
+    color: #fff;
+    font-weight: 600;
+}

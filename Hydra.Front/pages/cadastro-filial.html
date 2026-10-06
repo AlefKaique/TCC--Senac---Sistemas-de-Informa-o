@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hydra · Configurações da Loja</title>
+    <title>Hydra · Cadastrar nova Filial</title>
   <link rel="icon" type="image/png" href="../img/logo-hydra.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="../css/controle-estoque.css">
     <link rel="stylesheet" href="../css/gerenciar-usuarios.css">
     <link rel="stylesheet" href="../css/configuracoes-loja.css">
+    <link rel="stylesheet" href="../css/filiais.css">
     <link rel="stylesheet" href="../css/menu-submenu.css">
     <link rel="stylesheet" href="../css/public-demo.css">
     <link rel="stylesheet" href="../css/font-size.css">
@@ -58,9 +59,9 @@
                             <details class="hydro-submenu" open>
                                 <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
                                 <ul class="hydro-submenu-itens">
-                                    <li><a href="configuracoes-loja.html" class="hydro-active" aria-current="page">Dados da loja</a></li>
+                                    <li><a href="configuracoes-loja.html">Dados da loja</a></li>
                                     <li><a href="filiais.html">Filiais</a></li>
-                                    <li><a href="cadastro-filial.html">Cadastrar nova Filial</a></li>
+                                    <li><a href="cadastro-filial.html" class="hydro-active" aria-current="page">Cadastrar nova Filial</a></li>
                                 </ul>
                             </details>
                         </li>
@@ -84,7 +85,7 @@
             <main class="hydro-main">
                 <header class="hydro-topbar">
                     <div class="hydro-topbar-title">
-                        <h1>Configurações da Loja</h1>
+                        <h1>Cadastrar nova Filial</h1>
                         <span class="hydro-restricted-badge"><i class="hydro-ic hydro-ic-lock"></i> Apenas Administrador</span>
                     </div>
                     <div class="hydro-topbar-actions">
@@ -101,14 +102,16 @@
                     </div>
                 </header>
 
-                <p class="hydro-settings-intro">Estes dados são diferentes das informações preenchidas no cadastro inicial da conta — aqui você mantém os dados da loja atualizados conforme o negócio cresce.</p>
+                <p class="hydro-settings-intro" id="hydroFilialIntro">Preencha os dados da nova filial. Ela começa com estoque, vendas e promoções vazios — cada filial tem os seus.</p>
 
-                <form id="hydroSettingsForm" novalidate>
+                <form id="hydroFilialForm" novalidate>
+
+                    <p class="hydro-filial-form-erro" id="hydroFilialFormErro" role="alert" hidden></p>
 
                     <section class="hydro-card">
                         <div class="hydro-card-header">
-                            <h2>Identidade da loja</h2>
-                            <p>Nome e logo exibidos no sistema e nos comprovantes de venda.</p>
+                            <h2>Identidade da filial</h2>
+                            <p>Nome e logo exibidos no sistema e na janela "Trocar Filial".</p>
                         </div>
                         <div class="hydro-card-body">
                             <div class="hydro-logo-row">
@@ -124,8 +127,8 @@
                                 </div>
                             </div>
                             <div class="hydro-form-group">
-                                <label for="hydroNomeLoja">Nome da loja</label>
-                                <input type="text" id="hydroNomeLoja" required>
+                                <label for="hydroFilialNome">Nome da filial</label>
+                                <input type="text" id="hydroFilialNome" maxlength="120" placeholder="Ex.: Centro" required>
                             </div>
                         </div>
                     </section>
@@ -137,12 +140,12 @@
                         </div>
                         <div class="hydro-card-body hydro-settings-grid">
                             <div class="hydro-form-group">
-                                <label for="hydroCnpj"><i class="hydro-ic hydro-ic-building"></i> CNPJ</label>
-                                <input type="text" id="hydroCnpj" placeholder="00.000.000/0000-00">
+                                <label for="hydroFilialCnpj"><i class="hydro-ic hydro-ic-building"></i> CNPJ</label>
+                                <input type="text" id="hydroFilialCnpj" maxlength="18" inputmode="numeric" placeholder="00.000.000/0000-00">
                             </div>
                             <div class="hydro-form-group">
-                                <label for="hydroTelefone"><i class="hydro-ic hydro-ic-phone"></i> Telefone</label>
-                                <input type="text" id="hydroTelefone" placeholder="(00) 00000-0000">
+                                <label for="hydroFilialTelefone"><i class="hydro-ic hydro-ic-phone"></i> Telefone</label>
+                                <input type="text" id="hydroFilialTelefone" maxlength="15" inputmode="tel" placeholder="(00) 00000-0000">
                             </div>
                         </div>
                     </section>
@@ -150,24 +153,24 @@
                     <section class="hydro-card">
                         <div class="hydro-card-header">
                             <h2>Endereço</h2>
-                            <p>Endereço físico do estabelecimento.</p>
+                            <p>Endereço físico da filial.</p>
                         </div>
                         <div class="hydro-card-body hydro-settings-grid">
                             <div class="hydro-form-group">
-                                <label for="hydroCep">CEP</label>
-                                <input type="text" id="hydroCep" placeholder="00000-000">
+                                <label for="hydroFilialCep">CEP</label>
+                                <input type="text" id="hydroFilialCep" maxlength="10" inputmode="numeric" placeholder="00000-000">
                             </div>
                             <div class="hydro-form-group hydro-span-2">
-                                <label for="hydroEndereco"><i class="hydro-ic hydro-ic-map-pin"></i> Endereço</label>
-                                <input type="text" id="hydroEndereco" placeholder="Rua, avenida...">
+                                <label for="hydroFilialEndereco"><i class="hydro-ic hydro-ic-map-pin"></i> Endereço</label>
+                                <input type="text" id="hydroFilialEndereco" maxlength="150" placeholder="Rua, número, bairro">
                             </div>
                             <div class="hydro-form-group">
-                                <label for="hydroCidade">Cidade</label>
-                                <input type="text" id="hydroCidade" placeholder="Cidade">
+                                <label for="hydroFilialCidade">Cidade</label>
+                                <input type="text" id="hydroFilialCidade" maxlength="60" placeholder="Cidade">
                             </div>
                             <div class="hydro-form-group">
-                                <label for="hydroEstado">Estado</label>
-                                <select id="hydroEstado">
+                                <label for="hydroFilialEstado">Estado</label>
+                                <select id="hydroFilialEstado">
                                     <option value="SP" selected>São Paulo</option>
                                     <option value="RJ">Rio de Janeiro</option>
                                     <option value="MG">Minas Gerais</option>
@@ -181,13 +184,28 @@
                         </div>
                     </section>
 
+                    <section class="hydro-card">
+                        <div class="hydro-card-header">
+                            <h2>Situação</h2>
+                            <p>Filial desativada some da janela "Trocar Filial" e ninguém consegue entrar nela.</p>
+                        </div>
+                        <div class="hydro-card-body hydro-settings-grid">
+                            <div class="hydro-form-group">
+                                <label for="hydroFilialStatus">Situação da filial</label>
+                                <select id="hydroFilialStatus">
+                                    <option value="ativa">Ativa — pode ser usada</option>
+                                    <option value="inativa">Desativada — ninguém entra nela</option>
+                                </select>
+                                <span class="hydro-filial-status-dica" id="hydroFilialStatusDica" hidden></span>
+                            </div>
+                        </div>
+                    </section>
+
                     <div class="hydro-settings-footer">
-                        <span class="hydro-settings-saved" id="hydroSettingsSaved"></span>
-                        <button type="button" class="hydro-btn hydro-btn-outline" id="hydroBtnCancelar">Cancelar</button>
-                        <button type="submit" class="hydro-btn hydro-btn-primary" id="hydroBtnSalvar">Salvar alterações</button>
+                        <a class="hydro-btn hydro-btn-outline" href="filiais.html" id="hydroBtnCancelar">Cancelar</a>
+                        <button type="submit" class="hydro-btn hydro-btn-primary" id="hydroBtnSalvar">Cadastrar filial</button>
                     </div>
                 </form>
-
             </main>
         </div>
 
@@ -204,7 +222,7 @@
     <script src="../js/trocar-filial.js"></script>
     <script src="../js/public-demo.js"></script>
     <script src="../js/font-size.js"></script>
-    <script src="../js/configuracoes-loja.js"></script>
+    <script src="../js/cadastro-filial.js"></script>
 </body>
 
 </html>
