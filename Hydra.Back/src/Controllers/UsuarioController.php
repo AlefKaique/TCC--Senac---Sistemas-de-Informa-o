@@ -6,7 +6,9 @@ use Hydra\Repositories\CargoRepository;
 use Hydra\Repositories\FilialRepository;
 use Hydra\Repositories\UsuarioRepository;
 use Hydra\Support\Auth;
+use Hydra\Support\Migracoes;
 use Hydra\Support\PasswordPolicy;
+use Hydra\Support\SenhaAutorizacao;
 use Hydra\Support\Request;
 use Hydra\Support\Response;
 
@@ -26,9 +28,34 @@ final class UsuarioController
 
     public function __construct()
     {
+        // Coluna senha_autorizacao em bancos já em uso. No construtor, antes
+        // das transações de store()/update(): DDL faz commit implícito.
+        Migracoes::garantirCancelamentoDeVendas();
         $this->usuarios = new UsuarioRepository();
         $this->cargos = new CargoRepository();
         $this->filiais = new FilialRepository();
+    }
+
+    /**
+     * Confere a senha de autorização vinda da tela. Devolve o erro (já
+     * enviado como resposta) ou null se ela pode ser gravada.
+     *
+     * O PIN precisa ser único na loja: a tela de cancelamento pede só o
+     * PIN, e é ele que identifica quem autorizou.
+     */
+    private function senhaAutorizacaoInvalida(string $senha, int $idLoja, ?int $idUsuario): bool
+    {
+        $erro = SenhaAutorizacao::validarFormato($senha);
+        if ($erro !== null) {
+            Response::json(['erro' => $erro], 422);
+            return true;
+        }
+        $dono = SenhaAutorizacao::encontrarAutorizador($idLoja, $senha);
+        if ($dono !== null && (int) $dono['id_usuario'] !== $idUsuario) {
+            Response::json(['erro' => 'Esta senha de autorização já é usada por outra pessoa da equipe. Escolha outra.'], 409);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -121,6 +148,12 @@ final class UsuarioController
             Response::json(['erro' => 'Uma das filiais selecionadas não existe'], 422);
             return;
         }
+        // Opcional: só gerente/administrador recebe (libera o cancelamento
+        // de venda na tela Vendas).
+        $senhaAutorizacao = trim((string) ($dados['senha_autorizacao'] ?? ''));
+        if ($senhaAutorizacao !== '' && $this->senhaAutorizacaoInvalida($senhaAutorizacao, $admin['id_loja'], null)) {
+            return;
+        }
 
         $pdo = db();
         $pdo->beginTransaction();
@@ -137,6 +170,9 @@ final class UsuarioController
             // filial chegam desabilitadas da tela e não são gravadas.
             if ($perfil !== 'administrador' && $idsFiliais !== null) {
                 $this->filiais->definirVinculos($id, $idsFiliais);
+            }
+            if ($senhaAutorizacao !== '') {
+                $this->usuarios->setSenhaAutorizacao($id, password_hash($senhaAutorizacao, PASSWORD_BCRYPT));
             }
             $pdo->commit();
         } catch (\Throwable $e) {
@@ -213,6 +249,12 @@ final class UsuarioController
             Response::json(['erro' => 'Uma das filiais selecionadas não existe'], 422);
             return;
         }
+        // Senha de autorização: em branco mantém a atual; "remover" apaga.
+        $removerSenhaAutorizacao = !empty($dados['remover_senha_autorizacao']);
+        $senhaAutorizacao = $removerSenhaAutorizacao ? '' : trim((string) ($dados['senha_autorizacao'] ?? ''));
+        if ($senhaAutorizacao !== '' && $this->senhaAutorizacaoInvalida($senhaAutorizacao, $admin['id_loja'], $id)) {
+            return;
+        }
 
         $pdo = db();
         $pdo->beginTransaction();
@@ -228,6 +270,11 @@ final class UsuarioController
             // precisa deles, e eles voltam a valer se um dia deixar de ser.
             if ($perfil !== 'administrador' && $idsFiliais !== null) {
                 $this->filiais->definirVinculos($id, $idsFiliais);
+            }
+            if ($removerSenhaAutorizacao) {
+                $this->usuarios->setSenhaAutorizacao($id, null);
+            } elseif ($senhaAutorizacao !== '') {
+                $this->usuarios->setSenhaAutorizacao($id, password_hash($senhaAutorizacao, PASSWORD_BCRYPT));
             }
             $pdo->commit();
         } catch (\Throwable $e) {

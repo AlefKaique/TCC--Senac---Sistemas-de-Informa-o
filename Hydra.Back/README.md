@@ -71,6 +71,9 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | POST   | `/api/estoque/movimentacoes`         | `estoque.lancar` | Lança entrada ou saída manual (RF03/RF12) |
 | GET    | `/api/vendas`                        | `vendas.historico` **ou** `relatorios.visualizar` | Histórico de vendas com itens, pagamentos, o nome de quem registrou e o próximo número de pedido da loja |
 | POST   | `/api/vendas`                        | `vendas.operar` | Finaliza venda (itens, pagamentos e desconto) |
+| POST   | `/api/vendas/autorizar-cancelamento` | `vendas.operar` **ou** `vendas.historico` | Confere a senha de autorização (PIN) de um gerente/administrador e libera cancelamentos por 5 minutos, nesta filial (fica na sessão) |
+| POST   | `/api/vendas/autorizar-cancelamento/encerrar` | logado | Encerra a autorização antes do prazo (a tela saiu da aba Cancelar Venda) |
+| POST   | `/api/vendas/{id}/cancelar`          | `vendas.operar` **ou** `vendas.historico` + autorização acima | Cancela a venda (`{ "motivo": "..." }`), devolve os itens ao estoque e grava quem autorizou |
 | GET    | `/api/loja`                          | `loja.configurar` | Dados da loja (Configurações da Loja) |
 | PUT    | `/api/loja`                          | `loja.configurar` | Atualiza dados da loja |
 | GET    | `/api/filiais/minhas`                | logado | Filiais ativas que o usuário pode acessar e a filial ativa da sessão |
@@ -78,6 +81,25 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | GET    | `/api/filiais`                       | `loja.configurar` **ou** `equipe.gerenciar` | Todas as filiais da loja (seção Filiais e tela Equipe) |
 | POST   | `/api/filiais`                       | `loja.configurar` | Cria filial |
 | PUT    | `/api/filiais/{id}`                  | `loja.configurar` | Edita filial; recusa inativar a única ativa ou a da própria sessão |
+
+### Cancelamento de venda
+
+A tela Vendas tem a aba **Cancelar Venda**, ao lado do Histórico. Ela só
+abre depois que um gerente ou administrador digita a **senha de
+autorização** dele: um PIN de 4 a 8 números, separado da senha de login,
+que o administrador cadastra na tela Equipe (ao criar ou editar o
+usuário). Quem não tem PIN não autoriza nada; o PIN é único dentro da
+loja, porque é ele que identifica quem autorizou.
+
+A autorização vale 5 minutos, só na filial em que foi dada, e fica na
+sessão. O PIN errado conta tentativas (`RateLimit`, chave por operador).
+A venda cancelada não é apagada: muda para `status = 'cancelada'`, os
+itens voltam ao estoque por uma movimentação de entrada com origem
+`cancelamento_venda`, e o Dashboard e a tela Filiais deixam de somá-la.
+
+Banco criado antes deste recurso: o back-end cria as colunas sozinho
+(`Hydra\Support\Migracoes`); `sql/migracao_cancelamento_vendas.sql` faz o
+mesmo à mão.
 
 ### Filiais
 

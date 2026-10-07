@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hydra · Caixa</title>
+    <title>Hydra · Vendas</title>
     <link rel="icon" type="image/png" href="../img/logo-hydra.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -81,7 +81,7 @@
             <!-- Main -->
             <main class="hydro-main">
                 <header class="hydro-topbar">
-                    <h1>Caixa</h1>
+                    <h1>Vendas</h1>
                     <div class="hydro-topbar-actions">
                         <button class="hydro-icon-btn" aria-label="Notificações">
                             <i class="hydro-ic hydro-ic-bell"></i>
@@ -98,6 +98,11 @@
                 <div class="hydro-order-tabs" id="hydroViewTabs">
                     <button type="button" class="hydro-order-tab hydro-active" data-view="venda">Nova Venda</button>
                     <button type="button" class="hydro-order-tab" data-view="historico">Histórico de Vendas</button>
+                    <!-- Só abre depois da senha de autorização do gerente ou
+                         administrador (modal hydroAuthModal). -->
+                    <button type="button" class="hydro-order-tab hydro-order-tab-danger" data-view="cancelar">
+                        <i class="hydro-ic hydro-ic-lock" aria-hidden="true"></i>Cancelar Venda
+                    </button>
                 </div>
 
                 <!-- Subtela: Nova Venda (PDV) -->
@@ -275,12 +280,55 @@
                             <div class="hydro-items-empty">
                                 <i class="hydro-ic hydro-ic-package"></i>
                                 <p class="hydro-items-empty-title">Nenhuma venda encontrada</p>
-                                <p class="hydro-items-empty-desc">As vendas finalizadas no Caixa aparecem aqui.</p>
+                                <p class="hydro-items-empty-desc">As vendas finalizadas aparecem aqui.</p>
                             </div>
                         </div>
                     </section>
                 </div>
                 <!-- /Subtela: Histórico de Vendas -->
+
+                <!-- Subtela: Cancelar Venda (liberada pela senha de autorização) -->
+                <div id="hydroCancelView" hidden>
+                    <div class="hydro-cancel-auth-bar">
+                        <span class="hydro-cancel-auth-info">
+                            <i class="hydro-ic hydro-ic-lock" aria-hidden="true"></i>
+                            Autorizado por <strong id="hydroCancelAuthName">—</strong>
+                            <span class="hydro-cancel-auth-timer" id="hydroCancelAuthTimer"></span>
+                        </span>
+                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroCancelLockBtn">Bloquear</button>
+                    </div>
+
+                    <div class="hydro-scan-bar">
+                        <i class="hydro-ic hydro-ic-search"></i>
+                        <input type="text" id="hydroCancelSearch" autocomplete="off"
+                            placeholder="Buscar por número do pedido ou usuário...">
+                    </div>
+
+                    <section class="hydro-items-panel">
+                        <div class="hydro-items-table-wrap" id="hydroCancelTableWrap">
+                            <table class="hydro-items-table">
+                                <thead>
+                                    <tr>
+                                        <th>Data/Hora</th>
+                                        <th>Pedido</th>
+                                        <th>Usuário</th>
+                                        <th>Itens</th>
+                                        <th>Pagamento</th>
+                                        <th>Total</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hydroCancelBody"></tbody>
+                            </table>
+                            <div class="hydro-items-empty">
+                                <i class="hydro-ic hydro-ic-package"></i>
+                                <p class="hydro-items-empty-title">Nenhuma venda para cancelar</p>
+                                <p class="hydro-items-empty-desc">Só aparecem aqui as vendas concluídas desta filial.</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+                <!-- /Subtela: Cancelar Venda -->
             </main>
         </div>
 
@@ -324,6 +372,64 @@
             </div>
         </div>
 
+        <!-- Modal: senha de autorização (abre a aba Cancelar Venda) -->
+        <div class="hydro-weight-modal" id="hydroAuthModal" hidden>
+            <div class="hydro-weight-modal-backdrop" data-auth-close></div>
+            <form class="hydro-weight-modal-dialog" id="hydroAuthForm" role="dialog" aria-modal="true" aria-labelledby="hydroAuthTitle" autocomplete="off">
+                <div class="hydro-weight-modal-header">
+                    <div>
+                        <p class="hydro-weight-modal-eyebrow">Área restrita</p>
+                        <h3 id="hydroAuthTitle">Autorização do gerente</h3>
+                    </div>
+                    <button type="button" class="hydro-icon-btn hydro-icon-btn-sm" data-auth-close aria-label="Fechar">
+                        <i class="hydro-ic hydro-ic-close"></i>
+                    </button>
+                </div>
+
+                <p class="hydro-auth-desc">Para cancelar uma venda, o gerente ou o administrador precisa digitar a
+                    senha de autorização dele. Essa senha é cadastrada pelo administrador na tela Equipe.</p>
+
+                <label for="hydroAuthPin">Senha de autorização</label>
+                <div class="hydro-cash-input-wrap">
+                    <input type="password" id="hydroAuthPin" inputmode="numeric" maxlength="8"
+                        autocomplete="off" placeholder="••••">
+                </div>
+                <p class="hydro-auth-error" id="hydroAuthError" hidden></p>
+
+                <div class="hydro-order-actions">
+                    <button type="button" class="hydro-btn hydro-btn-outline" data-auth-close>Voltar</button>
+                    <button type="submit" class="hydro-btn hydro-btn-primary" id="hydroAuthConfirmBtn">Autorizar</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Modal: confirmar o cancelamento de uma venda -->
+        <div class="hydro-weight-modal" id="hydroCancelConfirmModal" hidden>
+            <div class="hydro-weight-modal-backdrop" data-cancel-confirm-close></div>
+            <div class="hydro-weight-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="hydroCancelConfirmTitle">
+                <div class="hydro-weight-modal-header">
+                    <div>
+                        <p class="hydro-weight-modal-eyebrow hydro-eyebrow-danger">Cancelar venda</p>
+                        <h3 id="hydroCancelConfirmTitle">Pedido #0000</h3>
+                    </div>
+                    <button type="button" class="hydro-icon-btn hydro-icon-btn-sm" data-cancel-confirm-close aria-label="Fechar">
+                        <i class="hydro-ic hydro-ic-close"></i>
+                    </button>
+                </div>
+
+                <p class="hydro-auth-desc" id="hydroCancelConfirmDesc"></p>
+
+                <label for="hydroCancelMotivo">Motivo (opcional)</label>
+                <textarea id="hydroCancelMotivo" class="hydro-cancel-motivo" rows="2" maxlength="255"
+                    placeholder="Ex.: cliente desistiu da compra"></textarea>
+
+                <div class="hydro-order-actions">
+                    <button type="button" class="hydro-btn hydro-btn-outline" data-cancel-confirm-close>Voltar</button>
+                    <button type="button" class="hydro-btn hydro-btn-danger" id="hydroCancelConfirmBtn">Cancelar venda</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal: detalhes da venda (Histórico de Vendas) -->
         <div class="hydro-weight-modal" id="hydroSaleDetailModal" hidden>
             <div class="hydro-weight-modal-backdrop" data-sale-detail-close></div>
@@ -348,6 +454,8 @@
                         <strong id="hydroSaleDetailPayment">—</strong>
                     </div>
                 </div>
+
+                <div class="hydro-sale-detail-cancelled" id="hydroSaleDetailCancelled" hidden></div>
 
                 <div class="hydro-sale-detail-meta" id="hydroSaleDetailCashRow" hidden>
                     <div>
