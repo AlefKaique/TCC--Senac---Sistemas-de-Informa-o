@@ -81,6 +81,45 @@
        pela data de validade). Usado pelo botão "Imprimir relatório de validade". */
     let expiryList = [];
 
+    /* Período escolhido no filtro ({ from, to } em YYYY-MM-DD, qualquer um
+       dos dois pode ser vazio) ou null quando não há filtro. Só afeta o que
+       depende de data de venda: KPIs e top produtos. Os alertas de estoque e
+       de validade são sempre a situação de agora. */
+    let period = null;
+
+    /* Últimos dados carregados, para redesenhar o painel quando o período
+       muda sem buscar tudo de novo na API. */
+    let lastData = null;
+
+    /* Dia LOCAL em YYYY-MM-DD, igual ao valor de um <input type="date">.
+       HydroStore.todayKey usa toISOString (UTC): depois das 21h em UTC-3 ele
+       já devolve o dia seguinte, e "Hoje" no filtro apontaria para amanhã. */
+    function localKey(d) {
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    function keyToDate(key) {
+        const [y, m, d] = key.split('-').map(Number);
+        return new Date(y, m - 1, d);
+    }
+
+    function formatKey(key) {
+        const [y, m, d] = key.split('-');
+        return `${d}/${m}/${y}`;
+    }
+
+    function periodLabel(p) {
+        if (p.from && p.to) return p.from === p.to ? formatKey(p.from) : `${formatKey(p.from)} a ${formatKey(p.to)}`;
+        if (p.from) return `A partir de ${formatKey(p.from)}`;
+        return `Até ${formatKey(p.to)}`;
+    }
+
+    /* Texto do ícone de informação (passar o mouse para ler). */
+    function infoHtml(text) {
+        return `<span class="hydro-info" tabindex="0" role="img" aria-label="Ajuda" data-tip="${escapeHtml(text).replace(/"/g, '&quot;')}">i</span>`;
+    }
+
     /**
      * Renderiza todo o dashboard (KPIs, gráficos e tabelas de alerta) a
      * partir de listas de produtos/vendas/movimentações já no formato
@@ -168,13 +207,14 @@
         const lucroMes = grossProfit(salesMonth);
         const lucroMesAnterior = grossProfit(salesPrevMonth);
 
-        const kpis = [
+        let kpis = [
             {
                 title: 'Vendas Hoje',
                 icon: 'hydro-ic-cash',
                 iconClass: 'hydro-icon-blue',
                 value: money(vendasHoje),
                 delta: pctChange(vendasHoje, salesYesterday.length ? vendasOntem : null),
+                info: 'Total vendido hoje. A porcentagem compara com o total vendido ontem.',
             },
             {
                 title: 'Vendas do Mês',
@@ -182,6 +222,7 @@
                 iconClass: 'hydro-icon-green',
                 value: money(vendasMes),
                 delta: pctChange(vendasMes, salesPrevMonth.length ? vendasMesAnterior : null),
+                info: 'Total vendido do dia 1 até hoje. A porcentagem compara com o mesmo trecho do mês anterior.',
             },
             {
                 title: 'Lucro Bruto do Mês',
@@ -189,6 +230,7 @@
                 iconClass: 'hydro-icon-green',
                 value: money(lucroMes),
                 delta: pctChange(lucroMes, salesPrevMonth.length ? lucroMesAnterior : null),
+                info: 'Valor das vendas do mês menos o preço de custo dos produtos vendidos. Produto sem preço de custo entra com custo zero.',
             },
             {
                 title: 'Vendas Mês Passado',
@@ -196,8 +238,76 @@
                 iconClass: 'hydro-icon-amber',
                 value: money(vendasMesPassado),
                 delta: pctChange(vendasMesPassado, salesMonthBefore.length ? vendasMesRetrasado : null),
+                info: 'Total vendido no mês anterior inteiro. A porcentagem compara com o mês retrasado inteiro.',
             },
         ];
+
+        /* Com filtro de período, os KPIs passam a ser do período escolhido.
+           O comparativo é com o período imediatamente anterior de mesmo
+           tamanho (ex.: 10 dias contra os 10 dias antes deles) — só existe
+           quando as duas datas foram preenchidas. */
+        if (period) {
+            const from = period.from || '0000-01-01';
+            const to = period.to || '9999-12-31';
+            const salesPeriod = sales.filter((s) => dateKey(s.date) >= from && dateKey(s.date) <= to);
+
+            let salesBefore = null;
+            if (period.from && period.to) {
+                const days = Math.round((keyToDate(period.to) - keyToDate(period.from)) / 86400000) + 1;
+                const beforeEnd = keyToDate(period.from);
+                beforeEnd.setDate(beforeEnd.getDate() - 1);
+                const beforeStart = new Date(beforeEnd);
+                beforeStart.setDate(beforeStart.getDate() - (days - 1));
+                const bs = localKey(beforeStart);
+                const be = localKey(beforeEnd);
+                salesBefore = sales.filter((s) => dateKey(s.date) >= bs && dateKey(s.date) <= be);
+            }
+            const compare = (cur, fn) => pctChange(cur, salesBefore && salesBefore.length ? fn(salesBefore) : null);
+            const total = (list) => list.reduce((sum, s) => sum + s.total, 0);
+            const ticket = (list) => (list.length ? total(list) / list.length : 0);
+
+            const totalPeriodo = total(salesPeriod);
+            const lucroPeriodo = grossProfit(salesPeriod);
+            const ticketPeriodo = ticket(salesPeriod);
+            const comparativo = period.from && period.to
+                ? ' A porcentagem compara com o período anterior de mesmo tamanho.'
+                : ' Preencha as duas datas para ver o comparativo.';
+
+            kpis = [
+                {
+                    title: 'Vendas no Período',
+                    icon: 'hydro-ic-cash',
+                    iconClass: 'hydro-icon-blue',
+                    value: money(totalPeriodo),
+                    delta: compare(totalPeriodo, total),
+                    info: 'Total vendido no período escolhido.' + comparativo,
+                },
+                {
+                    title: 'Lucro Bruto no Período',
+                    icon: 'hydro-ic-cash',
+                    iconClass: 'hydro-icon-green',
+                    value: money(lucroPeriodo),
+                    delta: compare(lucroPeriodo, grossProfit),
+                    info: 'Valor das vendas do período menos o preço de custo dos produtos vendidos.' + comparativo,
+                },
+                {
+                    title: 'Nº de Vendas',
+                    icon: 'hydro-ic-receipt',
+                    iconClass: 'hydro-icon-amber',
+                    value: salesPeriod.length.toLocaleString('pt-BR'),
+                    delta: compare(salesPeriod.length, (list) => list.length),
+                    info: 'Quantidade de vendas finalizadas no período escolhido.' + comparativo,
+                },
+                {
+                    title: 'Ticket Médio',
+                    icon: 'hydro-ic-receipt',
+                    iconClass: 'hydro-icon-green',
+                    value: money(ticketPeriodo),
+                    delta: compare(ticketPeriodo, ticket),
+                    info: 'Valor médio de cada venda no período (total vendido ÷ número de vendas).' + comparativo,
+                },
+            ];
+        }
 
         document.getElementById('hydroKpiGrid').innerHTML = kpis
             .map(
@@ -208,7 +318,7 @@
                     <span class="hydro-kpi-icon ${k.iconClass}"><i class="hydro-ic ${k.icon}"></i></span>
                     ${k.title}
                 </span>
-                <span class="hydro-kpi-more">···</span>
+                ${infoHtml(k.info)}
             </div>
             <div class="hydro-kpi-value-row">
                 <span class="hydro-kpi-value">${k.value}</span>
@@ -277,11 +387,13 @@
         function buildTopProducts() {
             const cutoffDate = new Date();
             cutoffDate.setDate(cutoffDate.getDate() - 29);
-            const cutoff = HydroStore.todayKey(cutoffDate);
+            // Com filtro, usa o período escolhido no lugar dos últimos 30 dias.
+            const from = period ? period.from || '0000-01-01' : HydroStore.todayKey(cutoffDate);
+            const to = period ? period.to || '9999-12-31' : '9999-12-31';
 
             const totals = {};
             sales
-                .filter((s) => dateKey(s.date) >= cutoff)
+                .filter((s) => dateKey(s.date) >= from && dateKey(s.date) <= to)
                 .forEach((s) => {
                     (s.items || []).forEach((it) => {
                         const id = String(it.productId);
@@ -336,9 +448,10 @@
         }
 
         const topProducts = buildTopProducts();
+        document.getElementById('hydroTopPeriod').textContent = period ? periodLabel(period) : 'Últimos 30 dias';
         document.getElementById('hydroTopChart').innerHTML = topProducts.length
             ? barChartSvg(topProducts)
-            : '<p class="hydro-chart-empty">Ainda não há produtos vendidos nos últimos 30 dias.</p>';
+            : `<p class="hydro-chart-empty">${period ? 'Nenhum produto vendido no período escolhido.' : 'Ainda não há produtos vendidos nos últimos 30 dias.'}</p>`;
 
         /* ================= Alertas de estoque ================= */
         /* "Esgotado" compartilha o vermelho de "Crítico" (os dois pedem
@@ -461,19 +574,76 @@
                     throw produtosRes.reason;
                 }
 
-                renderDashboard(
+                lastData = [
                     produtosRes.status === 'fulfilled' ? produtosRes.value.produtos.map(mapApiProduct) : [],
-                    vendasRes.status === 'fulfilled' ? vendasRes.value.vendas.map(mapApiVenda) : [],
-                    movRes.status === 'fulfilled' ? movRes.value.movimentacoes.map(mapApiMovimentacao) : []
-                );
+                    vendasRes.status === 'fulfilled' ? vendasRes.value.vendas.filter((v) => v.status !== 'cancelada').map(mapApiVenda) : [],
+                    movRes.status === 'fulfilled' ? movRes.value.movimentacoes.map(mapApiMovimentacao) : [],
+                ];
+                renderDashboard(...lastData);
                 return;
             } catch (err) {
                 // Visitante não autenticado, ou cargo sem acesso nem a Produtos
                 // nem a Vendas — mostra o catálogo de demonstração local.
             }
         }
-        renderDashboard(HydroStore.getProducts(), HydroStore.getSales(), HydroStore.getMovements());
+        lastData = [HydroStore.getProducts(), HydroStore.getSales(), HydroStore.getMovements()];
+        renderDashboard(...lastData);
     })();
+
+    /* ================= Filtro de período ================= */
+    const periodFrom = document.getElementById('hydroPeriodFrom');
+    const periodTo = document.getElementById('hydroPeriodTo');
+    const periodClear = document.getElementById('hydroPeriodClear');
+    const presetButtons = Array.from(document.querySelectorAll('#hydroPeriodPresets [data-preset]'));
+
+    function presetRange(preset) {
+        const now = new Date();
+        const today = localKey(now);
+        if (preset === 'hoje') return { from: today, to: today };
+        if (preset === '7' || preset === '30') {
+            const start = new Date(now);
+            start.setDate(start.getDate() - (Number(preset) - 1));
+            return { from: localKey(start), to: today };
+        }
+        if (preset === 'mes') {
+            return { from: localKey(new Date(now.getFullYear(), now.getMonth(), 1)), to: today };
+        }
+        // mes-passado
+        return {
+            from: localKey(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+            to: localKey(new Date(now.getFullYear(), now.getMonth(), 0)),
+        };
+    }
+
+    function applyPeriod(activePreset) {
+        const from = periodFrom.value;
+        const to = periodTo.value;
+        if (from && to && from > to) {
+            showToast('A data inicial não pode ser depois da data final.');
+            return;
+        }
+        period = from || to ? { from, to } : null;
+        periodClear.hidden = !period;
+        presetButtons.forEach((b) => b.classList.toggle('hydro-active', b.dataset.preset === activePreset));
+        if (lastData) renderDashboard(...lastData);
+    }
+
+    presetButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const range = presetRange(button.dataset.preset);
+            periodFrom.value = range.from;
+            periodTo.value = range.to;
+            applyPeriod(button.dataset.preset);
+        });
+    });
+
+    [periodFrom, periodTo].forEach((input) => input.addEventListener('change', () => applyPeriod(null)));
+
+    periodClear.addEventListener('click', () => {
+        periodFrom.value = '';
+        periodTo.value = '';
+        applyPeriod(null);
+    });
 
     /* ================= Relatórios impressos (lista de compras e validade) ================= */
 

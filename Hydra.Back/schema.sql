@@ -143,6 +143,13 @@ CREATE TABLE IF NOT EXISTS usuarios (
     codigo_acesso           VARCHAR(255) NULL,
     codigo_acesso_expira_em DATETIME NULL,
 
+    -- Senha de autorização (PIN de 4 a 8 números, hash bcrypt) do gerente
+    -- ou administrador, cadastrada na tela Equipe. Libera o cancelamento
+    -- de venda na tela Vendas. NULL = o usuário não autoriza cancelamentos.
+    -- Banco já em uso: sql/migracao_cancelamento_vendas.sql (ou deixe o
+    -- back-end criar sozinho, Hydra\Support\Migracoes).
+    senha_autorizacao       VARCHAR(255) NULL,
+
     FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
         ON DELETE CASCADE,
     CONSTRAINT fk_usuarios_ultima_filial
@@ -328,10 +335,27 @@ CREATE TABLE IF NOT EXISTS vendas (
     valor_total     DECIMAL(10,2) NOT NULL,
     data_venda      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+    -- Cancelamento (tela Vendas, aba "Cancelar Venda"): a venda não é
+    -- apagada, muda de status. O estoque volta por uma movimentação de
+    -- entrada (origem 'cancelamento_venda'), e relatórios e Dashboard
+    -- passam a ignorar a venda. Grava quem operava o caixa e quem
+    -- autorizou com a senha de autorização.
+    status                      ENUM('concluida', 'cancelada') NOT NULL DEFAULT 'concluida',
+    data_cancelamento           DATETIME NULL,
+    motivo_cancelamento         VARCHAR(255) NULL,
+    id_operador_cancelamento    INT NULL,
+    id_autorizador_cancelamento INT NULL,
+
     FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
         ON DELETE CASCADE,
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
         ON DELETE RESTRICT,
+    CONSTRAINT fk_vendas_operador_cancelamento
+        FOREIGN KEY (id_operador_cancelamento) REFERENCES usuarios(id_usuario)
+        ON DELETE SET NULL,
+    CONSTRAINT fk_vendas_autorizador_cancelamento
+        FOREIGN KEY (id_autorizador_cancelamento) REFERENCES usuarios(id_usuario)
+        ON DELETE SET NULL,
     FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
         ON DELETE SET NULL,
     INDEX idx_vendas_loja_filial (id_loja, id_filial),
@@ -444,7 +468,7 @@ CREATE TABLE IF NOT EXISTS movimentacoes_estoque (
     id_venda          INT NULL,
     tipo              ENUM('entrada', 'saida') NOT NULL,
     quantidade        DECIMAL(10,3) NOT NULL,
-    origem            ENUM('cadastro', 'ajuste_manual', 'venda') NOT NULL,
+    origem            ENUM('cadastro', 'ajuste_manual', 'venda', 'cancelamento_venda') NOT NULL,
     data_movimentacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)

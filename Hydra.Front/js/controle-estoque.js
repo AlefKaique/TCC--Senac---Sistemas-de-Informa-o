@@ -677,7 +677,7 @@
                 modalBody.innerHTML = '<p class="hydro-detail-row"><span>Nenhuma movimentação registrada para este produto.</span></p>';
                 return;
             }
-            const ORIGEM_LABELS = { cadastro: 'Cadastro', ajuste_manual: 'Ajuste manual', venda: 'Venda' };
+            const ORIGEM_LABELS = { cadastro: 'Cadastro', ajuste_manual: 'Ajuste manual', venda: 'Venda', cancelamento_venda: 'Venda cancelada' };
             modalBody.innerHTML = movimentacoes
                 .map((m) => {
                     const tipoLabel = m.tipo === 'entrada' ? 'Entrada' : 'Saída';

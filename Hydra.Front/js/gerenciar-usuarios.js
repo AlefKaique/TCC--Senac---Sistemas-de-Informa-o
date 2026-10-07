@@ -116,6 +116,45 @@
             .join('');
     }
 
+    /* Senha de autorização (PIN de 4 a 8 números) do gerente/administrador:
+       libera a aba "Cancelar Venda" na tela Vendas. É separada da senha de
+       login porque é digitada no caixa, na frente do operador. */
+    function senhaAutorizacaoFieldHtml(u) {
+        const temSenha = Boolean(u && Number(u.tem_senha_autorizacao));
+        return `
+        <div class="hydro-form-group">
+          <label for="hydroSenhaAutorizacao">Senha de autorização ${u ? '' : '(opcional)'}</label>
+          <input type="password" id="hydroSenhaAutorizacao" inputmode="numeric" maxlength="8" autocomplete="new-password"
+                 placeholder="${temSenha ? 'Deixe em branco para manter a atual' : '4 a 8 números'}">
+          <span class="hydro-cargo-select-hint">Só para gerente ou administrador: é a senha pedida na tela Vendas para cancelar uma venda. Diferente da senha de login.</span>
+          ${temSenha ? `
+          <label class="hydro-filial-check hydro-senha-aut-remover">
+            <input type="checkbox" id="hydroRemoverSenhaAutorizacao">
+            <span>Remover a senha de autorização (deixa de autorizar cancelamentos)</span>
+          </label>` : ''}
+        </div>`;
+    }
+
+    function ligarSenhaAutorizacao() {
+        const input = document.getElementById('hydroSenhaAutorizacao');
+        const remover = document.getElementById('hydroRemoverSenhaAutorizacao');
+        input.addEventListener('input', () => {
+            input.value = input.value.replace(/\D/g, '').slice(0, 8);
+        });
+        if (remover) {
+            remover.addEventListener('change', () => {
+                input.disabled = remover.checked;
+                if (remover.checked) input.value = '';
+            });
+        }
+    }
+
+    /* Valida o PIN digitado; devolve a mensagem de erro ou null. Em branco é válido (opcional / manter). */
+    function erroSenhaAutorizacao(valor) {
+        if (valor === '') return null;
+        return /^\d{4,8}$/.test(valor) ? null : 'A senha de autorização deve ter de 4 a 8 números';
+    }
+
     /* ================= State ================= */
     const state = {
         search: '',
@@ -202,6 +241,7 @@
                 <div>
                   <div class="hydro-user-name">${escapeHtml(u.nome)}</div>
                   <div class="hydro-user-email">${escapeHtml(u.email)}</div>
+                  ${Number(u.tem_senha_autorizacao) ? '<div class="hydro-user-autoriza" title="Tem senha de autorização: pode liberar o cancelamento de vendas">Autoriza cancelamentos</div>' : ''}
                 </div>
               </div>
             </td>
@@ -340,6 +380,7 @@
           <span class="hydro-cargo-select-hint">As permissões do usuário vêm do cargo — crie ou ajuste cargos na tela <a href="cargos.html" target="_blank" rel="noopener">Cargos</a>.</span>
         </div>
         ${filiaisFieldHtml(filiaisDisponiveis.length === 1 ? [filiaisDisponiveis[0].id_filial] : [])}
+        ${senhaAutorizacaoFieldHtml(null)}
       `,
             footerHtml: `
         <button class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroModalCancelBtn">Cancelar</button>
@@ -347,6 +388,7 @@
       `,
             onMount: () => {
                 ligarFiliaisAoCargo(document.getElementById('hydroNewCargo'));
+                ligarSenhaAutorizacao();
                 if (!window.HydraPasswordRules) return;
                 window.HydraPasswordRules.ligarChecklist(
                     document.getElementById('hydroNewSenha'),
@@ -381,8 +423,14 @@
                 showToast('Selecione um cargo');
                 return;
             }
+            const senhaAutorizacao = document.getElementById('hydroSenhaAutorizacao').value;
+            const erroAut = erroSenhaAutorizacao(senhaAutorizacao);
+            if (erroAut) {
+                showToast(erroAut);
+                return;
+            }
 
-            const body = comFiliais({ nome, email, senha, id_cargo: idCargo });
+            const body = comFiliais({ nome, email, senha, id_cargo: idCargo, senha_autorizacao: senhaAutorizacao });
             if (!body) return;
 
             try {
@@ -433,12 +481,16 @@
           </select>
         </div>
         ${filiaisFieldHtml(u.filiais)}
+        ${senhaAutorizacaoFieldHtml(u)}
       `,
             footerHtml: `
         <button class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroModalCancelBtn">Cancelar</button>
         <button class="hydro-btn hydro-btn-primary hydro-btn-sm" id="hydroModalSaveBtn">Salvar alterações</button>
       `,
-            onMount: () => ligarFiliaisAoCargo(document.getElementById('hydroEditUserCargo')),
+            onMount: () => {
+                ligarFiliaisAoCargo(document.getElementById('hydroEditUserCargo'));
+                ligarSenhaAutorizacao();
+            },
         });
 
         document.getElementById('hydroModalCancelBtn').addEventListener('click', closeModal);
@@ -457,7 +509,23 @@
                 return;
             }
 
-            const body = comFiliais({ nome, email, id_cargo: idCargo, status });
+            const senhaAutorizacao = document.getElementById('hydroSenhaAutorizacao').value;
+            const removerEl = document.getElementById('hydroRemoverSenhaAutorizacao');
+            const removerSenhaAutorizacao = Boolean(removerEl && removerEl.checked);
+            const erroAut = removerSenhaAutorizacao ? null : erroSenhaAutorizacao(senhaAutorizacao);
+            if (erroAut) {
+                showToast(erroAut);
+                return;
+            }
+
+            const body = comFiliais({
+                nome,
+                email,
+                id_cargo: idCargo,
+                status,
+                senha_autorizacao: senhaAutorizacao,
+                remover_senha_autorizacao: removerSenhaAutorizacao,
+            });
             if (!body) return;
 
             try {

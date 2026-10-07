@@ -62,7 +62,8 @@ final class UsuarioRepository
     {
         $stmt = db()->prepare(
             'SELECT u.id_usuario, u.id_loja, u.nome, u.email, u.perfil, u.status, u.data_criacao, u.ultimo_acesso,
-                    u.id_cargo, c.nome AS cargo_nome, c.cor AS cargo_cor
+                    u.id_cargo, c.nome AS cargo_nome, c.cor AS cargo_cor,
+                    (u.senha_autorizacao IS NOT NULL) AS tem_senha_autorizacao
              FROM usuarios u
              LEFT JOIN cargos c ON c.id_cargo = u.id_cargo
              WHERE u.id_usuario = :id'
@@ -85,7 +86,8 @@ final class UsuarioRepository
     {
         $stmt = db()->prepare(
             'SELECT u.id_usuario, u.nome, u.email, u.perfil, u.status, u.data_criacao, u.ultimo_acesso,
-                    u.id_cargo, c.nome AS cargo_nome, c.cor AS cargo_cor
+                    u.id_cargo, c.nome AS cargo_nome, c.cor AS cargo_cor,
+                    (u.senha_autorizacao IS NOT NULL) AS tem_senha_autorizacao
              FROM usuarios u
              LEFT JOIN cargos c ON c.id_cargo = u.id_cargo
              WHERE u.id_loja = :id_loja ORDER BY u.data_criacao ASC'
@@ -132,6 +134,33 @@ final class UsuarioRepository
             'id_cargo' => $dados['id_cargo'] ?? null,
             'id' => $idUsuario,
         ]);
+    }
+
+    /**
+     * Senha de autorização (hash bcrypt) que libera o cancelamento de venda
+     * na tela Vendas. null remove a senha: o usuário deixa de autorizar.
+     */
+    public function setSenhaAutorizacao(int $idUsuario, ?string $hash): void
+    {
+        $stmt = db()->prepare('UPDATE usuarios SET senha_autorizacao = :hash WHERE id_usuario = :id');
+        $stmt->execute(['hash' => $hash, 'id' => $idUsuario]);
+    }
+
+    /**
+     * Usuários ATIVOS da loja que têm senha de autorização — os candidatos
+     * a autorizar um cancelamento. Traz o hash e o cargo; só para uso
+     * interno, nunca para devolver em JSON.
+     *
+     * @return array<int,array{id_usuario:int,nome:string,id_cargo:?int,senha_autorizacao:string}>
+     */
+    public function listAutorizadoresDaLoja(int $idLoja): array
+    {
+        $stmt = db()->prepare(
+            "SELECT id_usuario, nome, id_cargo, senha_autorizacao FROM usuarios
+              WHERE id_loja = :id_loja AND status = 'ativo' AND senha_autorizacao IS NOT NULL"
+        );
+        $stmt->execute(['id_loja' => $idLoja]);
+        return $stmt->fetchAll();
     }
 
     public function setResetToken(int $idUsuario, string $token, string $expiraEm): void

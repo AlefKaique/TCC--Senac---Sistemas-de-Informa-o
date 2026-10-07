@@ -985,6 +985,158 @@ a.hydro-expiring-row:hover {
     background: var(--red);
 }
 
+/* ============ Filtro de período ============ */
+.hydro-period-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 18px;
+    padding: 14px 20px;
+    margin-bottom: 20px;
+}
+
+.hydro-period-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--navy-900);
+}
+
+.hydro-period-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.hydro-period-preset {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--navy-900);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.hydro-period-preset:hover {
+    background: #f6f7fb;
+}
+
+.hydro-period-preset.hydro-active {
+    background: var(--navy-active);
+    border-color: var(--navy-active);
+    color: #fff;
+}
+
+.hydro-period-range {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.hydro-period-range label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.hydro-period-range input[type="date"] {
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--ink);
+    background: var(--card);
+}
+
+.hydro-period-range input[type="date"]:focus {
+    outline: none;
+    border-color: var(--navy-active);
+}
+
+/* .hydro-btn define display, que venceria o [hidden] padrão do navegador. */
+.hydro-period-range [hidden] {
+    display: none;
+}
+
+/* ============ Ícone de informação (tooltip ao passar o mouse) ============ */
+.hydro-info {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 17px;
+    height: 17px;
+    margin-left: 4px;
+    border: 1.5px solid var(--muted-soft);
+    border-radius: 50%;
+    color: var(--muted-soft);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 11px;
+    font-weight: 700;
+    font-style: italic;
+    line-height: 1;
+    vertical-align: middle;
+    cursor: help;
+    user-select: none;
+}
+
+.hydro-info:hover,
+.hydro-info:focus {
+    border-color: var(--navy-active);
+    color: var(--navy-active);
+    outline: none;
+}
+
+.hydro-info::after {
+    content: attr(data-tip);
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 260px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    background: var(--navy-900);
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 12.5px;
+    font-weight: 500;
+    font-style: normal;
+    line-height: 1.45;
+    text-align: left;
+    white-space: normal;
+    box-shadow: var(--shadow-pop);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .15s;
+    z-index: 50;
+}
+
+.hydro-info:hover::after,
+.hydro-info:focus::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* No KPI o ícone fica no canto direito do card: abre o balão para a esquerda
+   para não sair da tela. */
+.hydro-kpi-header .hydro-info::after {
+    left: auto;
+    right: -6px;
+    transform: none;
+}
+
 /* ============ Responsive ============ */
 @media (max-width: 1180px) {
     .hydro-main {
@@ -1035,6 +1187,14 @@ a.hydro-expiring-row:hover {
 @media (max-width: 640px) {
     .hydro-kpi-grid {
         grid-template-columns: 1fr;
+    }
+
+    .hydro-period-range {
+        margin-left: 0;
+    }
+
+    .hydro-info::after {
+        max-width: 220px;
     }
 
     .hydro-search {
