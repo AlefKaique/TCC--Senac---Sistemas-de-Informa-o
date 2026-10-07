@@ -1403,6 +1403,168 @@
     border-radius: var(--radius-md);
 }
 
+/* ============ Cancelar Venda (senha de autorização) ============ */
+.hydro-ic-lock {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='11' width='16' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='11' width='16' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E");
+}
+
+.hydro-order-tab-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--red);
+}
+
+.hydro-order-tab-danger .hydro-ic {
+    width: 15px;
+    height: 15px;
+}
+
+.hydro-order-tab-danger:hover {
+    background: var(--red-bg);
+}
+
+.hydro-order-tab-danger.hydro-active {
+    background: var(--red);
+    color: #fff;
+}
+
+.hydro-btn-danger {
+    background: var(--red);
+    color: #fff;
+}
+
+.hydro-btn-danger:hover:not(:disabled) {
+    filter: brightness(1.06);
+}
+
+.hydro-order-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.hydro-auth-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.hydro-auth-error {
+    margin-top: -6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--red);
+}
+
+#hydroAuthPin {
+    letter-spacing: .3em;
+    font-size: 20px;
+}
+
+.hydro-eyebrow-danger {
+    color: var(--red);
+}
+
+.hydro-cancel-motivo {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    resize: vertical;
+}
+
+.hydro-cancel-motivo:focus {
+    outline: none;
+    border-color: var(--navy-active);
+}
+
+.hydro-cancel-auth-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    background: var(--red-bg);
+    border: 1px solid #f6c9ce;
+    border-radius: var(--radius-md);
+}
+
+.hydro-cancel-auth-info {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 13.5px;
+    color: var(--ink);
+}
+
+.hydro-cancel-auth-info .hydro-ic {
+    color: var(--red);
+    width: 16px;
+    height: 16px;
+}
+
+.hydro-cancel-auth-timer {
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.hydro-cancel-row-btn {
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--red);
+    background: #fff;
+    color: var(--red);
+    font-size: 12.5px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.hydro-cancel-row-btn:hover {
+    background: var(--red);
+    color: #fff;
+}
+
+/* Venda cancelada no Histórico */
+.hydro-sale-cancelled td {
+    color: var(--muted-soft);
+}
+
+.hydro-sale-cancelled .hydro-item-total {
+    text-decoration: line-through;
+}
+
+.hydro-tag-cancelled {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--red-bg);
+    color: var(--red);
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    vertical-align: middle;
+}
+
+.hydro-sale-detail-cancelled {
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    background: var(--red-bg);
+    border: 1px solid #f6c9ce;
+    color: var(--red);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
 /* ============ Responsive ============ */
 @media (max-width: 1180px) {
     .hydro-main {

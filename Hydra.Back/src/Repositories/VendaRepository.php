@@ -2,11 +2,20 @@
 
 namespace Hydra\Repositories;
 
+use Hydra\Support\Migracoes;
+
 /**
  * Tela "Caixa" (PDV) — RF04, RF09, RF12, RF13.
  */
 final class VendaRepository
 {
+    public function __construct()
+    {
+        // Colunas de cancelamento (status, autorizador...) em bancos já em
+        // uso. Antes de qualquer transação: DDL faz commit implícito.
+        Migracoes::garantirCancelamentoDeVendas();
+    }
+
     /**
      * Grava a venda e devolve o id_venda.
      *
@@ -90,11 +99,13 @@ final class VendaRepository
        "v.*" (nunca "*") porque com o JOIN o asterisco despejaria
        usuarios.* inteiro no JSON da API — senha, e-mail e reset_token
        incluídos. LEFT JOIN por simetria com o histórico de
-       movimentações, embora vendas.id_usuario seja NOT NULL. */
+       movimentações, embora vendas.id_usuario seja NOT NULL. Na venda
+       cancelada vem também o nome de quem autorizou o cancelamento. */
     private const SELECT_COM_USUARIO =
-        'SELECT v.*, u.nome AS nome_usuario
+        'SELECT v.*, u.nome AS nome_usuario, ua.nome AS nome_autorizador_cancelamento
            FROM vendas v
-           LEFT JOIN usuarios u ON u.id_usuario = v.id_usuario';
+           LEFT JOIN usuarios u ON u.id_usuario = v.id_usuario
+           LEFT JOIN usuarios ua ON ua.id_usuario = v.id_autorizador_cancelamento';
 
     public function findInFilial(int $idVenda, int $idFilial): ?array
     {
@@ -145,9 +156,11 @@ final class VendaRepository
                       JOIN vendas v2 ON v2.id_venda = iv.id_venda
                       JOIN produtos p ON p.id_produto = iv.id_produto
                      WHERE v2.id_loja = :id_loja2 AND v2.data_venda >= :inicio2 AND v2.data_venda < :fim2
+                       AND v2.status = \'concluida\'
                      GROUP BY iv.id_venda
                ) c ON c.id_venda = v.id_venda
               WHERE v.id_loja = :id_loja AND v.data_venda >= :inicio AND v.data_venda < :fim
+                AND v.status = \'concluida\'
               GROUP BY v.id_filial'
         );
         $stmt->execute([
@@ -164,6 +177,31 @@ final class VendaRepository
             ];
         }
         return $porFilial;
+    }
+
+    /**
+     * Marca a venda como cancelada, só se ela ainda estiver concluída.
+     * A condição viaja no próprio UPDATE (mesma ideia de
+     * ProdutoRepository::baixarQuantidadeSeHouver): dois cancelamentos
+     * simultâneos da mesma venda não devolvem o estoque duas vezes — o
+     * segundo recebe false e o controller desfaz a transação.
+     */
+    public function cancelar(int $idVenda, int $idFilial, int $idOperador, int $idAutorizador, ?string $motivo): bool
+    {
+        $stmt = db()->prepare(
+            "UPDATE vendas
+                SET status = 'cancelada', data_cancelamento = NOW(), motivo_cancelamento = :motivo,
+                    id_operador_cancelamento = :operador, id_autorizador_cancelamento = :autorizador
+              WHERE id_venda = :id AND id_filial = :id_filial AND status = 'concluida'"
+        );
+        $stmt->execute([
+            'motivo' => $motivo,
+            'operador' => $idOperador,
+            'autorizador' => $idAutorizador,
+            'id' => $idVenda,
+            'id_filial' => $idFilial,
+        ]);
+        return $stmt->rowCount() === 1;
     }
 
     /* "custo_unitario" é o preço de custo ATUAL do produto (itens_venda não

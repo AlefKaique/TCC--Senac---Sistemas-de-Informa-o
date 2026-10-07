@@ -158,6 +158,9 @@ $routes = [
 
     ['GET', '#^/api/vendas$#', fn () => (new VendaController())->index()],
     ['POST', '#^/api/vendas$#', fn () => (new VendaController())->store()],
+    ['POST', '#^/api/vendas/autorizar-cancelamento$#', fn () => (new VendaController())->autorizarCancelamento()],
+    ['POST', '#^/api/vendas/autorizar-cancelamento/encerrar$#', fn () => (new VendaController())->encerrarAutorizacao()],
+    ['POST', '#^/api/vendas/(\d+)/cancelar$#', fn ($id) => (new VendaController())->cancelar((int) $id)],
 
     ['GET', '#^/api/promocoes$#', fn () => (new PromocaoController())->index()],
     ['POST', '#^/api/promocoes$#', fn () => (new PromocaoController())->store()],
