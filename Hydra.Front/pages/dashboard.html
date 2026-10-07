@@ -98,6 +98,30 @@
                     </div>
                 </header>
 
+                <!-- Filtro de período -->
+                <section class="hydro-card hydro-period-bar" aria-label="Filtro de período">
+                    <div class="hydro-period-title">
+                        <span>Período do relatório</span>
+                        <span class="hydro-info" tabindex="0" role="img" aria-label="Ajuda"
+                            data-tip="Escolha um período para ver as vendas, o lucro bruto, o ticket médio e os produtos mais vendidos somente nessas datas. Os alertas de estoque e de validade mostram sempre a situação atual, sem depender do período.">i</span>
+                    </div>
+                    <div class="hydro-period-presets" id="hydroPeriodPresets">
+                        <button type="button" class="hydro-period-preset" data-preset="hoje">Hoje</button>
+                        <button type="button" class="hydro-period-preset" data-preset="7">7 dias</button>
+                        <button type="button" class="hydro-period-preset" data-preset="30">30 dias</button>
+                        <button type="button" class="hydro-period-preset" data-preset="mes">Este mês</button>
+                        <button type="button" class="hydro-period-preset" data-preset="mes-passado">Mês passado</button>
+                    </div>
+                    <div class="hydro-period-range">
+                        <label for="hydroPeriodFrom">De</label>
+                        <input type="date" id="hydroPeriodFrom">
+                        <label for="hydroPeriodTo">Até</label>
+                        <input type="date" id="hydroPeriodTo">
+                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroPeriodClear"
+                            hidden>Limpar filtro</button>
+                    </div>
+                </section>
+
                 <!-- KPIs -->
                 <section class="hydro-kpi-grid" id="hydroKpiGrid"></section>
 
@@ -105,7 +129,10 @@
                 <section class="hydro-charts-grid">
                     <div class="hydro-card hydro-chart-card">
                         <div class="hydro-chart-header">
-                            <h2>Produtos prestes a vencer</h2>
+                            <h2>Produtos prestes a vencer
+                                <span class="hydro-info" tabindex="0" role="img" aria-label="Ajuda"
+                                    data-tip="Produtos em estoque que vencem nos próximos 30 dias. A barra enche conforme o vencimento se aproxima; em vermelho, faltam 7 dias ou menos. Clique em um produto para criar uma promoção.">i</span>
+                            </h2>
                             <span class="hydro-chart-period">Próximos 30 dias</span>
                         </div>
                         <div class="hydro-chart-body" id="hydroExpiringChart"></div>
@@ -118,8 +145,11 @@
 
                     <div class="hydro-card hydro-chart-card">
                         <div class="hydro-chart-header">
-                            <h2>Top produtos mais vendidos</h2>
-                            <span class="hydro-chart-period">Últimos 30 dias</span>
+                            <h2>Top produtos mais vendidos
+                                <span class="hydro-info" tabindex="0" role="img" aria-label="Ajuda"
+                                    data-tip="Os 8 produtos com maior quantidade vendida. Sem filtro, considera os últimos 30 dias; com filtro, considera o período escolhido.">i</span>
+                            </h2>
+                            <span class="hydro-chart-period" id="hydroTopPeriod">Últimos 30 dias</span>
                         </div>
                         <div class="hydro-chart-body" id="hydroTopChart"></div>
                     </div>
@@ -128,7 +158,10 @@
                 <!-- Alertas de estoque -->
                 <section class="hydro-card hydro-alerts-card">
                     <div class="hydro-alerts-header">
-                        <h2>Alertas de estoque</h2>
+                        <h2>Alertas de estoque
+                            <span class="hydro-info" tabindex="0" role="img" aria-label="Ajuda"
+                                data-tip="Situação atual do estoque. Esgotado: quantidade zero. Crítico e Atenção: abaixo ou perto do estoque mínimo. A tabela mostra os 6 piores; a lista de compras impressa traz todos os status marcados.">i</span>
+                        </h2>
                         <div class="hydro-print-tools">
                         <fieldset class="hydro-print-filter" id="hydroPrintFilter">
                             <legend>Incluir na lista:</legend>
@@ -166,7 +199,10 @@
                 <!-- Alertas de validade -->
                 <section class="hydro-card hydro-alerts-card">
                     <div class="hydro-alerts-header">
-                        <h2>Produtos vencidos ou a vencer</h2>
+                        <h2>Produtos vencidos ou a vencer
+                            <span class="hydro-info" tabindex="0" role="img" aria-label="Ajuda"
+                                data-tip="Produtos já vencidos ou com validade nos próximos 30 dias. Vencidos devem ser retirados da venda. A tabela mostra 6; o relatório impresso traz todos os status marcados.">i</span>
+                        </h2>
                         <div class="hydro-print-tools">
                         <fieldset class="hydro-print-filter" id="hydroPrintExpiryFilter">
                             <legend>Incluir no relatório:</legend>

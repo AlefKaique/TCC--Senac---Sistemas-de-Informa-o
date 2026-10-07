@@ -91,6 +91,11 @@
             payment: primeiroPagamento ? (PAYMENT_METHOD_FROM_API[primeiroPagamento.forma_pagamento] || primeiroPagamento.forma_pagamento) : null,
             cashReceived: null,
             change: null,
+            // Banco anterior ao cancelamento não manda "status": é concluída.
+            cancelled: v.status === 'cancelada',
+            cancelledAt: v.data_cancelamento || null,
+            cancelReason: v.motivo_cancelamento || '',
+            cancelAuthorizer: v.nome_autorizador_cancelamento || '',
         };
     }
 
@@ -270,19 +275,30 @@
     const viewTabsEl = document.getElementById('hydroViewTabs');
     const saleViewEl = document.getElementById('hydroSaleView');
     const historyViewEl = document.getElementById('hydroHistoryView');
+    const cancelViewEl = document.getElementById('hydroCancelView');
 
     function mostrarAba(view) {
+        // Sair da aba de cancelamento tranca de novo: voltar a ela pede a
+        // senha do gerente outra vez.
+        if (view !== 'cancelar' && !cancelViewEl.hidden) encerrarAutorizacao();
         viewTabsEl.querySelectorAll('.hydro-order-tab').forEach((b) => {
             b.classList.toggle('hydro-active', b.dataset.view === view);
         });
         saleViewEl.hidden = view !== 'venda';
         historyViewEl.hidden = view !== 'historico';
+        cancelViewEl.hidden = view !== 'cancelar';
         if (view === 'historico') renderHistory();
+        if (view === 'cancelar') renderCancelList();
     }
 
     viewTabsEl.addEventListener('click', (e) => {
         const btn = e.target.closest('.hydro-order-tab');
         if (!btn) return;
+        // A aba de cancelamento só abre com a senha de autorização.
+        if (btn.dataset.view === 'cancelar') {
+            if (cancelViewEl.hidden) openAuthModal();
+            return;
+        }
         mostrarAba(btn.dataset.view);
     });
 
@@ -292,9 +308,13 @@
        sem poder registrar nenhuma. A aba que o cargo não tem some, e se a
        que sobrou não for a inicial, a tela já abre nela. */
     function aplicarAbasPorPermissao(usuario) {
+        /* "Cancelar Venda" lista as vendas, que vêm de GET /api/vendas
+           ("vendas.historico"). Quem pode cancelar de fato é decidido pela
+           senha de autorização do gerente, não pelo cargo do operador. */
         const abas = [
             ['venda', 'vendas.operar'],
             ['historico', 'vendas.historico'],
+            ['cancelar', 'vendas.historico'],
         ];
         let primeiraDisponivel = null;
         for (const [view, permissao] of abas) {
@@ -744,10 +764,13 @@
             .map((sale) => {
                 const itemCount = (sale.items || []).reduce((sum, it) => sum + it.qty, 0);
                 const when = new Date(sale.date).toLocaleString('pt-BR');
+                const cancelada = sale.cancelled
+                    ? ' <span class="hydro-tag-cancelled">Cancelada</span>'
+                    : '';
                 return `
-                <tr>
+                <tr${sale.cancelled ? ' class="hydro-sale-cancelled"' : ''}>
                     <td data-label="Data/Hora">${when}</td>
-                    <td data-label="Pedido">#${sale.orderId}</td>
+                    <td data-label="Pedido">#${sale.orderId}${cancelada}</td>
                     <td data-label="Usuário">${escapeHtml(sale.usuario || 'Demonstração')}</td>
                     <td data-label="Itens">${itemCount} ${itemCount === 1 ? 'item' : 'itens'}</td>
                     <td data-label="Pagamento">${escapeHtml(PAYMENT_LABELS[sale.payment] || sale.payment || '—')}</td>
@@ -818,12 +841,21 @@
     const saleDetailItemsEl = document.getElementById('hydroSaleDetailItems');
     const saleDetailSubtotalEl = document.getElementById('hydroSaleDetailSubtotal');
     const saleDetailTotalEl = document.getElementById('hydroSaleDetailTotal');
+    const saleDetailCancelledEl = document.getElementById('hydroSaleDetailCancelled');
 
     function openSaleDetailModal(sale) {
         saleDetailWhenEl.textContent = new Date(sale.date).toLocaleString('pt-BR');
         saleDetailTitleEl.textContent = `Pedido #${sale.orderId}`;
         saleDetailUserEl.textContent = sale.usuario || 'Demonstração';
         saleDetailPaymentEl.textContent = PAYMENT_LABELS[sale.payment] || sale.payment || '—';
+
+        saleDetailCancelledEl.hidden = !sale.cancelled;
+        if (sale.cancelled) {
+            const quando = sale.cancelledAt ? ` em ${new Date(sale.cancelledAt).toLocaleString('pt-BR')}` : '';
+            const quem = sale.cancelAuthorizer ? `, autorizada por <strong>${escapeHtml(sale.cancelAuthorizer)}</strong>` : '';
+            const motivo = sale.cancelReason ? `<br>Motivo: ${escapeHtml(sale.cancelReason)}` : '';
+            saleDetailCancelledEl.innerHTML = `Venda cancelada${quando}${quem}. Os itens voltaram ao estoque.${motivo}`;
+        }
 
         const isCash = sale.payment === 'dinheiro' && sale.cashReceived != null;
         saleDetailCashRowEl.hidden = !isCash;
@@ -873,7 +905,220 @@
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeSaleDetailModal();
+        if (e.key !== 'Escape') return;
+        closeSaleDetailModal();
+        closeAuthModal();
+        closeCancelConfirm();
+    });
+
+    /* ================= Cancelar Venda (senha de autorização) =================
+       A aba só abre depois que o gerente ou administrador digita a senha de
+       autorização dele (PIN cadastrado na tela Equipe). O back-end guarda a
+       autorização na sessão por 5 minutos; aqui ela também tranca ao sair da
+       aba, ao clicar em "Bloquear" ou quando o tempo acaba. */
+    const authModalEl = document.getElementById('hydroAuthModal');
+    const authFormEl = document.getElementById('hydroAuthForm');
+    const authPinEl = document.getElementById('hydroAuthPin');
+    const authErrorEl = document.getElementById('hydroAuthError');
+    const authConfirmBtn = document.getElementById('hydroAuthConfirmBtn');
+    const cancelAuthNameEl = document.getElementById('hydroCancelAuthName');
+    const cancelAuthTimerEl = document.getElementById('hydroCancelAuthTimer');
+    const cancelSearchInput = document.getElementById('hydroCancelSearch');
+    const cancelBodyEl = document.getElementById('hydroCancelBody');
+    const cancelWrapEl = document.getElementById('hydroCancelTableWrap');
+    const cancelConfirmModalEl = document.getElementById('hydroCancelConfirmModal');
+    const cancelConfirmTitleEl = document.getElementById('hydroCancelConfirmTitle');
+    const cancelConfirmDescEl = document.getElementById('hydroCancelConfirmDesc');
+    const cancelMotivoEl = document.getElementById('hydroCancelMotivo');
+    const cancelConfirmBtn = document.getElementById('hydroCancelConfirmBtn');
+
+    let authExpiraEm = 0;
+    let authTimer = null;
+    let saleToCancel = null;
+
+    function openAuthModal() {
+        if (!usingRealApi) {
+            showToast('O cancelamento de venda funciona apenas com login no sistema.', true);
+            return;
+        }
+        authPinEl.value = '';
+        authErrorEl.hidden = true;
+        authModalEl.hidden = false;
+        setTimeout(() => authPinEl.focus(), 0);
+    }
+
+    function closeAuthModal() {
+        authModalEl.hidden = true;
+        authPinEl.value = '';
+    }
+
+    authModalEl.addEventListener('click', (e) => {
+        if (e.target.closest('[data-auth-close]')) closeAuthModal();
+    });
+
+    // Só números, como o PIN cadastrado na tela Equipe.
+    authPinEl.addEventListener('input', () => {
+        authPinEl.value = authPinEl.value.replace(/\D/g, '').slice(0, 8);
+        authErrorEl.hidden = true;
+    });
+
+    authFormEl.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const senha = authPinEl.value;
+        if (senha.length < 4) {
+            authErrorEl.textContent = 'Digite a senha de autorização (4 a 8 números).';
+            authErrorEl.hidden = false;
+            return;
+        }
+        authConfirmBtn.disabled = true;
+        try {
+            const res = await window.hydraApi('/vendas/autorizar-cancelamento', {
+                method: 'POST',
+                body: { senha },
+            });
+            closeAuthModal();
+            iniciarAutorizacao(res.autorizador, Number(res.expira_em_segundos) || 300);
+            mostrarAba('cancelar');
+        } catch (err) {
+            authErrorEl.textContent = err.message;
+            authErrorEl.hidden = false;
+            authPinEl.value = '';
+            authPinEl.focus();
+        } finally {
+            authConfirmBtn.disabled = false;
+        }
+    });
+
+    function iniciarAutorizacao(nome, segundos) {
+        cancelAuthNameEl.textContent = nome || '—';
+        authExpiraEm = Date.now() + segundos * 1000;
+        clearInterval(authTimer);
+        atualizarTimer();
+        authTimer = setInterval(atualizarTimer, 1000);
+    }
+
+    function atualizarTimer() {
+        const restante = Math.max(0, Math.round((authExpiraEm - Date.now()) / 1000));
+        const mm = String(Math.floor(restante / 60));
+        const ss = String(restante % 60).padStart(2, '0');
+        cancelAuthTimerEl.textContent = `· expira em ${mm}:${ss}`;
+        if (restante === 0 && !cancelViewEl.hidden) {
+            showToast('A autorização expirou. Peça a senha do gerente de novo.', true);
+            mostrarAba(primeiraAbaVisivel());
+        }
+    }
+
+    /* Tranca a aba: para o relógio e avisa o back-end (sem esperar). */
+    function encerrarAutorizacao() {
+        clearInterval(authTimer);
+        authTimer = null;
+        authExpiraEm = 0;
+        closeCancelConfirm();
+        if (usingRealApi) {
+            window.hydraApi('/vendas/autorizar-cancelamento/encerrar', { method: 'POST' }).catch(() => {});
+        }
+    }
+
+    function primeiraAbaVisivel() {
+        const btn = Array.from(viewTabsEl.querySelectorAll('.hydro-order-tab'))
+            .find((b) => !b.hidden && b.dataset.view !== 'cancelar');
+        return btn ? btn.dataset.view : 'historico';
+    }
+
+    document.getElementById('hydroCancelLockBtn').addEventListener('click', () => {
+        mostrarAba(primeiraAbaVisivel());
+        showToast('Cancelamento bloqueado.');
+    });
+
+    function renderCancelList() {
+        const term = (cancelSearchInput.value || '').trim().toLowerCase();
+        const sales = salesHistory
+            .filter((sale) => !sale.cancelled)
+            .slice()
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .filter((sale) => !term
+                || String(sale.orderId).includes(term)
+                || (sale.usuario || '').toLowerCase().includes(term));
+
+        cancelWrapEl.classList.toggle('hydro-empty', sales.length === 0);
+        cancelBodyEl.innerHTML = sales
+            .map((sale) => {
+                const itemCount = (sale.items || []).reduce((sum, it) => sum + it.qty, 0);
+                return `
+                <tr>
+                    <td data-label="Data/Hora">${new Date(sale.date).toLocaleString('pt-BR')}</td>
+                    <td data-label="Pedido">#${sale.orderId}</td>
+                    <td data-label="Usuário">${escapeHtml(sale.usuario || '—')}</td>
+                    <td data-label="Itens">${itemCount} ${itemCount === 1 ? 'item' : 'itens'}</td>
+                    <td data-label="Pagamento">${escapeHtml(PAYMENT_LABELS[sale.payment] || sale.payment || '—')}</td>
+                    <td data-label="Total" class="hydro-item-total">${money(sale.total)}</td>
+                    <td data-label="Ação">
+                        <button type="button" class="hydro-cancel-row-btn" data-cancel-sale="${sale.id}">Cancelar</button>
+                    </td>
+                </tr>`;
+            })
+            .join('');
+    }
+
+    cancelSearchInput.addEventListener('input', renderCancelList);
+
+    cancelBodyEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-cancel-sale]');
+        if (!btn) return;
+        const sale = salesHistory.find((s) => s.id === btn.dataset.cancelSale);
+        if (sale) openCancelConfirm(sale);
+    });
+
+    function openCancelConfirm(sale) {
+        saleToCancel = sale;
+        cancelConfirmTitleEl.textContent = `Pedido #${sale.orderId}`;
+        cancelConfirmDescEl.textContent =
+            `Venda de ${money(sale.total)} feita em ${new Date(sale.date).toLocaleString('pt-BR')}. ` +
+            'Os itens voltam para o estoque e a venda sai dos relatórios. Esta ação não pode ser desfeita.';
+        cancelMotivoEl.value = '';
+        cancelConfirmModalEl.hidden = false;
+    }
+
+    function closeCancelConfirm() {
+        cancelConfirmModalEl.hidden = true;
+        saleToCancel = null;
+    }
+
+    cancelConfirmModalEl.addEventListener('click', (e) => {
+        if (e.target.closest('[data-cancel-confirm-close]')) closeCancelConfirm();
+    });
+
+    cancelConfirmBtn.addEventListener('click', async () => {
+        if (!saleToCancel) return;
+        const sale = saleToCancel;
+        cancelConfirmBtn.disabled = true;
+        try {
+            const { venda } = await window.hydraApi(`/vendas/${sale.id}/cancelar`, {
+                method: 'POST',
+                body: { motivo: cancelMotivoEl.value.trim() },
+            });
+            const atualizada = mapApiVenda(venda);
+            const idx = salesHistory.findIndex((s) => s.id === sale.id);
+            if (idx >= 0) salesHistory[idx] = atualizada;
+            // A vitrine do PDV mostra o saldo: os itens voltaram ao estoque.
+            (sale.items || []).forEach((it) => {
+                const product = findProduct(it.productId);
+                if (product) product.quantity += it.qty;
+            });
+            closeCancelConfirm();
+            renderCancelList();
+            renderCatalog();
+            showToast(`Pedido #${sale.orderId} cancelado — itens devolvidos ao estoque`);
+        } catch (err) {
+            showToast(err.message, true);
+            // Autorização vencida no servidor: tranca a aba.
+            if (err.data && err.data.codigo === 'autorizacao_necessaria') {
+                closeCancelConfirm();
+                mostrarAba(primeiraAbaVisivel());
+            }
+        } finally {
+            cancelConfirmBtn.disabled = false;
+        }
     });
 
     /* ================= Render geral ================= */

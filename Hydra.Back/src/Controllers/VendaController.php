@@ -2,13 +2,18 @@
 
 namespace Hydra\Controllers;
 
+use Hydra\Repositories\CargoRepository;
+use Hydra\Repositories\FilialRepository;
 use Hydra\Repositories\MovimentacaoEstoqueRepository;
 use Hydra\Repositories\ProdutoRepository;
 use Hydra\Repositories\PromocaoRepository;
+use Hydra\Repositories\UsuarioRepository;
 use Hydra\Repositories\VendaRepository;
 use Hydra\Support\Auth;
+use Hydra\Support\RateLimit;
 use Hydra\Support\Request;
 use Hydra\Support\Response;
+use Hydra\Support\SenhaAutorizacao;
 
 /**
  * Tela "Caixa" (PDV) — RF04, RF09, RF12, RF13, RN01, RN07-RN11, RN15.
@@ -214,5 +219,167 @@ final class VendaController
         $venda['pagamentos'] = $this->vendas->listPagamentosByVenda($idVenda);
 
         Response::json(['venda' => $venda], 201);
+    }
+
+    /* ================= Cancelamento de venda =================
+       A aba "Cancelar Venda" da tela Vendas só abre depois que um gerente
+       ou administrador digita a senha de autorização dele (PIN cadastrado
+       na tela Equipe). A autorização fica na SESSÃO por alguns minutos —
+       nunca é um id enviado pelo navegador — e vale só para a filial em
+       que foi dada. */
+
+    private const AUTORIZACAO_MINUTOS = 5;
+
+    /**
+     * POST /api/vendas/autorizar-cancelamento — { "senha": "1234" }
+     * Confere o PIN e abre a janela de cancelamento.
+     */
+    public function autorizarCancelamento(): void
+    {
+        $user = Auth::requireAnyPermissionNaFilial(['vendas.operar', 'vendas.historico']);
+        $senha = trim((string) (Request::json()['senha'] ?? ''));
+
+        // Por operador logado: é quem está tentando os PINs.
+        $chave = 'autorizacao_cancelamento:' . $user['id_usuario'];
+        RateLimit::requireNaoBloqueado($chave);
+
+        $autorizador = $senha === '' ? null : SenhaAutorizacao::encontrarAutorizador($user['id_loja'], $senha);
+        if ($autorizador !== null && !$this->autorizadorAcessaFilial($autorizador, $user)) {
+            $autorizador = null;
+        }
+        if ($autorizador === null) {
+            RateLimit::registrarFalha($chave);
+            Response::json(['erro' => 'Senha de autorização inválida'], 403);
+            return;
+        }
+        RateLimit::limpar($chave);
+
+        $_SESSION['cancelamento_autorizado'] = [
+            'id_autorizador' => (int) $autorizador['id_usuario'],
+            'id_filial' => $user['id_filial'],
+            'expira' => time() + self::AUTORIZACAO_MINUTOS * 60,
+        ];
+
+        Response::json([
+            'autorizador' => $autorizador['nome'],
+            'expira_em_segundos' => self::AUTORIZACAO_MINUTOS * 60,
+        ]);
+    }
+
+    /** POST /api/vendas/autorizar-cancelamento/encerrar — a tela saiu da aba de cancelamento. */
+    public function encerrarAutorizacao(): void
+    {
+        Auth::requireLogin();
+        unset($_SESSION['cancelamento_autorizado']);
+        Response::json(['ok' => true]);
+    }
+
+    /**
+     * POST /api/vendas/{id}/cancelar — { "motivo": "..." }
+     * Exige a autorização aberta acima. Marca a venda como cancelada,
+     * devolve ao estoque a quantidade de cada item e registra a entrada
+     * (origem "cancelamento_venda") — tudo numa transação.
+     */
+    public function cancelar(int $idVenda): void
+    {
+        $user = Auth::requireAnyPermissionNaFilial(['vendas.operar', 'vendas.historico']);
+
+        $autorizacao = $_SESSION['cancelamento_autorizado'] ?? null;
+        $valida = is_array($autorizacao)
+            && $autorizacao['expira'] > time()
+            && (int) $autorizacao['id_filial'] === $user['id_filial'];
+        // O autorizador pode ter sido inativado ou perdido o PIN depois
+        // de digitá-lo: revalida a cada cancelamento.
+        $autorizador = $valida ? $this->autorizadorAtivo($user['id_loja'], (int) $autorizacao['id_autorizador']) : null;
+        if ($autorizador === null || !$this->autorizadorAcessaFilial($autorizador, $user)) {
+            unset($_SESSION['cancelamento_autorizado']);
+            Response::json([
+                'erro' => 'A autorização expirou. Peça ao gerente ou administrador para digitar a senha de novo.',
+                'codigo' => 'autorizacao_necessaria',
+            ], 403);
+            return;
+        }
+
+        $venda = $this->vendas->findInFilial($idVenda, $user['id_filial']);
+        if ($venda === null) {
+            Response::json(['erro' => 'Venda não encontrada'], 404);
+            return;
+        }
+        if ($venda['status'] === 'cancelada') {
+            Response::json(['erro' => 'Esta venda já foi cancelada'], 409);
+            return;
+        }
+
+        $motivo = trim((string) (Request::json()['motivo'] ?? ''));
+        $motivo = $motivo === '' ? null : mb_substr($motivo, 0, 255, 'UTF-8');
+        $itens = $this->vendas->listItensByVenda($idVenda);
+
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            if (!$this->vendas->cancelar($idVenda, $user['id_filial'], $user['id_usuario'], (int) $autorizador['id_usuario'], $motivo)) {
+                throw new \RuntimeException('Venda já cancelada');
+            }
+            foreach ($itens as $item) {
+                $this->produtos->ajustarQuantidade((int) $item['id_produto'], (float) $item['quantidade']);
+                $this->movimentacoes->create(
+                    $user['id_loja'],
+                    $user['id_filial'],
+                    (int) $item['id_produto'],
+                    $user['id_usuario'],
+                    $idVenda,
+                    'entrada',
+                    (string) $item['quantidade'],
+                    'cancelamento_venda'
+                );
+            }
+            $pdo->commit();
+        } catch (\RuntimeException $e) {
+            // Outro terminal cancelou a mesma venda no meio do caminho.
+            $pdo->rollBack();
+            Response::json(['erro' => 'Esta venda já foi cancelada'], 409);
+            return;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            Response::json(['erro' => 'Não foi possível cancelar a venda'], 500);
+            return;
+        }
+
+        $venda = $this->vendas->findInFilial($idVenda, $user['id_filial']);
+        $venda['itens'] = $this->vendas->listItensByVenda($idVenda);
+        $venda['pagamentos'] = $this->vendas->listPagamentosByVenda($idVenda);
+        Response::json(['venda' => $venda]);
+    }
+
+    /** @return array<string,mixed>|null */
+    private function autorizadorAtivo(int $idLoja, int $idUsuario): ?array
+    {
+        foreach ((new UsuarioRepository())->listAutorizadoresDaLoja($idLoja) as $candidato) {
+            if ((int) $candidato['id_usuario'] === $idUsuario) {
+                return $candidato;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * O gerente de outra filial não autoriza cancelamento nesta: mesmo
+     * critério de acesso a filial do resto do sistema (o Administrador
+     * acessa todas).
+     *
+     * @param array<string,mixed> $autorizador
+     * @param array<string,mixed> $user
+     */
+    private function autorizadorAcessaFilial(array $autorizador, array $user): bool
+    {
+        $permissoes = $autorizador['id_cargo'] !== null
+            ? (new CargoRepository())->permissoesDoCargo((int) $autorizador['id_cargo'])
+            : [];
+        return (new FilialRepository())->podeAcessar(
+            (int) $autorizador['id_usuario'],
+            $user['id_loja'],
+            CargoRepository::nivelEquivalente($permissoes) === 'administrador',
+            $user['id_filial']
+        );
     }
 }
