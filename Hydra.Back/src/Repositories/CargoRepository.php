@@ -167,23 +167,7 @@ final class CargoRepository
      */
     public function ensureDefaults(int $idLoja): void
     {
-        // Catálogo e remapeamento são globais (não por loja): rodam uma vez
-        // por banco. O nome leva um hash das listas, então qualquer mudança
-        // no catálogo ou nas aposentadas dispara a migração de novo sozinha.
-        $versao = md5(serialize([self::CATALOGO, self::PERMISSOES_APOSENTADAS, self::MIGRACAO_PERMISSOES]));
-        Migracoes::garantir('catalogo_permissoes_' . substr($versao, 0, 12), function (): void {
-            $this->garantirCatalogo();
-
-            if ($this->temPermissoesAposentadas()) {
-                // Ordem crítica: copiar antes de apagar. Invertido, o DELETE
-                // levaria o acesso antigo embora antes de haver de onde copiá-lo,
-                // e todo cargo de toda loja ficaria sem permissão alguma — sem
-                // nenhum caminho de volta pela interface.
-                $this->remapearPermissoesDosCargos();
-                $this->removerPermissoesAposentadas();
-                $this->resincronizarPerfilDeTodosOsCargos();
-            }
-        });
+        $this->garantirCatalogoGlobal();
 
         $stmt = db()->prepare('SELECT COUNT(*) FROM cargos WHERE id_loja = :id_loja');
         $stmt->execute(['id_loja' => $idLoja]);
@@ -198,11 +182,38 @@ final class CargoRepository
                     null,
                     true
                 );
-                $this->sincronizarPermissoes($idCargo, $codigos);
+                $this->sincronizarPermissoes($idCargo, $codigos, true);
             }
         }
 
         $this->backfillUsuariosSemCargo($idLoja);
+    }
+
+    /**
+     * Catálogo e remapeamento são globais (não por loja): rodam uma vez
+     * por banco. O nome leva um hash das listas, então qualquer mudança
+     * no catálogo ou nas aposentadas dispara a migração de novo sozinha.
+     *
+     * Público para o cadastro chamar ANTES de abrir a sua transação: dentro
+     * dela Migracoes::garantir não consegue registrar a migração e a
+     * repetiria em todo cadastro.
+     */
+    public function garantirCatalogoGlobal(): void
+    {
+        $versao = md5(serialize([self::CATALOGO, self::PERMISSOES_APOSENTADAS, self::MIGRACAO_PERMISSOES]));
+        Migracoes::garantir('catalogo_permissoes_' . substr($versao, 0, 12), function (): void {
+            $this->garantirCatalogo();
+
+            if ($this->temPermissoesAposentadas()) {
+                // Ordem crítica: copiar antes de apagar. Invertido, o DELETE
+                // levaria o acesso antigo embora antes de haver de onde copiá-lo,
+                // e todo cargo de toda loja ficaria sem permissão alguma — sem
+                // nenhum caminho de volta pela interface.
+                $this->remapearPermissoesDosCargos();
+                $this->removerPermissoesAposentadas();
+                $this->resincronizarPerfilDeTodosOsCargos();
+            }
+        });
     }
 
     /**
@@ -371,6 +382,17 @@ final class CargoRepository
     }
 
     /** @return array<int,array<string,mixed>> cada cargo com "permissoes" (códigos) e "qtd_usuarios" */
+    /** Id de um cargo de sistema da loja pelo nome, numa consulta só. */
+    public function idCargoSistema(int $idLoja, string $nome): ?int
+    {
+        $stmt = db()->prepare(
+            'SELECT id_cargo FROM cargos WHERE id_loja = :id_loja AND nome = :nome AND cargo_sistema = 1 LIMIT 1'
+        );
+        $stmt->execute(['id_loja' => $idLoja, 'nome' => $nome]);
+        $id = $stmt->fetchColumn();
+        return $id === false ? null : (int) $id;
+    }
+
     public function listByLoja(int $idLoja): array
     {
         $stmt = db()->prepare(
@@ -469,7 +491,7 @@ final class CargoRepository
     public function create(int $idLoja, string $nome, ?string $descricao, string $cor, array $codigos): int
     {
         $idCargo = $this->inserirCargo($idLoja, $nome, $cor, $descricao, false);
-        $this->sincronizarPermissoes($idCargo, $codigos);
+        $this->sincronizarPermissoes($idCargo, $codigos, true);
         return $idCargo;
     }
 
@@ -556,25 +578,28 @@ final class CargoRepository
         return (int) db()->lastInsertId();
     }
 
-    /** @param string[] $codigos */
-    private function sincronizarPermissoes(int $idCargo, array $codigos): void
+    /**
+     * @param string[] $codigos
+     * @param bool $cargoNovo cargo acabou de ser inserido: não há o que apagar.
+     */
+    private function sincronizarPermissoes(int $idCargo, array $codigos, bool $cargoNovo = false): void
     {
         $pdo = db();
-        $pdo->prepare('DELETE FROM cargo_permissoes WHERE id_cargo = :id_cargo')
-            ->execute(['id_cargo' => $idCargo]);
+        if (!$cargoNovo) {
+            $pdo->prepare('DELETE FROM cargo_permissoes WHERE id_cargo = :id_cargo')
+                ->execute(['id_cargo' => $idCargo]);
+        }
 
         if ($codigos === []) {
             return;
         }
 
+        // Uma consulta só, em vez de um SELECT e um INSERT por permissão:
+        // com o banco remoto do Render, cada ida e volta pesa.
         $placeholders = implode(',', array_fill(0, count($codigos), '?'));
-        $stmt = $pdo->prepare("SELECT id_permissao, codigo FROM permissoes WHERE codigo IN ($placeholders)");
-        $stmt->execute(array_values($codigos));
-        $validos = $stmt->fetchAll();
-
-        $insert = $pdo->prepare('INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao) VALUES (:id_cargo, :id_permissao)');
-        foreach ($validos as $permissao) {
-            $insert->execute(['id_cargo' => $idCargo, 'id_permissao' => $permissao['id_permissao']]);
-        }
+        $pdo->prepare(
+            "INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
+             SELECT ?, id_permissao FROM permissoes WHERE codigo IN ($placeholders)"
+        )->execute(array_merge([$idCargo], array_values($codigos)));
     }
 }

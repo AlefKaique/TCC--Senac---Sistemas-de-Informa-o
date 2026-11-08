@@ -76,6 +76,10 @@ final class AuthController
             return;
         }
 
+        // Fora da transação: dentro dela a migração do catálogo não pode ser
+        // registrada (DDL faz commit implícito) e rodaria em todo cadastro.
+        $this->cargos->garantirCatalogoGlobal();
+
         $pdo = db();
         $pdo->beginTransaction();
         try {
@@ -87,13 +91,9 @@ final class AuthController
             // de Caixa, Estoquista) antes do primeiro usuário, para já
             // vinculá-lo ao cargo Administrador.
             $this->cargos->ensureDefaults($idLoja);
-            $idCargoAdmin = null;
-            foreach ($this->cargos->listByLoja($idLoja) as $cargo) {
-                if ($cargo['nome'] === 'Administrador') {
-                    $idCargoAdmin = (int) $cargo['id_cargo'];
-                    break;
-                }
-            }
+            // Busca direta: listByLoja() traria também as permissões e a
+            // contagem de usuários de cada cargo, 7 consultas sem uso aqui.
+            $idCargoAdmin = $this->cargos->idCargoSistema($idLoja, 'Administrador');
             $idUsuario = $this->usuarios->create(
                 $idLoja,
                 $nome,
@@ -619,21 +619,26 @@ final class AuthController
         $expiraEm = (new \DateTimeImmutable('+' . self::MINUTOS_CODIGO . ' minutes'))->format('Y-m-d H:i:s');
         $this->usuarios->setCodigoAcesso((int) $usuario['id_usuario'], $codigo, $expiraEm);
 
-        $enviado = Mailer::send(
-            (string) $usuario['email'],
-            $assunto,
-            $this->emailCodigoHtml(
-                (string) $usuario['nome'],
-                $codigo,
-                $titulo,
-                $texto . ' Ele expira em ' . self::MINUTOS_CODIGO . ' minutos.',
-                'Se não foi você, ignore este e-mail e considere trocar sua senha.'
-            )
+        $destino = (string) $usuario['email'];
+        $html = $this->emailCodigoHtml(
+            (string) $usuario['nome'],
+            $codigo,
+            $titulo,
+            $texto . ' Ele expira em ' . self::MINUTOS_CODIGO . ' minutos.',
+            'Se não foi você, ignore este e-mail e considere trocar sua senha.'
         );
 
-        if (!$enviado && Env::get('APP_ENV', 'production') === 'local') {
-            return ['codigo_dev' => $codigo];
+        // Em desenvolvimento a resposta depende do resultado do envio
+        // (codigo_dev), então ele continua síncrono.
+        if (Env::get('APP_ENV', 'production') === 'local') {
+            return Mailer::send($destino, $assunto, $html) ? [] : ['codigo_dev' => $codigo];
         }
+
+        // Em produção a resposta é a mesma com ou sem sucesso no envio: o
+        // e-mail sai DEPOIS que a tela recebe a resposta, em vez de a tela
+        // esperar a chamada ao Brevo (era a maior parte da demora do
+        // cadastro e do login do administrador).
+        Response::depoisDaResposta(static fn () => Mailer::send($destino, $assunto, $html));
         return [];
     }
 
