@@ -11,6 +11,7 @@ use Hydra\Support\PasswordPolicy;
 use Hydra\Support\SenhaAutorizacao;
 use Hydra\Support\Request;
 use Hydra\Support\Response;
+use Hydra\Support\Validacao;
 
 /**
  * Tela "Gerenciar Usuários" (Equipe) — restrita a quem tem a permissão
@@ -114,8 +115,13 @@ final class UsuarioController
         $senha = (string) ($dados['senha'] ?? '');
         $idCargo = (int) ($dados['id_cargo'] ?? 0);
 
-        if ($nome === '' || $email === '') {
-            Response::json(['erro' => 'Preencha nome e e-mail'], 422);
+        $erroNome = Validacao::erroNomePessoa($nome);
+        if ($erroNome !== null) {
+            Response::json(['erro' => $erroNome, 'campo' => 'nome'], 422);
+            return;
+        }
+        if ($email === '') {
+            Response::json(['erro' => 'Informe o e-mail.', 'campo' => 'email'], 422);
             return;
         }
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -200,8 +206,13 @@ final class UsuarioController
         $idCargo = (int) ($dados['id_cargo'] ?? 0);
         $status = (string) ($dados['status'] ?? '');
 
-        if ($nome === '' || $email === '') {
-            Response::json(['erro' => 'Preencha nome e e-mail'], 422);
+        $erroNome = Validacao::erroNomePessoa($nome);
+        if ($erroNome !== null) {
+            Response::json(['erro' => $erroNome, 'campo' => 'nome'], 422);
+            return;
+        }
+        if ($email === '') {
+            Response::json(['erro' => 'Informe o e-mail.', 'campo' => 'email'], 422);
             return;
         }
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {

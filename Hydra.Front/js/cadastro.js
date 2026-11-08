@@ -39,33 +39,68 @@ document.addEventListener('DOMContentLoaded', () => {
     window.HydraPasswordRules.ligarToggleSenha(confirmarSenha, document.getElementById('confirmar-senha-toggle'));
   }
 
-  [senha, confirmarSenha].forEach(input => {
-    input.addEventListener('input', () => clearError(input));
+  const nomeInput = document.getElementById('nome');
+  const emailInput = document.getElementById('email');
+  const nomeLojaInput = document.getElementById('nome-loja');
+
+  [senha, confirmarSenha, nomeInput, emailInput, nomeLojaInput].forEach(input => {
+    if (input) input.addEventListener('input', () => clearError(input));
   });
+
+  /* Mesma regra de Hydra\Support\Validacao::erroNomePessoa() no back-end:
+     ao menos duas letras e só letras, espaços, apóstrofo, hífen e ponto
+     (aceita "D'Ávila" e "Maria-Clara", recusa "122323" — QA 003). */
+  function erroNomePessoa(nome) {
+    if (!nome) return 'Informe seu nome.';
+    if (nome.length > 100) return 'O nome pode ter no máximo 100 caracteres.';
+    if (!/^[\p{L}\p{M}\s'’.-]+$/u.test(nome)) return 'O nome deve conter apenas letras, espaços, apóstrofo e hífen.';
+    if ((nome.match(/\p{L}/gu) || []).length < 2) return 'Informe um nome com pelo menos duas letras.';
+    return null;
+  }
+
+  /* Campo que o back-end aponta em "campo" -> input da tela. */
+  const CAMPOS_API = { nome: nomeInput, email: emailInput, nome_loja: nomeLojaInput, senha };
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     let valid = true;
+    let primeiroInvalido = null;
+    // Limpa os erros da tentativa anterior (inclusive o do botão).
+    form.querySelectorAll('.field__error').forEach((el) => el.remove());
+    form.querySelectorAll('input').forEach((el) => { el.style.borderColor = ''; });
+    const marcar = (input, msg) => {
+      setError(input, msg);
+      valid = false;
+      if (!primeiroInvalido) primeiroInvalido = input;
+    };
+
+    /* Validação junto de cada campo, no lugar do alerta nativo do
+       navegador que só dizia "Preencha nome, e-mail e nome da loja" (QA 002). */
+    const erroNome = erroNomePessoa(nomeInput.value.trim());
+    if (erroNome) marcar(nomeInput, erroNome);
+    const email = emailInput.value.trim();
+    if (!email) marcar(emailInput, 'Informe seu e-mail.');
+    else if (!emailInput.checkValidity()) marcar(emailInput, 'Informe um e-mail válido.');
+    if (!nomeLojaInput.value.trim()) marcar(nomeLojaInput, 'Informe o nome da loja.');
 
     const erroSenha = window.HydraPasswordRules
       ? window.HydraPasswordRules.primeiraRegraFalha(senha.value)
       : null;
-    if (erroSenha) {
-      setError(senha, erroSenha);
-      valid = false;
+    if (erroSenha) marcar(senha, erroSenha);
+
+    if (confirmarSenha.value !== senha.value) marcar(confirmarSenha, 'As senhas não coincidem.');
+
+    if (!valid) {
+      primeiroInvalido.focus();
+      return;
     }
 
-    if (confirmarSenha.value !== senha.value){
-      setError(confirmarSenha, 'As senhas não coincidem.');
-      valid = false;
-    }
-
+    // O que sobrar do HTML (ex.: aceite dos Termos) continua com a
+    // validação nativa do navegador, que já aparece junto do campo.
     if (!form.checkValidity()){
       form.reportValidity();
       return;
     }
-
-    if (!valid) return;
 
     const btn = form.querySelector('.btn--block');
     const originalText = btn.textContent;
@@ -89,10 +124,14 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       btn.disabled = false;
       btn.textContent = originalText;
-      if (err.status === 409) {
-        setError(document.getElementById('email'), err.data.erro);
+      const campo = err.status === 409 ? emailInput : CAMPOS_API[err.data && err.data.campo];
+      if (campo) {
+        setError(campo, err.message);
+        campo.focus();
       } else {
-        alert(err.message);
+        // Erro sem campo (servidor fora do ar, falha de rede): mensagem
+        // junto do botão, sem alerta bloqueante.
+        setError(btn, err.message);
       }
     }
   });

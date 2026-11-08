@@ -48,9 +48,33 @@ final class Auth
         }
     }
 
+    /**
+     * Grava e solta o lock do arquivo de sessão.
+     *
+     * O PHP mantém a sessão travada do session_start() até o fim do script.
+     * Como toda tela dispara várias chamadas ao mesmo tempo (/auth/me,
+     * /filiais/minhas, /produtos, /vendas...), o lock fazia o servidor
+     * atendê-las UMA DE CADA VEZ — a principal causa da lentidão. Depois
+     * daqui $_SESSION continua legível; para gravar de novo, chame
+     * reabrirSessao() antes.
+     */
+    public static function liberarSessao(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+    }
+
+    /** Reabre a sessão liberada por liberarSessao(), para poder gravar nela. */
+    public static function reabrirSessao(): void
+    {
+        self::start();
+    }
+
     /** @param array<string,mixed> $usuario */
     public static function login(array $usuario): void
     {
+        self::reabrirSessao();
         // Troca o identificador de sessão ao autenticar. Sem isso, um
         // PHPSESSID que o atacante tenha conseguido fixar no navegador da
         // vítima continuaria valendo depois do login dela (session fixation).
@@ -74,6 +98,7 @@ final class Auth
 
     public static function logout(): void
     {
+        self::reabrirSessao();
         $_SESSION = [];
         session_destroy();
     }
@@ -115,7 +140,9 @@ final class Auth
     /** Grava a filial ativa na sessão. Quem chama já validou o acesso. */
     public static function definirFilial(int $idFilial): void
     {
+        self::reabrirSessao();
         $_SESSION['id_filial'] = $idFilial;
+        self::liberarSessao();
     }
 
     /**
@@ -145,7 +172,9 @@ final class Auth
             (int) $idFilial
         );
         if (!$temAcesso) {
+            self::reabrirSessao();
             unset($_SESSION['id_filial']);
+            self::liberarSessao();
             Response::json([
                 'erro' => 'Você não tem mais acesso a esta filial, ou ela foi desativada. Escolha outra filial.',
                 'codigo' => 'filial_nao_selecionada',
@@ -206,6 +235,10 @@ final class Auth
         $_SESSION['permissoes'] = $_SESSION['id_cargo'] !== null
             ? (new CargoRepository())->permissoesDoCargo($_SESSION['id_cargo'])
             : [];
+
+        // Daqui em diante a requisição só LÊ a sessão: solta o lock para as
+        // outras chamadas da mesma tela rodarem em paralelo.
+        self::liberarSessao();
 
         return self::user();
     }

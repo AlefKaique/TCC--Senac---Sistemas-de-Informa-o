@@ -149,6 +149,10 @@
     const ATTENTION_MARGIN = 1.2;
 
     function getStatus(product) {
+        // RN03: produto com vendas é inativado em vez de excluído. Ele segue
+        // na lista (o histórico continua apontando para ele), mas não pode
+        // aparecer como "Em estoque": não está à venda.
+        if (product.status === 'inativo') return 'Inativo';
         const { quantity, minStock } = product;
         // Prateleira vazia tem nome próprio: antes caía em "Crítico" junto
         // com o que ainda tem alguma unidade, e o estoquista não distinguia
@@ -168,6 +172,7 @@
         if (status === 'Esgotado' || status === 'Crítico') return 'hydro-badge-critical';
         if (status === 'Baixo') return 'hydro-badge-low';
         if (status === 'Atenção') return 'hydro-badge-attention';
+        if (status === 'Inativo') return 'hydro-badge-neutral';
         return 'hydro-badge-ok';
     }
 
@@ -255,22 +260,26 @@
             const matchesSearch = !state.search || p.name.toLowerCase().includes(state.search);
             const matchesCategory = !state.category || p.category === state.category;
             const matchesStatus = !state.status || status === state.status;
-            const matchesValidade = !state.validade || getExpiryStatus(p) === state.validade;
+            // "Não vence" = produto sem data de validade (QA 010).
+            const statusValidade = getExpiryStatus(p) || 'Não vence';
+            const matchesValidade = !state.validade || statusValidade === state.validade;
             return matchesSearch && matchesCategory && matchesStatus && matchesValidade;
         });
     }
 
     /* ================= Rendering: stats ================= */
     function renderStats() {
-        const totalItens = products.reduce((sum, p) => sum + p.quantity, 0);
-        const valorEstoque = products.reduce((sum, p) => sum + p.quantity * p.price, 0);
+        // Inativos não contam: não estão à venda nem precisam de reposição.
+        const ativos = products.filter((p) => p.status !== 'inativo');
+        const totalItens = ativos.reduce((sum, p) => sum + p.quantity, 0);
+        const valorEstoque = ativos.reduce((sum, p) => sum + p.quantity * p.price, 0);
         // Conta apenas quem esta de fato abaixo do minimo. "Atencao" fica
         // de fora: o produto ainda tem saldo acima do minimo, so esta perto.
-        const baixoCount = products.filter((p) => {
+        const baixoCount = ativos.filter((p) => {
             const status = getStatus(p);
             return status === 'Baixo' || status === 'Crítico';
         }).length;
-        const vencendoCount = products.filter((p) => {
+        const vencendoCount = ativos.filter((p) => {
             const status = getExpiryStatus(p);
             return status === 'Vencido' || status === 'Vence em breve';
         }).length;
@@ -565,7 +574,8 @@
             const quantity = quantityInput
                 ? Math.max(0, Number(quantityInput.value) || 0)
                 : p.quantity;
-            const minStock = Math.max(0, Number(document.getElementById('hydroEditMin').value) || 0);
+            const minStockRaw = document.getElementById('hydroEditMin').value.trim();
+            const minStock = Math.max(0, Number(minStockRaw) || 0);
             const validade = document.getElementById('hydroEditValidade').value || null;
             // Só existem no formulário para quem tem produtos.editar_preco (RN04).
             const costPriceInput = document.getElementById('hydroEditCostPrice');
@@ -584,6 +594,12 @@
                 showToast('Informe a categoria do produto');
                 return;
             }
+            // RN02: apagar o campo não pode virar 0 em silêncio.
+            if (minStockRaw === '' || Number(minStockRaw) < 0) {
+                limparErrosDeCampo();
+                marcarErroDeCampo('estoque_minimo', 'Informe o estoque mínimo (use 0 se não precisar de alerta)');
+                return;
+            }
             if (salePriceInput && salePrice <= 0) {
                 showToast('Informe um preço de venda válido');
                 return;
@@ -599,38 +615,41 @@
                 const saveBtn = document.getElementById('hydroModalSaveBtn');
                 saveBtn.disabled = true;
                 try {
-                    // A quantidade só muda de fato via movimentação de estoque
-                    // (RF12/RN11), para manter o histórico consolidado (RF10).
+                    /* Uma chamada só. O back-end grava os campos e, se a
+                       quantidade mudou, a movimentação de ajuste (RF12) na
+                       MESMA transação. Antes eram duas chamadas: a
+                       movimentação passava, o PUT falhava, e o estoque mudava
+                       apesar da mensagem de erro (QA 009). */
                     const delta = Math.round((quantity - p.quantity) * 1000) / 1000;
-                    if (delta !== 0) {
-                        await window.hydraApi('/estoque/movimentacoes', {
-                            method: 'POST',
-                            body: { id_produto: p.id, tipo: delta > 0 ? 'entrada' : 'saida', quantidade: Math.abs(delta) },
-                        });
-                    }
+                    const body = {
+                        nome: name,
+                        descricao: desc,
+                        categoria: category,
+                        preco_custo: costPrice || null,
+                        preco_venda: salePrice,
+                        estoque_minimo: minStock,
+                        unidade: p.unit,
+                        // O modal de edicao ainda nao expoe o lote; reenviar o
+                        // valor atual evita que o PUT o apague (o backend trata
+                        // campo ausente como vazio).
+                        lote: p.lote,
+                        validade,
+                        status: p.status || 'ativo',
+                    };
+                    // Sem mudança, nem envia: quem não tem estoque.lancar
+                    // continua podendo editar o resto.
+                    if (delta !== 0) body.quantidade = quantity;
+                    limparErrosDeCampo();
                     const { produto } = await window.hydraApi(`/produtos/${p.id}`, {
                         method: 'PUT',
-                        body: {
-                            nome: name,
-                            descricao: desc,
-                            categoria: category,
-                            preco_custo: costPrice || null,
-                            preco_venda: salePrice,
-                            estoque_minimo: minStock,
-                            unidade: p.unit,
-                            // O modal de edicao ainda nao expoe o lote; reenviar o
-                            // valor atual evita que o PUT o apague (o backend trata
-                            // campo ausente como vazio).
-                            lote: p.lote,
-                            validade,
-                            status: p.status || 'ativo',
-                        },
+                        body,
                     });
                     Object.assign(p, mapApiProduct(produto));
                     closeModal();
                     refreshAll();
                     showToast('Produto atualizado com sucesso');
                 } catch (err) {
+                    marcarErroDeCampo(err.data && err.data.campo, err.message);
                     showToast(err.message);
                     saveBtn.disabled = false;
                 }
@@ -722,7 +741,10 @@
             if (usingRealApi) {
                 try {
                     const { inativado } = await window.hydraApi(`/produtos/${p.id}`, { method: 'DELETE' });
-                    products = products.filter((x) => x.id !== p.id);
+                    // Inativado continua na lista, com a etiqueta "Inativo",
+                    // igual ao que a tela mostra depois de recarregar.
+                    if (inativado) p.status = 'inativo';
+                    else products = products.filter((x) => x.id !== p.id);
                     closeModal();
                     refreshAll();
                     showToast(inativado ? `"${p.name}" já tinha vendas registradas e foi inativado` : `"${p.name}" removido`);
@@ -744,6 +766,7 @@
     function openMovementModal(type) {
         const isEntrada = type === 'entrada';
         const options = products
+            .filter((p) => p.status !== 'inativo')
             .map((p) => `<option value="${p.id}">${escapeHtml(p.name)} (${p.quantity} un.)</option>`)
             .join('');
 
@@ -878,6 +901,42 @@
         });
     });
 
+    /* ================= Erro no campo do formulário de edição =================
+       O back-end devolve "campo" junto do erro de validação; aqui o input
+       correspondente ganha destaque e a mensagem aparece logo abaixo dele,
+       em vez de só um toast genérico sem dizer onde está o problema (QA 008). */
+    const CAMPO_PARA_INPUT = {
+        nome: 'hydroEditName',
+        categoria: 'hydroEditCategory',
+        preco_venda: 'hydroEditSalePrice',
+        quantidade: 'hydroEditQuantity',
+        estoque_minimo: 'hydroEditMin',
+        validade: 'hydroEditValidade',
+    };
+
+    function limparErrosDeCampo() {
+        document.querySelectorAll('.hydro-field-error').forEach((el) => el.remove());
+        document.querySelectorAll('[aria-invalid="true"]').forEach((el) => {
+            el.removeAttribute('aria-invalid');
+            el.style.borderColor = '';
+        });
+    }
+
+    function marcarErroDeCampo(campo, mensagem) {
+        const input = campo && document.getElementById(CAMPO_PARA_INPUT[campo]);
+        if (!input) return;
+        input.setAttribute('aria-invalid', 'true');
+        input.style.borderColor = '#d93636';
+        const msg = document.createElement('small');
+        msg.className = 'hydro-field-error';
+        msg.id = input.id + 'Erro';
+        msg.style.cssText = 'display:block;color:#d93636;margin-top:4px;font-size:12px;';
+        msg.textContent = mensagem;
+        input.setAttribute('aria-describedby', msg.id);
+        input.insertAdjacentElement('afterend', msg);
+        input.focus();
+    }
+
     /* ================= Guarda de sessão + carga de produtos =================
        Visitantes não autenticados (demo pública) continuam vendo a tela com o
        catálogo de demonstração local (RF02: produtos reais exigem login). */
@@ -888,9 +947,16 @@
             return;
         }
 
+        /* Produtos saem junto com a sessão, e não depois dela: as duas
+           chamadas rodam em paralelo. O catch vazio só evita o aviso de
+           Promise rejeitada sem tratamento quando o visitante não chega a
+           esperá-la; o erro real é tratado no await mais abaixo. */
+        const produtosPromise = window.hydraApi('/produtos');
+        produtosPromise.catch(() => {});
+
         let usuario;
         try {
-            ({ usuario } = await window.hydraApi('/auth/me'));
+            ({ usuario } = await window.hydraSessao());
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
             products = seedProducts();
@@ -907,7 +973,7 @@
         aplicarBotoesPorPermissao();
 
         try {
-            const { produtos } = await window.hydraApi('/produtos');
+            const { produtos } = await produtosPromise;
             products = produtos.map(mapApiProduct);
             usingRealApi = true;
         } catch (err) {

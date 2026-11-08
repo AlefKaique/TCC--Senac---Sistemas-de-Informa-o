@@ -67,7 +67,7 @@ final class ProdutoController
 
         $validado = $this->validar($dados);
         if ($validado['erro'] !== null) {
-            Response::json(['erro' => $validado['erro']], 422);
+            Response::json(['erro' => $validado['erro'], 'campo' => $validado['campo'] ?? null], 422);
             return;
         }
         $campos = $validado['campos'];
@@ -100,9 +100,12 @@ final class ProdutoController
 
     /**
      * PUT /api/produtos/{id}
-     * A quantidade em estoque não é alterada por aqui — mudanças de
-     * saldo passam pelo endpoint de movimentações (RF03/RF12), para
-     * que toda variação fique registrada no histórico (RF10).
+     * Se "quantidade" vier diferente do saldo atual, a diferença vira uma
+     * movimentação de ajuste manual (RF12/RN11), gravada NA MESMA transação
+     * que os demais campos — exige "estoque.lancar", como o endpoint de
+     * movimentações. Antes a tela fazia duas chamadas: a movimentação
+     * passava, o PUT falhava, e o saldo mudava apesar da mensagem de erro
+     * (QA 009). Sem "quantidade" no corpo, o saldo não é tocado.
      */
     public function update(int $id): void
     {
@@ -116,7 +119,7 @@ final class ProdutoController
         $dados = Request::json();
         $validado = $this->validar($dados, $produto);
         if ($validado['erro'] !== null) {
-            Response::json(['erro' => $validado['erro']], 422);
+            Response::json(['erro' => $validado['erro'], 'campo' => $validado['campo'] ?? null], 422);
             return;
         }
         $campos = $validado['campos'];
@@ -141,7 +144,50 @@ final class ProdutoController
             return;
         }
 
-        $this->produtos->update($id, $campos);
+        $delta = round($campos['quantidade'] - (float) $produto['quantidade'], 3);
+        if ($delta != 0.0 && !Auth::can('estoque.lancar')) {
+            Response::json([
+                'erro' => 'Seu cargo não tem permissão para alterar a quantidade em estoque',
+                'campo' => 'quantidade',
+            ], 403);
+            return;
+        }
+
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $this->produtos->update($id, $campos);
+            if ($delta > 0) {
+                $this->produtos->ajustarQuantidade($id, $delta);
+            } elseif ($delta < 0 && !$this->produtos->baixarQuantidadeSeHouver($id, -$delta)) {
+                // O saldo mudou entre abrir o formulário e salvar (venda no caixa).
+                $pdo->rollBack();
+                Response::json([
+                    'erro' => 'O estoque deste produto mudou enquanto você editava. Reabra o produto e tente de novo.',
+                    'campo' => 'quantidade',
+                ], 409);
+                return;
+            }
+            if ($delta != 0.0) {
+                $this->movimentacoes->create(
+                    $user['id_loja'],
+                    $user['id_filial'],
+                    $id,
+                    $user['id_usuario'],
+                    null,
+                    $delta > 0 ? 'entrada' : 'saida',
+                    (string) abs($delta),
+                    'ajuste_manual'
+                );
+            }
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            error_log('[Hydra] Falha ao atualizar produto ' . $id . ': ' . $e->getMessage());
+            Response::json(['erro' => 'Não foi possível salvar o produto. Nada foi alterado.'], 500);
+            return;
+        }
+
         Response::json(['produto' => $this->produtos->findInFilial($id, $user['id_filial'])]);
     }
 
@@ -210,24 +256,40 @@ final class ProdutoController
         $precoCusto = $dados['preco_custo'] ?? null;
         $precoVenda = $dados['preco_venda'] ?? null;
         $quantidade = $dados['quantidade'] ?? null;
-        $estoqueMinimo = $dados['estoque_minimo'] ?? 0;
+        $estoqueMinimo = $dados['estoque_minimo'] ?? null;
 
         if ($nome === '' || $categoria === '') {
-            return ['erro' => 'Preencha o nome e a categoria do produto', 'campos' => []];
+            return ['erro' => $nome === '' ? 'Informe o nome do produto' : 'Informe a categoria do produto', 'campo' => $nome === '' ? 'nome' : 'categoria', 'campos' => []];
         }
         // A coluna é VARCHAR(60): sem este corte o MySQL truncaria em
         // silêncio (ou estouraria, virando um 500 opaco no catch genérico).
         if (mb_strlen($categoria) > 60) {
-            return ['erro' => 'Categoria muito longa (máximo 60 caracteres)', 'campos' => []];
+            return ['erro' => 'Categoria muito longa (máximo 60 caracteres)', 'campo' => 'categoria', 'campos' => []];
         }
         if (!is_numeric($precoVenda) || (float) $precoVenda <= 0) {
-            return ['erro' => 'Informe um preço de venda válido', 'campos' => []];
+            return ['erro' => 'Preço de venda: informe um valor maior que zero', 'campo' => 'preco_venda', 'campos' => []];
+        }
+        // Na edição a quantidade é opcional: ausente, vale o saldo atual. O
+        // PUT não enviava este campo e esta regra o exigia, então TODA edição
+        // de produto falhava com "quantidade inválida" (QA 008) — depois de a
+        // tela já ter gravado a movimentação de estoque (QA 009).
+        if (($quantidade === null || $quantidade === '') && $produtoAtual !== null) {
+            $quantidade = $produtoAtual['quantidade'];
         }
         if (!is_numeric($quantidade) || (float) $quantidade < 0) {
-            return ['erro' => 'Informe uma quantidade em estoque válida', 'campos' => []];
+            return ['erro' => 'Quantidade: informe um número igual ou maior que zero', 'campo' => 'quantidade', 'campos' => []];
         }
-        if ($estoqueMinimo !== null && $estoqueMinimo !== '' && (!is_numeric($estoqueMinimo) || (float) $estoqueMinimo < 0)) {
-            return ['erro' => 'Estoque mínimo inválido', 'campos' => []];
+        // RN02: o estoque mínimo é obrigatório no cadastro. Antes, ausente
+        // virava 0 sem aviso, e o produto nunca entrava nos alertas de
+        // reposição. Na edição, ausente mantém o valor atual.
+        if ($estoqueMinimo === null || $estoqueMinimo === '') {
+            if ($produtoAtual === null) {
+                return ['erro' => 'Estoque mínimo: informe a quantidade mínima (use 0 se o produto não precisa de alerta)', 'campo' => 'estoque_minimo', 'campos' => []];
+            }
+            $estoqueMinimo = $produtoAtual['estoque_minimo'];
+        }
+        if (!is_numeric($estoqueMinimo) || (float) $estoqueMinimo < 0) {
+            return ['erro' => 'Estoque mínimo: informe um número igual ou maior que zero', 'campo' => 'estoque_minimo', 'campos' => []];
         }
         if ($validade !== '') {
             // O "!" zera as horas (comparação puramente de data) e o
@@ -235,7 +297,7 @@ final class ProdutoController
             // que aceitaria "2026-02-31" rolando a data para março.
             $dataValidade = \DateTimeImmutable::createFromFormat('!Y-m-d', $validade);
             if ($dataValidade === false || $dataValidade->format('Y-m-d') !== $validade) {
-                return ['erro' => 'Data de validade inválida', 'campos' => []];
+                return ['erro' => 'Data de validade inválida', 'campo' => 'validade', 'campos' => []];
             }
             // Não se cadastra produto já vencido. Na edição a regra só vale
             // quando a data mudou: um produto que venceu na prateleira
@@ -246,6 +308,7 @@ final class ProdutoController
             if ($validadeMudou && $dataValidade < new \DateTimeImmutable('today')) {
                 return [
                     'erro' => 'A data de validade informada já passou — não é possível cadastrar um produto vencido',
+                    'campo' => 'validade',
                     'campos' => [],
                 ];
             }
@@ -253,6 +316,7 @@ final class ProdutoController
 
         return [
             'erro' => null,
+            'campo' => null,
             'campos' => [
                 'nome' => $nome,
                 'descricao' => $descricao !== '' ? $descricao : null,

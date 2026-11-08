@@ -327,7 +327,7 @@
                     usuario: 'Demonstração',
                     items: items,
                     total: Math.round(total * 100) / 100,
-                    payment: ['dinheiro', 'cartao', 'pix'][Math.floor(rand() * 3)],
+                    payment: ['dinheiro', 'credito', 'debito', 'pix'][Math.floor(rand() * 4)],
                     date: saleDate,
                 });
 

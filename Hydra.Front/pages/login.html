@@ -13,6 +13,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/login.css">
+  <link rel="stylesheet" href="../css/password-rules.css">
 </head>
 
 <body class="signup-body">
@@ -47,7 +48,10 @@
 
           <div class="field">
             <label for="senha">Senha</label>
-            <input type="password" id="senha" name="senha" placeholder="Digite sua senha" required>
+            <div class="hydro-pwd-field-wrap">
+              <input type="password" id="senha" name="senha" placeholder="Digite sua senha" required>
+              <button type="button" class="hydro-pwd-toggle" id="senha-toggle"></button>
+            </div>
           </div>
 
           <div class="login__row login__row--end">
@@ -152,6 +156,7 @@
 
   </div>
 
+  <script src="../js/password-rules.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/login.js"></script>
 </body>

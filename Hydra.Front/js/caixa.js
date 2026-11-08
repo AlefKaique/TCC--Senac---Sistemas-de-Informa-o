@@ -20,19 +20,29 @@
 
     const PAYMENT_LABELS = {
         dinheiro: 'Dinheiro',
+        credito: 'Cartão de crédito',
+        debito: 'Cartão de débito',
+        // Só aparece no histórico de demonstração antigo (localStorage),
+        // gravado antes de crédito e débito serem separados.
         cartao: 'Cartão',
         pix: 'PIX',
         vale: 'Vale',
     };
 
-    // A UI só oferece uma forma de pagamento por venda (sem split de
-    // pagamento); o back-end distingue crédito/débito (RN10), então o
-    // botão genérico "Cartão" é enviado como crédito por padrão.
-    const PAYMENT_METHOD_TO_API = { dinheiro: 'dinheiro', cartao: 'cartao_credito', pix: 'pix', vale: 'vale_refeicao' };
+    // Uma forma de pagamento por venda (sem split). Crédito e débito são
+    // botões separados (RF13/RN10). Antes havia um único "Cartão", sempre
+    // enviado como cartao_credito: nenhuma venda em débito era registrada.
+    const PAYMENT_METHOD_TO_API = {
+        dinheiro: 'dinheiro',
+        credito: 'cartao_credito',
+        debito: 'cartao_debito',
+        pix: 'pix',
+        vale: 'vale_refeicao',
+    };
     const PAYMENT_METHOD_FROM_API = {
         dinheiro: 'dinheiro',
-        cartao_credito: 'cartao',
-        cartao_debito: 'cartao',
+        cartao_credito: 'credito',
+        cartao_debito: 'debito',
         pix: 'pix',
         vale_refeicao: 'vale',
     };
@@ -41,6 +51,12 @@
        Vêm da API real quando o usuário está autenticado (RF04); para o
        visitante da demo pública, continuam vindo do HydroStore local. */
     let usingRealApi = false;
+    /* Estado da sessão nesta tela: 'carregando' até /auth/me e os dados
+       responderem, depois 'autenticado' ou 'visitante'. Antes só existia
+       usingRealApi, que é false tanto para o visitante quanto para quem
+       está logado mas a tela ainda carrega — e quem clicava em "Cancelar
+       Venda" logo após recarregar via "funciona apenas com login" (QA 012). */
+    let sessaoEstado = 'carregando';
     let catalog = [];
     let salesHistory = [];
     // Usuário autenticado: o histórico e o cabeçalho do pedido mostram quem
@@ -167,15 +183,28 @@
     }
 
     /* Aceita "10,50", "10.50" ou "1.234,56" (formato brasileiro) */
+    /* Valor monetário em pt-BR: "49", "49,2", "49,22", "1.234,56".
+       Antes as letras eram descartadas em silêncio, e "49,22ddeede" virava
+       49,22 e finalizava a venda (QA 013). Agora qualquer caractere fora do
+       formato torna o valor inválido (NaN). */
     function parseMoney(str) {
-        if (str === null || str === undefined || str === '') return NaN;
-        let s = String(str).trim().replace(/[^\d,.-]/g, '');
-        if (s.includes(',') && s.includes('.')) {
-            s = s.replace(/\./g, '').replace(',', '.');
-        } else if (s.includes(',')) {
-            s = s.replace(',', '.');
+        if (str === null || str === undefined) return NaN;
+        const s = String(str).trim();
+        // "49.22": ponto como decimal (teclado numérico), sem vírgula.
+        if (/^\d+\.\d{1,2}$/.test(s)) return parseFloat(s);
+        if (!/^(\d{1,3}(\.\d{3})+|\d+)(,\d{1,2})?$/.test(s)) return NaN;
+        return parseFloat(s.replace(/\./g, '').replace(',', '.'));
+    }
+
+    /* Filtro do campo "Valor recebido": só dígitos, pontos de milhar e uma
+       vírgula decimal com até duas casas. Letras e símbolos nem entram. */
+    function sanitizarDinheiro(valor) {
+        let s = String(valor || '').replace(/[^\d.,]/g, '');
+        const virgula = s.indexOf(',');
+        if (virgula >= 0) {
+            s = s.slice(0, virgula + 1) + s.slice(virgula + 1).replace(/[.,]/g, '').slice(0, 2);
         }
-        return parseFloat(s);
+        return s;
     }
 
     /* ================= Toast ================= */
@@ -502,7 +531,9 @@
         const received = parseMoney(order.cashReceived);
         const hasValue = !isNaN(received);
         const change = hasValue ? received - total : null;
-        const insufficient = hasValue && change < 0;
+        // Vazio não é erro (ainda não digitou); texto fora do formato é.
+        const malformado = !hasValue && String(order.cashReceived || '').trim() !== '';
+        const insufficient = (hasValue && change < 0) || malformado;
 
         cashChangeEl.textContent = money(hasValue ? Math.max(change, 0) : 0);
         cashChangeRowEl.classList.toggle('hydro-cash-change-warning', insufficient);
@@ -510,6 +541,8 @@
     }
 
     cashInputEl.addEventListener('input', () => {
+        const limpo = sanitizarDinheiro(cashInputEl.value);
+        if (limpo !== cashInputEl.value) cashInputEl.value = limpo;
         const order = getActiveOrder();
         order.cashReceived = cashInputEl.value;
         const { total } = computeTotals(order);
@@ -650,7 +683,12 @@
         let change = null;
         if (order.payment === 'dinheiro') {
             cashReceived = parseMoney(order.cashReceived);
-            if (isNaN(cashReceived) || cashReceived < total) {
+            if (isNaN(cashReceived)) {
+                showToast('Valor recebido inválido. Use só números, ex.: 50,00', true);
+                cashInputEl.focus();
+                return;
+            }
+            if (cashReceived < total) {
                 showToast('Informe um valor recebido suficiente para cobrir o total', true);
                 return;
             }
@@ -937,7 +975,11 @@
     let saleToCancel = null;
 
     function openAuthModal() {
-        if (!usingRealApi) {
+        if (sessaoEstado === 'carregando') {
+            showToast('Aguarde: carregando seus dados de acesso...');
+            return;
+        }
+        if (sessaoEstado === 'visitante') {
             showToast('O cancelamento de venda funciona apenas com login no sistema.', true);
             return;
         }
@@ -1154,19 +1196,39 @@
     }
 
     /* ================= Init ================= */
+    /* A aba de cancelamento fica desabilitada enquanto a sessão carrega. */
+    const cancelTabBtn = document.querySelector('.hydro-order-tab[data-view="cancelar"]');
+    function atualizarBotaoCancelar() {
+        if (!cancelTabBtn) return;
+        const carregando = sessaoEstado === 'carregando';
+        cancelTabBtn.disabled = carregando;
+        cancelTabBtn.setAttribute('aria-busy', carregando ? 'true' : 'false');
+        cancelTabBtn.title = carregando ? 'Carregando seus dados de acesso...' : '';
+    }
+    atualizarBotaoCancelar();
+
     (async function init() {
         if (!window.hydraApi) {
+            sessaoEstado = 'visitante';
             carregarDemonstracao();
             finalizarCarga();
             return;
         }
 
+        /* Os dados saem junto com a sessão, e não depois dela: com o lock de
+           sessão liberado no back-end, as três chamadas rodam em paralelo. */
+        const dadosPromise = Promise.allSettled([
+            window.hydraApi('/produtos'),
+            window.hydraApi('/vendas'),
+        ]);
+
         let usuario;
         try {
-            ({ usuario } = await window.hydraApi('/auth/me'));
+            ({ usuario } = await window.hydraSessao());
         } catch (err) {
             // Visitante não autenticado (demo pública): a tela continua
             // navegável com o catálogo local.
+            sessaoEstado = 'visitante';
             carregarDemonstracao();
             finalizarCarga();
             return;
@@ -1187,13 +1249,15 @@
            distintas, então um cargo só de PDV leva 403 em /vendas e um cargo
            só de histórico não deveria perder o catálogo por causa disso.
            Cada parte da tela carrega o que lhe cabe. */
-        const [produtosRes, vendasRes] = await Promise.allSettled([
-            window.hydraApi('/produtos'),
-            window.hydraApi('/vendas'),
-        ]);
+        const [produtosRes, vendasRes] = await dadosPromise;
 
         if (produtosRes.status === 'fulfilled') {
-            catalog = produtosRes.value.produtos.map(mapApiProduct);
+            // Só produtos ativos vão para a vitrine. Um produto inativado
+            // (RN03) aparecia na grade e só era recusado ao finalizar a
+            // venda, com "Produto indisponível para venda".
+            catalog = produtosRes.value.produtos
+                .filter((p) => p.status === 'ativo')
+                .map(mapApiProduct);
         }
         if (vendasRes.status === 'fulfilled') {
             salesHistory = vendasRes.value.vendas.map(mapApiVenda);
@@ -1207,10 +1271,12 @@
             proximoNumero = null;
         }
         usingRealApi = true;
+        sessaoEstado = 'autenticado';
         finalizarCarga();
     })();
 
     function finalizarCarga() {
+        atualizarBotaoCancelar();
         syncOrderNumber();
         renderCatalogFilters();
         renderAll();

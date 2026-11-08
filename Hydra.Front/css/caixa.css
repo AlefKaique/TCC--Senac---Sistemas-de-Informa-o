@@ -1015,6 +1015,12 @@
     gap: 8px;
 }
 
+/* Cinco formas em duas colunas: Dinheiro ocupa a linha inteira e
+   Crédito/Débito, PIX/Vale ficam em pares. */
+.hydro-payment-btn-wide {
+    grid-column: 1 / -1;
+}
+
 .hydro-payment-btn {
     display: flex;
     flex-direction: column;

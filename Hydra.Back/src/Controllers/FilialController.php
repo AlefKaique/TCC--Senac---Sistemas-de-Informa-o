@@ -8,6 +8,7 @@ use Hydra\Repositories\VendaRepository;
 use Hydra\Support\Auth;
 use Hydra\Support\Request;
 use Hydra\Support\Response;
+use Hydra\Support\Validacao;
 
 /**
  * Filiais: o botão "Trocar Filial" (todas as telas) e a seção "Filiais"
@@ -213,6 +214,19 @@ final class FilialController
             $opcionais[$campo] = $valor !== '' ? $valor : null;
         }
 
+        if ($opcionais['telefone'] !== null) {
+            if (!Validacao::soMascaraNumerica($opcionais['telefone']) || !Validacao::telefoneValido($opcionais['telefone'])) {
+                return ['erro' => 'Telefone inválido. Use DDD + número, ex.: (11) 99999-8888.', 'status' => 422];
+            }
+            $opcionais['telefone'] = Validacao::soDigitos($opcionais['telefone']);
+        }
+        if ($opcionais['cep'] !== null) {
+            if (!Validacao::soMascaraNumerica($opcionais['cep']) || !Validacao::cepValido($opcionais['cep'])) {
+                return ['erro' => 'CEP inválido. Use 8 números, ex.: 01310-100.', 'status' => 422];
+            }
+            $opcionais['cep'] = Validacao::soDigitos($opcionais['cep']);
+        }
+
         $estado = strtoupper(trim((string) ($dados['estado'] ?? '')));
         if ($estado !== '' && !preg_match('/^[A-Z]{2}$/', $estado)) {
             return ['erro' => 'Estado inválido: use a sigla com 2 letras (ex.: SP)', 'status' => 422];
@@ -232,11 +246,13 @@ final class FilialController
         // O CNPJ é gravado sempre no mesmo formato, para que a checagem de
         // duplicidade não seja driblada digitando com ou sem pontuação.
         if ($cnpj !== '') {
-            $digitos = preg_replace('/\D/', '', $cnpj);
-            if (strlen($digitos) !== 14) {
-                return ['erro' => 'CNPJ inválido: ele precisa ter 14 números', 'status' => 422];
+            // Dígitos verificadores e formato alfanumérico de 2026 (QA 005).
+            // Antes só contava 14 números: tirava as letras de um CNPJ
+            // alfanumérico legítimo e aceitava números inventados.
+            if (!Validacao::cnpjValido($cnpj)) {
+                return ['erro' => 'CNPJ inválido. Confira os 14 caracteres e os dígitos verificadores.', 'status' => 422];
             }
-            $cnpj = vsprintf('%s%s.%s%s%s.%s%s%s/%s%s%s%s-%s%s', str_split($digitos));
+            $cnpj = Validacao::formatarCnpj($cnpj);
             if ($this->filiais->cnpjEmUso($cnpj, $idFilial)) {
                 return ['erro' => 'Já existe uma filial com este CNPJ', 'status' => 409];
             }

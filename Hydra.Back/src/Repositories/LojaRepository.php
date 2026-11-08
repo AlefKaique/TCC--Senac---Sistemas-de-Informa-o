@@ -44,4 +44,29 @@ final class LojaRepository
             'id_loja' => $idLoja,
         ]);
     }
+
+    /**
+     * RN25: outra loja já usa este CNPJ? $cnpjNormalizado vem sem máscara
+     * (Validacao::normalizarCnpj); a coluna é limpa do mesmo jeito no SQL,
+     * porque registros antigos foram gravados com e sem pontuação.
+     */
+    public function cnpjEmUsoPorOutraLoja(string $cnpjNormalizado, int $idLojaAtual): bool
+    {
+        $stmt = db()->prepare(
+            "SELECT 1 FROM lojas
+              WHERE id_loja <> :id_loja
+                AND cnpj IS NOT NULL
+                AND REPLACE(REPLACE(REPLACE(REPLACE(UPPER(cnpj), '.', ''), '/', ''), '-', ''), ' ', '') = :cnpj
+              LIMIT 1"
+        );
+        $stmt->execute(['id_loja' => $idLojaAtual, 'cnpj' => $cnpjNormalizado]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /** Logo da loja como data URL (ou null para remover). Ver LojaController::update(). */
+    public function atualizarLogo(int $idLoja, ?string $logo): void
+    {
+        $stmt = db()->prepare('UPDATE lojas SET logo = :logo WHERE id_loja = :id_loja');
+        $stmt->execute(['logo' => $logo, 'id_loja' => $idLoja]);
+    }
 }

@@ -2,6 +2,8 @@
 
 namespace Hydra\Repositories;
 
+use Hydra\Support\Migracoes;
+
 /**
  * Tela "Promoções" (Admin) — preço promocional temporário, pensado para
  * escoar produtos prestes a vencer antes que virem perda.
@@ -42,7 +44,8 @@ final class PromocaoRepository
         if (self::$tabelaGarantida) {
             return;
         }
-        db()->exec(
+        // Uma vez por banco (ver Migracoes::garantir), não a cada requisição.
+        Migracoes::garantir('tabela_promocoes_v1', static fn () => db()->exec(
             "CREATE TABLE IF NOT EXISTS promocoes (
                 id_promocao       INT AUTO_INCREMENT PRIMARY KEY,
                 id_loja           INT NOT NULL,
@@ -64,7 +67,7 @@ final class PromocaoRepository
                 CONSTRAINT fk_promocoes_filial
                     FOREIGN KEY (id_loja, id_filial) REFERENCES filiais(id_loja, id_filial) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-        );
+        ));
         self::$tabelaGarantida = true;
     }
 

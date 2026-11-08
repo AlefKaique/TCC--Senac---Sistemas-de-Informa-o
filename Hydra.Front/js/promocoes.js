@@ -322,7 +322,7 @@
     (async function init() {
         if (!window.hydraApi) return;
         try {
-            const { usuario } = await window.hydraApi('/auth/me');
+            const { usuario } = await window.hydraSessao();
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
             window.hydraAplicarMenuPorPermissao(usuario);

@@ -120,6 +120,8 @@
                                     placeholder="Ex.: Bebidas" maxlength="60" autocomplete="off" required>
                                 <datalist id="hydroCategoryList"></datalist>
                                 <span class="hydro-field-hint">Escolha uma categoria já usada na loja ou digite uma nova</span>
+                                <div class="hydro-category-chips" id="hydroCategoryChips" role="group" aria-label="Categorias já usadas na loja"
+                                     style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
                                 <span class="hydro-field-error" data-error-for="hydroProdCategory"></span>
                             </div>
                         </div>
@@ -150,7 +152,9 @@
                             </div>
                             <div class="hydro-form-group">
                                 <label for="hydroProdMinStock">Estoque mínimo</label>
-                                <input type="number" id="hydroProdMinStock" name="estoqueMinimo" placeholder="0" min="0" step="1">
+                                <input type="number" id="hydroProdMinStock" name="estoqueMinimo" placeholder="0" min="0" step="1" required>
+                                <span class="hydro-field-hint">Abaixo disso o produto entra nos alertas de reposição. Use 0 para não alertar.</span>
+                                <span class="hydro-field-error" data-error-for="hydroProdMinStock"></span>
                             </div>
                         </div>
 
@@ -225,6 +229,9 @@
 
                     <!-- Barra de ações -->
                     <div class="hydro-form-actions">
+                        <label style="display:inline-flex;align-items:center;gap:6px;margin-right:auto;font-size:14px;">
+                            <input type="checkbox" id="hydroProdCadastrarOutro"> Cadastrar outro produto em seguida
+                        </label>
                         <a href="controle-estoque.html" class="hydro-btn hydro-btn-outline">Cancelar</a>
                         <button type="submit" class="hydro-btn hydro-btn-primary" id="hydroSaveBtn">
                             <i class="hydro-ic hydro-ic-save"></i> Salvar
