@@ -13,6 +13,7 @@ use Hydra\Support\PasswordPolicy;
 use Hydra\Support\RateLimit;
 use Hydra\Support\Request;
 use Hydra\Support\Response;
+use Hydra\Support\Validacao;
 
 /**
  * Cadastro (Fig. 13), Login (Fig. 14) e Recuperação de senha (Fig. 15).
@@ -50,17 +51,24 @@ final class AuthController
         $senha = (string) ($dados['senha'] ?? '');
         $nomeLoja = trim((string) ($dados['nome_loja'] ?? ''));
 
-        if ($nome === '' || $email === '' || $nomeLoja === '') {
-            Response::json(['erro' => 'Preencha nome, e-mail e nome da loja'], 422);
+        // Um erro por campo, com "campo" na resposta, para a tela marcar o
+        // input certo em vez de um alerta genérico (QA 002).
+        $erroNome = Validacao::erroNomePessoa($nome);
+        if ($erroNome !== null) {
+            Response::json(['erro' => $erroNome, 'campo' => 'nome'], 422);
             return;
         }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            Response::json(['erro' => 'E-mail inválido'], 422);
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Response::json(['erro' => $email === '' ? 'Informe o e-mail.' : 'E-mail inválido', 'campo' => 'email'], 422);
+            return;
+        }
+        if ($nomeLoja === '') {
+            Response::json(['erro' => 'Informe o nome da loja.', 'campo' => 'nome_loja'], 422);
             return;
         }
         $erroSenha = PasswordPolicy::validar($senha);
         if ($erroSenha !== null) {
-            Response::json(['erro' => $erroSenha], 422);
+            Response::json(['erro' => $erroSenha, 'campo' => 'senha'], 422);
             return;
         }
         if ($this->usuarios->emailExists($email)) {

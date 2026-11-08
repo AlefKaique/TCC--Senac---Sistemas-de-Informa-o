@@ -2,6 +2,8 @@
 
 namespace Hydra\Repositories;
 
+use Hydra\Support\Migracoes;
+
 /**
  * Módulo de Cargos e Permissões (estilo Discord) — ver schema.sql para
  * o desenho das tabelas "permissoes", "cargos" e "cargo_permissoes".
@@ -165,17 +167,23 @@ final class CargoRepository
      */
     public function ensureDefaults(int $idLoja): void
     {
-        $this->garantirCatalogo();
+        // Catálogo e remapeamento são globais (não por loja): rodam uma vez
+        // por banco. O nome leva um hash das listas, então qualquer mudança
+        // no catálogo ou nas aposentadas dispara a migração de novo sozinha.
+        $versao = md5(serialize([self::CATALOGO, self::PERMISSOES_APOSENTADAS, self::MIGRACAO_PERMISSOES]));
+        Migracoes::garantir('catalogo_permissoes_' . substr($versao, 0, 12), function (): void {
+            $this->garantirCatalogo();
 
-        if ($this->temPermissoesAposentadas()) {
-            // Ordem crítica: copiar antes de apagar. Invertido, o DELETE
-            // levaria o acesso antigo embora antes de haver de onde copiá-lo,
-            // e todo cargo de toda loja ficaria sem permissão alguma — sem
-            // nenhum caminho de volta pela interface.
-            $this->remapearPermissoesDosCargos();
-            $this->removerPermissoesAposentadas();
-            $this->resincronizarPerfilDeTodosOsCargos();
-        }
+            if ($this->temPermissoesAposentadas()) {
+                // Ordem crítica: copiar antes de apagar. Invertido, o DELETE
+                // levaria o acesso antigo embora antes de haver de onde copiá-lo,
+                // e todo cargo de toda loja ficaria sem permissão alguma — sem
+                // nenhum caminho de volta pela interface.
+                $this->remapearPermissoesDosCargos();
+                $this->removerPermissoesAposentadas();
+                $this->resincronizarPerfilDeTodosOsCargos();
+            }
+        });
 
         $stmt = db()->prepare('SELECT COUNT(*) FROM cargos WHERE id_loja = :id_loja');
         $stmt->execute(['id_loja' => $idLoja]);

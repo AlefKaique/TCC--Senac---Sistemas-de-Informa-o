@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS lojas (
     cidade          VARCHAR(60)  NULL,
     estado          VARCHAR(2)   NULL,
     cep             VARCHAR(10)  NULL,
+    -- Logo como data URL (imagem já reduzida pela tela, ~256 px).
+    logo            MEDIUMTEXT   NULL,
     status          ENUM('ativa', 'inativa') NOT NULL DEFAULT 'ativa',
     data_criacao    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -803,3 +805,14 @@ ALTER TABLE usuarios
 -- (RF19 - Alertas de Validade de Produtos - é requisito funcional, não
 --  regra de negócio; ver produtos.validade e o comentário da tabela.)
 -- ============================================================
+
+
+-- ============================================================
+-- Controle de migrações preguiçosas (Hydra\Support\Migracoes::garantir)
+--   Cada migração aplicada pelo back-end fica registrada aqui, para não
+--   ser verificada de novo a cada requisição.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS schema_migracoes (
+    nome        VARCHAR(100) PRIMARY KEY,
+    aplicada_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

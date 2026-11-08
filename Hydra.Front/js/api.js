@@ -40,6 +40,30 @@ window.hydraApi = async function hydraApi(path, options = {}) {
 };
 
 /**
+ * Usuário logado (GET /api/auth/me), buscado UMA vez por página.
+ *
+ * Antes cada script pedia o seu: public-demo.js, o script da tela e, no
+ * Relatório, mais duas vezes. Eram 2 a 3 chamadas idênticas por tela, cada
+ * uma com duas consultas ao banco. Agora todos recebem a mesma Promise.
+ * Não guarda nada entre páginas: cargo e permissões podem mudar, e o
+ * back-end revalida a cada requisição.
+ */
+let hydraSessaoPromise = null;
+window.hydraSessao = function hydraSessao() {
+  if (!hydraSessaoPromise) {
+    hydraSessaoPromise = window.hydraApi('/auth/me');
+    // Falha de rede não pode ficar em cache: a próxima chamada tenta de novo.
+    hydraSessaoPromise.catch((err) => {
+      if (!err || err.status === undefined) hydraSessaoPromise = null;
+    });
+  }
+  return hydraSessaoPromise;
+};
+window.hydraSessao.limpar = function limparSessao() {
+  hydraSessaoPromise = null;
+};
+
+/**
  * Telas do sistema, cada uma com a(s) permissao(oes) que dao acesso a ela.
  * Basta UMA das permissoes da lista.
  *

@@ -4,7 +4,7 @@
     (async function guardaDeAcesso() {
         if (!window.hydraApi) return;
         try {
-            const { usuario } = await window.hydraApi('/auth/me');
+            const { usuario } = await window.hydraSessao();
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
             window.hydraAplicarMenuPorPermissao(usuario);
@@ -31,6 +31,7 @@
             .sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
         const datalist = document.getElementById('hydroCategoryList');
+        datalist.innerHTML = '';
         categoriasDaLoja.forEach((categoria) => {
             const option = document.createElement('option');
             // Atribuído como propriedade, nunca via innerHTML: é à prova de
@@ -38,6 +39,34 @@
             option.value = categoria;
             datalist.appendChild(option);
         });
+        renderChipsCategorias();
+    }
+
+    /* O <datalist> só aparece quando o usuário começa a digitar, e na
+       maioria dos navegadores nem há seta indicando que existe uma lista
+       (QA 011). As categorias da loja ficam visíveis como botões logo abaixo
+       do campo: um clique preenche. Digitar uma nova continua valendo. */
+    function renderChipsCategorias() {
+        const wrap = document.getElementById('hydroCategoryChips');
+        const input = document.getElementById('hydroProdCategory');
+        if (!wrap || !input) return;
+        wrap.innerHTML = '';
+        categoriasDaLoja.forEach((categoria) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'hydro-btn hydro-btn-outline hydro-btn-sm';
+            // Não é ação de gravação: a demonstração pública não deve
+            // bloquear este clique com o convite de cadastro.
+            chip.setAttribute('data-demo-allow', '');
+            chip.textContent = categoria;
+            chip.addEventListener('click', () => {
+                input.value = categoria;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.focus();
+            });
+            wrap.appendChild(chip);
+        });
+        wrap.style.display = categoriasDaLoja.length ? 'flex' : 'none';
     }
 
     (async function loadCategorias() {
@@ -212,6 +241,11 @@
             setError('hydroProdQty', 'Informe a quantidade em estoque');
             valid = false;
         }
+        // RN02: estoque mínimo obrigatório. Vazio virava 0 sem aviso.
+        if (data.estoqueMinimo === '' || Number(data.estoqueMinimo) < 0) {
+            setError('hydroProdMinStock', 'Informe o estoque mínimo (use 0 se não precisar de alerta)');
+            valid = false;
+        }
         if (data.validade && data.validade < todayIso()) {
             setError('hydroProdExpiry', 'A data de validade informada já passou');
             valid = false;
@@ -273,7 +307,7 @@
                 preco_custo: data.precoCusto || null,
                 preco_venda: Number(data.precoVenda),
                 quantidade: Number(data.quantidade),
-                estoque_minimo: data.estoqueMinimo || 0,
+                estoque_minimo: Number(data.estoqueMinimo),
                 unidade: data.unidade,
                 lote: data.lote.trim() || null,
                 validade: data.validade || null,
@@ -320,11 +354,24 @@
             const option = document.createElement('option');
             option.value = categoriaSalva;
             document.getElementById('hydroCategoryList').appendChild(option);
+            renderChipsCategorias();
+        }
+
+        /* Depois de salvar, volta para a listagem do Estoque, onde o produto
+           novo aparece (QA 007). Quem quer cadastrar vários em sequência
+           marca "Cadastrar outro" e continua no formulário. */
+        const cadastrarOutro = document.getElementById('hydroProdCadastrarOutro');
+        if (!cadastrarOutro || !cadastrarOutro.checked) {
+            showToast('Produto salvo com sucesso! Voltando para o estoque...');
+            setTimeout(() => { window.location.href = 'controle-estoque.html'; }, 900);
+            return;
         }
 
         showToast('Produto salvo com sucesso!');
         setTimeout(() => {
             form.reset();
+            // form.reset() desmarcaria a opção que o usuário acabou de usar.
+            if (cadastrarOutro) cadastrarOutro.checked = true;
             clearImage();
             clearErrors();
             toggleBoxUnitGroup();

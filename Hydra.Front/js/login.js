@@ -1,4 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // Botão mostrar/ocultar senha (QA 001): o mesmo do cadastro, com
+  // aria-label que alterna entre "Mostrar senha" e "Ocultar senha".
+  const senhaLogin = document.getElementById('senha');
+  const senhaToggle = document.getElementById('senha-toggle');
+  if (window.HydraPasswordRules && senhaLogin && senhaToggle) {
+    window.HydraPasswordRules.ligarToggleSenha(senhaLogin, senhaToggle);
+  }
+
   const form = document.getElementById('login-form');
   const codigoForm = document.getElementById('codigo-form');
   const stepForm = document.getElementById('step-form');

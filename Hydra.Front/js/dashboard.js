@@ -20,7 +20,7 @@
     (async function guardRelatorios() {
         if (!window.hydraApi) return;
         try {
-            const { usuario } = await window.hydraApi('/auth/me');
+            const { usuario } = await window.hydraSessao();
             window.hydraAplicarMenuPorPermissao(usuario);
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
@@ -552,7 +552,15 @@
     (async function init() {
         if (window.hydraApi) {
             try {
-                await window.hydraApi('/auth/me');
+                /* Dados disparados junto com a sessão (que já foi pedida por
+                   guardRelatorios acima e é compartilhada): as quatro
+                   chamadas rodam em paralelo. */
+                const dadosPromise = Promise.allSettled([
+                    window.hydraApi('/produtos'),
+                    window.hydraApi('/vendas'),
+                    window.hydraApi('/estoque/movimentacoes'),
+                ]);
+                await window.hydraSessao();
                 /* allSettled, e não all: as três chamadas têm permissões
                    distintas, e um cargo pode ter umas e não outras — por
                    exemplo, "relatorios.visualizar" sem "estoque.consultar"
@@ -562,11 +570,7 @@
                    avisar — o dono olharia um faturamento inventado. Agora
                    cada parte que o cargo pode ver é real, e o gráfico de
                    movimentações simplesmente fica vazio. */
-                const [produtosRes, vendasRes, movRes] = await Promise.allSettled([
-                    window.hydraApi('/produtos'),
-                    window.hydraApi('/vendas'),
-                    window.hydraApi('/estoque/movimentacoes'),
-                ]);
+                const [produtosRes, vendasRes, movRes] = await dadosPromise;
 
                 // Se nem produtos nem vendas vieram, não há painel a montar:
                 // cai para a demonstração (visitante ou cargo sem acesso).

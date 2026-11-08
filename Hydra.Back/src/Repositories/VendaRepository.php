@@ -227,4 +227,53 @@ final class VendaRepository
         $stmt->execute(['id_venda' => $idVenda]);
         return $stmt->fetchAll();
     }
+
+    /**
+     * Itens de várias vendas em UMA consulta, agrupados por id_venda.
+     *
+     * GET /api/vendas chamava listItensByVenda() e listPagamentosByVenda()
+     * para cada venda: com 300 vendas eram 600 consultas a cada abertura do
+     * Caixa ou do Relatório. Agora são duas, qualquer que seja o tamanho do
+     * histórico.
+     *
+     * @param int[] $idsVenda
+     * @return array<int,array<int,array<string,mixed>>> id_venda => itens
+     */
+    public function listItensByVendas(array $idsVenda): array
+    {
+        return $this->agruparPorVenda(
+            'SELECT iv.*, p.nome AS nome_produto, p.preco_custo AS custo_unitario
+               FROM itens_venda iv
+               JOIN produtos p ON p.id_produto = iv.id_produto
+              WHERE iv.id_venda IN (%s)',
+            $idsVenda
+        );
+    }
+
+    /**
+     * @param int[] $idsVenda
+     * @return array<int,array<int,array<string,mixed>>> id_venda => pagamentos
+     */
+    public function listPagamentosByVendas(array $idsVenda): array
+    {
+        return $this->agruparPorVenda('SELECT * FROM pagamentos WHERE id_venda IN (%s)', $idsVenda);
+    }
+
+    /** @param int[] $idsVenda */
+    private function agruparPorVenda(string $sql, array $idsVenda): array
+    {
+        $idsVenda = array_values(array_unique(array_map('intval', $idsVenda)));
+        if ($idsVenda === []) {
+            return [];
+        }
+        $marcadores = implode(',', array_fill(0, count($idsVenda), '?'));
+        $stmt = db()->prepare(sprintf($sql, $marcadores));
+        $stmt->execute($idsVenda);
+
+        $porVenda = [];
+        foreach ($stmt->fetchAll() as $linha) {
+            $porVenda[(int) $linha['id_venda']][] = $linha;
+        }
+        return $porVenda;
+    }
 }

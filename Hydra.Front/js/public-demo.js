@@ -76,7 +76,7 @@
         if (!demoLocked) return;
 
         var button = event.target.closest('button');
-        if (button && (button.hasAttribute('data-font-toggle') || button.hasAttribute('data-font-action'))) return;
+        if (button && (button.hasAttribute('data-font-toggle') || button.hasAttribute('data-font-action') || button.hasAttribute('data-demo-allow'))) return;
         if (button && !button.closest('.hydra-demo-modal__dialog')) {
             event.preventDefault();
             event.stopImmediatePropagation();
@@ -106,6 +106,6 @@
     if (!window.hydraApi) {
         lockForVisitors();
     } else {
-        window.hydraApi('/auth/me').catch(lockForVisitors);
+        window.hydraSessao().catch(lockForVisitors);
     }
 })();

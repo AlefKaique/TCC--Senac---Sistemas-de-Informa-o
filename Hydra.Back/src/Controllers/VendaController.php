@@ -50,9 +50,14 @@ final class VendaController
     {
         $user = Auth::requireAnyPermissionNaFilial(['vendas.historico', 'relatorios.visualizar']);
         $vendas = $this->vendas->listByFilial($user['id_filial']);
+        // Duas consultas para o histórico inteiro, em vez de duas por venda.
+        $ids = array_map(static fn ($v) => (int) $v['id_venda'], $vendas);
+        $itens = $this->vendas->listItensByVendas($ids);
+        $pagamentos = $this->vendas->listPagamentosByVendas($ids);
         foreach ($vendas as &$venda) {
-            $venda['itens'] = $this->vendas->listItensByVenda((int) $venda['id_venda']);
-            $venda['pagamentos'] = $this->vendas->listPagamentosByVenda((int) $venda['id_venda']);
+            $id = (int) $venda['id_venda'];
+            $venda['itens'] = $itens[$id] ?? [];
+            $venda['pagamentos'] = $pagamentos[$id] ?? [];
         }
         unset($venda);
 
@@ -254,6 +259,7 @@ final class VendaController
         }
         RateLimit::limpar($chave);
 
+        Auth::reabrirSessao();
         $_SESSION['cancelamento_autorizado'] = [
             'id_autorizador' => (int) $autorizador['id_usuario'],
             'id_filial' => $user['id_filial'],
@@ -270,6 +276,7 @@ final class VendaController
     public function encerrarAutorizacao(): void
     {
         Auth::requireLogin();
+        Auth::reabrirSessao();
         unset($_SESSION['cancelamento_autorizado']);
         Response::json(['ok' => true]);
     }
@@ -292,6 +299,7 @@ final class VendaController
         // de digitá-lo: revalida a cada cancelamento.
         $autorizador = $valida ? $this->autorizadorAtivo($user['id_loja'], (int) $autorizacao['id_autorizador']) : null;
         if ($autorizador === null || !$this->autorizadorAcessaFilial($autorizador, $user)) {
+            Auth::reabrirSessao();
             unset($_SESSION['cancelamento_autorizado']);
             Response::json([
                 'erro' => 'A autorização expirou. Peça ao gerente ou administrador para digitar a senha de novo.',

@@ -5,7 +5,7 @@
   const signupBtn = document.getElementById('hydroSignupBtn');
   if (!window.hydraApi) return;
 
-  window.hydraApi('/auth/me')
+  window.hydraSessao()
     .then(({ usuario }) => {
       // Cada cargo tem uma "casa" diferente: mandar todo mundo para o
       // Estoque levava quem só opera o caixa a uma tela que a guarda dela
