@@ -267,29 +267,6 @@
         });
     }
 
-    /* ================= Rendering: stats ================= */
-    function renderStats() {
-        // Inativos não contam: não estão à venda nem precisam de reposição.
-        const ativos = products.filter((p) => p.status !== 'inativo');
-        const totalItens = ativos.reduce((sum, p) => sum + p.quantity, 0);
-        const valorEstoque = ativos.reduce((sum, p) => sum + p.quantity * p.price, 0);
-        // Conta apenas quem esta de fato abaixo do minimo. "Atencao" fica
-        // de fora: o produto ainda tem saldo acima do minimo, so esta perto.
-        const baixoCount = ativos.filter((p) => {
-            const status = getStatus(p);
-            return status === 'Baixo' || status === 'Crítico';
-        }).length;
-        const vencendoCount = ativos.filter((p) => {
-            const status = getExpiryStatus(p);
-            return status === 'Vencido' || status === 'Vence em breve';
-        }).length;
-
-        document.getElementById('hydroStatTotalItens').textContent = totalItens.toLocaleString('pt-BR');
-        document.getElementById('hydroStatValorEstoque').textContent = formatCurrency(valorEstoque);
-        document.getElementById('hydroStatBaixo').textContent = baixoCount.toLocaleString('pt-BR');
-        document.getElementById('hydroStatVencendo').textContent = vencendoCount.toLocaleString('pt-BR');
-    }
-
     /* ================= Rendering: filters (category options) ================= */
     function renderCategoryOptions() {
         const select = document.getElementById('hydroFilterCategoria');
@@ -332,7 +309,6 @@
                              <span class="hydro-badge ${expiryBadgeClass(expiryStatus)}">${expiryStatus}</span>
                            </div>`
                         : `<div class="hydro-expiry-cell">
-                             <span class="hydro-text-muted">—</span>
                              <span class="hydro-badge hydro-badge-neutral">Não vence</span>
                            </div>`;
                     return `
@@ -838,7 +814,6 @@
 
     /* ================= Refresh orchestration ================= */
     function refreshAll() {
-        renderStats();
         renderCategoryOptions();
         renderTable();
     }
