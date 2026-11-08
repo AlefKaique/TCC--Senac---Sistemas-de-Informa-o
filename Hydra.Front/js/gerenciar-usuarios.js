@@ -12,6 +12,12 @@
     let users = [];
     let cargosDisponiveis = [];
     let filiaisDisponiveis = [];
+    /* Situação da carga de usuários e cargos (GET /api/usuarios):
+       'carregando' | 'ok' | 'erro'. Antes o botão "Novo usuário" abria o
+       modal mesmo com a carga em andamento, e o seletor de cargo vinha vazio
+       dizendo "crie um na tela Cargos" — com a API lenta, era o normal. */
+    let estadoCarga = 'carregando';
+    let cargaPronta = null;
 
     const AVISO_ADMIN_FILIAIS = 'Administrador acessa todas as filiais';
 
@@ -109,6 +115,9 @@
      */
     function opcoesCargoHtml(idCargoSelecionado) {
         if (cargosDisponiveis.length === 0) {
+            if (estadoCarga === 'erro') {
+                return '<option value="">Não foi possível carregar os cargos — recarregue a página</option>';
+            }
             return '<option value="">Nenhum cargo disponível — crie um na tela Cargos</option>';
         }
         return '<option value="">Selecione um cargo</option>' + cargosDisponiveis
@@ -377,7 +386,7 @@
           <select id="hydroNewCargo">
             ${opcoesCargoHtml(null)}
           </select>
-          <span class="hydro-cargo-select-hint">As permissões do usuário vêm do cargo — crie ou ajuste cargos na tela <a href="cargos.html" target="_blank" rel="noopener">Cargos</a>.</span>
+          <span class="hydro-cargo-select-hint">As permissões do usuário vêm do cargo — crie ou ajuste cargos na tela <a href="cargos.html">Cargos</a>.</span>
         </div>
         ${filiaisFieldHtml(filiaisDisponiveis.length === 1 ? [filiaisDisponiveis[0].id_filial] : [])}
         ${senhaAutorizacaoFieldHtml(null)}
@@ -471,7 +480,7 @@
           <select id="hydroEditUserCargo">
             ${opcoesCargoHtml(u.id_cargo)}
           </select>
-          <span class="hydro-cargo-select-hint">As permissões do usuário vêm do cargo — crie ou ajuste cargos na tela <a href="cargos.html" target="_blank" rel="noopener">Cargos</a>.</span>
+          <span class="hydro-cargo-select-hint">As permissões do usuário vêm do cargo — crie ou ajuste cargos na tela <a href="cargos.html">Cargos</a>.</span>
         </div>
         <div class="hydro-form-group">
           <label for="hydroEditUserStatus">Status</label>
@@ -585,7 +594,26 @@
         renderTable();
     });
 
-    document.getElementById('hydroBtnNovoUsuario').addEventListener('click', openCreateModal);
+    const btnNovoUsuario = document.getElementById('hydroBtnNovoUsuario');
+    btnNovoUsuario.addEventListener('click', async () => {
+        // Espera usuários e cargos chegarem antes de montar o seletor.
+        if (cargaPronta && estadoCarga === 'carregando') {
+            const textoOriginal = btnNovoUsuario.innerHTML;
+            btnNovoUsuario.disabled = true;
+            btnNovoUsuario.textContent = 'Carregando...';
+            try {
+                await cargaPronta;
+            } finally {
+                btnNovoUsuario.disabled = false;
+                btnNovoUsuario.innerHTML = textoOriginal;
+            }
+        }
+        if (estadoCarga === 'erro') {
+            showToast('Não foi possível carregar os cargos. Recarregue a página.');
+            return;
+        }
+        openCreateModal();
+    });
 
     /* ================= Sidebar nav (cosmético, demo de página única) ================= */
     document.querySelectorAll('.hydro-menu a[data-view]').forEach((link) => {
@@ -638,22 +666,26 @@
         // "loja.configurar", que nem todo cargo com acesso à Equipe tem.
         // Com Promise.all, um 403 ali derrubava também a lista de usuários
         // e a de cargos, e o seletor de cargo abria vazio.
-        const [lojaRes, usersRes] = await Promise.allSettled([
+        const carga = Promise.allSettled([
             window.hydraApi('/loja'),
             window.hydraApi('/usuarios'),
         ]);
+        cargaPronta = carga;
+        const [lojaRes, usersRes] = await carga;
 
         if (lojaRes.status === 'fulfilled') {
             lojaAtual = lojaRes.value.loja;
         }
 
         if (usersRes.status === 'rejected') {
+            estadoCarga = 'erro';
             showToast(usersRes.reason.message);
             return;
         }
         users = usersRes.value.usuarios;
         cargosDisponiveis = usersRes.value.cargos || [];
         filiaisDisponiveis = usersRes.value.filiais || [];
+        estadoCarga = 'ok';
         renderFiltroCargo();
         renderStats();
         renderTable();
