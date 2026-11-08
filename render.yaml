@@ -16,6 +16,11 @@ services:
         sync: false
       - key: DB_PASS
         sync: false
+      # Reaproveita a conexao com o MySQL entre requisicoes. Defina "true"
+      # no painel do Render depois de conferir o limite de conexoes do plano
+      # do banco. Sem valor, fica desligado.
+      - key: DB_PERSISTENT
+        sync: false
       # Front e API sao servidos pelo mesmo dominio neste servico, entao
       # nao ha requisicao cross-origin e a lista pode ficar vazia. Se o
       # front passar a ser hospedado separadamente, liste aqui a origem

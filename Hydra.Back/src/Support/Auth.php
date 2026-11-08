@@ -29,6 +29,9 @@ use Hydra\Repositories\UsuarioRepository;
  */
 final class Auth
 {
+    /** @var array{id_filial:int,ativa:bool,vinculada:bool}|null acesso à filial lido por requireLogin() */
+    private static ?array $acessoFilial = null;
+
     public static function start(): void
     {
         if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -165,12 +168,19 @@ final class Auth
             exit;
         }
 
-        $temAcesso = (new FilialRepository())->podeAcessar(
-            (int) $user['id_usuario'],
-            (int) $user['id_loja'],
-            self::ehAdministrador(),
-            (int) $idFilial
-        );
+        // requireLogin() já trouxe o acesso à filial junto com o usuário;
+        // a consulta própria fica só para quando a filial mudou no meio.
+        $acesso = self::$acessoFilial;
+        if ($acesso !== null && $acesso['id_filial'] === (int) $idFilial) {
+            $temAcesso = $acesso['ativa'] && (self::ehAdministrador() || $acesso['vinculada']);
+        } else {
+            $temAcesso = (new FilialRepository())->podeAcessar(
+                (int) $user['id_usuario'],
+                (int) $user['id_loja'],
+                self::ehAdministrador(),
+                (int) $idFilial
+            );
+        }
         if (!$temAcesso) {
             self::reabrirSessao();
             unset($_SESSION['id_filial']);
@@ -219,7 +229,10 @@ final class Auth
             exit;
         }
 
-        $atual = (new UsuarioRepository())->find($user['id_usuario']);
+        // Usuário, permissões e acesso à filial da sessão numa consulta só
+        // (ver UsuarioRepository::estadoDaSessao()).
+        $idFilial = (int) ($_SESSION['id_filial'] ?? 0);
+        $atual = (new UsuarioRepository())->estadoDaSessao($user['id_usuario'], $idFilial);
         if ($atual === null || $atual['status'] !== 'ativo') {
             self::logout();
             Response::json(['erro' => 'Sua conta foi desativada ou removida. Faça login novamente.'], 401);
@@ -232,9 +245,17 @@ final class Auth
         $_SESSION['nome'] = $atual['nome'];
         $_SESSION['email'] = $atual['email'];
         $_SESSION['id_cargo'] = $atual['id_cargo'] !== null ? (int) $atual['id_cargo'] : null;
-        $_SESSION['permissoes'] = $_SESSION['id_cargo'] !== null
-            ? (new CargoRepository())->permissoesDoCargo($_SESSION['id_cargo'])
+        $_SESSION['permissoes'] = $_SESSION['id_cargo'] !== null && $atual['permissoes'] !== null
+            ? explode(',', (string) $atual['permissoes'])
             : [];
+        // Guardado para requireFilial() não repetir a consulta.
+        self::$acessoFilial = $idFilial > 0
+            ? [
+                'id_filial' => $idFilial,
+                'ativa' => (int) $atual['filial_ativa'] === 1,
+                'vinculada' => (int) $atual['filial_vinculada'] === 1,
+            ]
+            : null;
 
         // Daqui em diante a requisição só LÊ a sessão: solta o lock para as
         // outras chamadas da mesma tela rodarem em paralelo.

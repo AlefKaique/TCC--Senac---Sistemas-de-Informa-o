@@ -9,6 +9,18 @@ RUN docker-php-ext-install pdo pdo_mysql \
 # do servidor) direto no navegador do visitante.
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
+# OPcache: sem ele o PHP lê e recompila todos os arquivos do back-end a
+# cada chamada da API. validate_timestamps=0 porque o código da imagem
+# nunca muda depois do build (cada deploy gera uma imagem nova).
+RUN docker-php-ext-install opcache \
+	&& { \
+		echo 'opcache.enable=1'; \
+		echo 'opcache.memory_consumption=64'; \
+		echo 'opcache.max_accelerated_files=4000'; \
+		echo 'opcache.validate_timestamps=0'; \
+		echo 'realpath_cache_ttl=600'; \
+	} > "$PHP_INI_DIR/conf.d/opcache-hydra.ini"
+
 # Apenas o front-end fica na raiz publica do Apache.
 COPY Hydra.Front/ /var/www/html/
 # O codigo PHP fica FORA de /var/www/html. Antes ele era copiado para

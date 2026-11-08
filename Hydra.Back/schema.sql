@@ -808,6 +808,30 @@ ALTER TABLE usuarios
 
 
 -- ============================================================
+-- Cadastros pendentes (tela Criar conta)
+--   O clique em "Criar conta" só guarda os dados aqui e envia o código
+--   ao e-mail. Loja, filial, cargos e usuário são criados quando o código
+--   é confirmado (AuthController::verificarEmail). Quem desiste na tela
+--   do código não deixa conta no sistema, e ninguém ocupa o e-mail de
+--   outra pessoa. Senha com hash bcrypt; código guardado como SHA-256.
+--   Linhas com mais de 24 horas são apagadas no próximo cadastro.
+--
+-- Em um banco já em uso, a tabela é criada sozinha na primeira
+-- requisição (CadastroPendenteRepository).
+-- ============================================================
+CREATE TABLE IF NOT EXISTS cadastros_pendentes (
+    email            VARCHAR(100) PRIMARY KEY,
+    nome             VARCHAR(100) NOT NULL,
+    nome_loja        VARCHAR(120) NOT NULL,
+    senha_hash       VARCHAR(255) NOT NULL,
+    codigo_hash      CHAR(64)     NOT NULL,
+    codigo_expira_em DATETIME     NOT NULL,
+    criado_em        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_cadastros_pendentes_criado (criado_em)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ============================================================
 -- Controle de migrações preguiçosas (Hydra\Support\Migracoes::garantir)
 --   Cada migração aplicada pelo back-end fica registrada aqui, para não
 --   ser verificada de novo a cada requisição.

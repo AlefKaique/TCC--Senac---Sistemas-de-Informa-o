@@ -40,15 +40,34 @@ function db(): PDO
 
     $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
 
-    try {
-        $pdo = new PDO($dsn, $user, $pass, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-        ]);
+    // O fuso vai como comando de inicialização da conexão, e não como uma
+    // consulta à parte depois de conectar. Valor validado antes de entrar
+    // no SQL, já que aqui não há parâmetro preparado.
+    if (!preg_match('/^[+-]\d{2}:\d{2}$/', $timezone)) {
+        $timezone = '-03:00';
+    }
 
-        $stmt = $pdo->prepare('SET time_zone = :tz');
-        $stmt->execute(['tz' => $timezone]);
+    $opcoes = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+        PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '{$timezone}'",
+    ];
+
+    // Conexão persistente (opcional, DB_PERSISTENT=true): cada processo do
+    // Apache reaproveita a conexão com o MySQL entre requisições, em vez de
+    // abrir uma nova a cada chamada da API. Com o banco em outro servidor,
+    // abrir a conexão custa várias idas e voltas pela rede — é o maior
+    // ganho possível quando o banco fica longe do Render. Cada processo
+    // segura uma conexão aberta: confira o limite de conexões do plano do
+    // banco antes de ligar. O comando de fuso acima roda só quando a
+    // conexão é aberta de fato, e continua valendo nas reaproveitadas.
+    if (Env::get('DB_PERSISTENT', 'false') === 'true') {
+        $opcoes[PDO::ATTR_PERSISTENT] = true;
+    }
+
+    try {
+        $pdo = new PDO($dsn, $user, $pass, $opcoes);
     } catch (PDOException $e) {
         // O motivo real (host recusando conexão, usuário/senha inválidos,
         // banco inexistente...) vai para o log de erro do servidor — no

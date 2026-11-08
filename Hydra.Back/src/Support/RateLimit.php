@@ -73,10 +73,10 @@ final class RateLimit
     }
 
     /** Zera a contagem após uma tentativa bem-sucedida. */
-    public static function limpar(string $chave): void
+    public static function limpar(string ...$chaves): void
     {
-        $stmt = db()->prepare('DELETE FROM tentativas_acesso WHERE chave = :chave');
-        $stmt->execute(['chave' => $chave]);
+        $marcadores = implode(',', array_fill(0, count($chaves), '?'));
+        db()->prepare("DELETE FROM tentativas_acesso WHERE chave IN ($marcadores)")->execute($chaves);
     }
 
     /** Segundos que faltam para o bloqueio expirar (0 se não há bloqueio). */
