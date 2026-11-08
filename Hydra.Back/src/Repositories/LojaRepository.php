@@ -11,6 +11,16 @@ final class LojaRepository
         return (int) db()->lastInsertId();
     }
 
+    /**
+     * Apaga a loja e, por ON DELETE CASCADE, tudo o que pendura nela. Usado
+     * só para contas do Cadastro que nunca confirmaram o e-mail (ver
+     * AuthController::removerContaAbandonada()).
+     */
+    public function remover(int $idLoja): void
+    {
+        db()->prepare('DELETE FROM lojas WHERE id_loja = :id_loja')->execute(['id_loja' => $idLoja]);
+    }
+
     public function find(int $idLoja): ?array
     {
         $stmt = db()->prepare('SELECT * FROM lojas WHERE id_loja = :id_loja');

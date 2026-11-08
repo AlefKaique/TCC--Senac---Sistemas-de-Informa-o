@@ -82,7 +82,17 @@ final class FilialRepository
      *
      * @return array<int,array<string,mixed>>
      */
+    /** @var array<string,array> resultado de permitidas() já lido nesta instância */
+    private array $cachePermitidas = [];
+
     public function permitidas(int $idUsuario, int $idLoja, bool $administrador): array
+    {
+        // O login consulta as filiais duas vezes (bloqueio e resposta).
+        $chave = $idUsuario . ':' . $idLoja . ':' . (int) $administrador;
+        return $this->cachePermitidas[$chave] ??= $this->buscarPermitidas($idUsuario, $idLoja, $administrador);
+    }
+
+    private function buscarPermitidas(int $idUsuario, int $idLoja, bool $administrador): array
     {
         if ($administrador) {
             $stmt = db()->prepare(

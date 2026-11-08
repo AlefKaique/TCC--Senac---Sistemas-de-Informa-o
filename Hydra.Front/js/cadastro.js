@@ -118,8 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
       });
 
-      // A conta foi criada, mas o e-mail ainda precisa ser confirmado com
-      // o código enviado (ver AuthController::registro).
+      // Nada foi criado ainda: a conta só nasce quando o código enviado ao
+      // e-mail for confirmado (ver AuthController::registro).
       mostrarEtapaCodigo(resposta);
     } catch (err) {
       btn.disabled = false;
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let emailCadastrado = '';
 
   function mostrarEtapaCodigo(resposta) {
-    emailCadastrado = resposta.usuario.email;
+    emailCadastrado = resposta.email;
     document.getElementById('sent-to-email').textContent = emailCadastrado;
     // Facilidade de teste local: sem serviço de e-mail configurado, o
     // back-end devolve o código na resposta (só com APP_ENV=local).
@@ -178,9 +178,9 @@ document.addEventListener('DOMContentLoaded', () => {
         body: { email: emailCadastrado, codigo: codigoInput.value },
       });
 
-      // O cadastro não abre sessão (ver AuthController::registro): o
-      // usuário entra pela tela de Login com a senha que acabou de criar.
-      btn.textContent = 'E-mail confirmado!';
+      // Conta criada agora. O cadastro não abre sessão: o usuário entra
+      // pela tela de Login com a senha que acabou de criar.
+      btn.textContent = 'Conta criada!';
       setTimeout(() => {
         window.location.href = 'login.html';
       }, 1200);

@@ -2,6 +2,7 @@
 
 namespace Hydra\Controllers;
 
+use Hydra\Repositories\CadastroPendenteRepository;
 use Hydra\Repositories\CargoRepository;
 use Hydra\Repositories\FilialRepository;
 use Hydra\Repositories\LojaRepository;
@@ -38,10 +39,11 @@ final class AuthController
 
     /**
      * POST /api/auth/registro
-     * Onboarding: cria a loja + o primeiro usuário (perfil administrador),
-     * em uma única transação. Corresponde à Figura 13 — só nome, e-mail,
-     * senha e nome da loja; nada de dados que crescem com o tempo (RN22 —
-     * esses ficam na tela de Configurações da Loja).
+     * Primeira etapa do Cadastro (Fig. 13): valida os dados, guarda-os como
+     * cadastro PENDENTE e envia o código ao e-mail. Nada é criado em lojas,
+     * filiais, cargos ou usuarios aqui — a conta só nasce em verificarEmail(),
+     * com o código certo. Assim quem desiste na tela do código não deixa
+     * conta no sistema, e ninguém ocupa o e-mail de outra pessoa.
      */
     public function registro(): void
     {
@@ -58,7 +60,7 @@ final class AuthController
             Response::json(['erro' => $erroNome, 'campo' => 'nome'], 422);
             return;
         }
-        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 100) {
             Response::json(['erro' => $email === '' ? 'Informe o e-mail.' : 'E-mail inválido', 'campo' => 'email'], 422);
             return;
         }
@@ -66,16 +68,75 @@ final class AuthController
             Response::json(['erro' => 'Informe o nome da loja.', 'campo' => 'nome_loja'], 422);
             return;
         }
+        if (mb_strlen($nomeLoja) > 120) {
+            Response::json(['erro' => 'O nome da loja pode ter no máximo 120 caracteres.', 'campo' => 'nome_loja'], 422);
+            return;
+        }
         $erroSenha = PasswordPolicy::validar($senha);
         if ($erroSenha !== null) {
             Response::json(['erro' => $erroSenha, 'campo' => 'senha'], 422);
             return;
         }
-        if ($this->usuarios->emailExists($email)) {
-            Response::json(['erro' => 'Já existe uma conta com este e-mail'], 409);
+
+        $existente = $this->usuarios->findByEmail($email);
+        if ($existente !== null && !$this->removerContaAbandonada($existente)) {
+            Response::json(['erro' => 'Já existe uma conta com este e-mail', 'campo' => 'email'], 409);
             return;
         }
 
+        // Cada "Criar conta" dispara um e-mail: sem o limite, o formulário
+        // viraria um disparador de mensagens para a caixa de outra pessoa.
+        $chaveEnvio = 'envio:' . $email;
+        RateLimit::requireNaoBloqueado($chaveEnvio);
+        RateLimit::registrarFalha($chaveEnvio);
+
+        $pendentes = new CadastroPendenteRepository();
+        $pendentes->limparExpirados();
+
+        $codigo = $this->novoCodigo();
+        $pendentes->salvar($email, $nome, $nomeLoja, password_hash($senha, PASSWORD_BCRYPT), $codigo, $this->expiracaoCodigo());
+
+        $extra = $this->despacharEmailCodigo(
+            $email,
+            $nome,
+            $codigo,
+            'Confirme seu e-mail — Hydra PDV',
+            'Confirme seu e-mail',
+            'Use o código abaixo para confirmar o e-mail e concluir a criação da sua conta no Hydra PDV.'
+        );
+
+        Response::json(['requer_verificacao' => true, 'email' => $email] + $extra, 201);
+    }
+
+    /**
+     * Conta criada pelo Cadastro ANTES dos cadastros pendentes e nunca
+     * confirmada: e-mail não verificado, nenhum acesso e sozinha na loja.
+     * Ela não tem dado nenhum (só a loja, a Matriz e os cargos padrão
+     * criados automaticamente), então é apagada para o e-mail poder ser
+     * cadastrado de novo. Devolve false se a conta for de verdade.
+     *
+     * @param array<string,mixed> $usuario linha de "usuarios"
+     */
+    private function removerContaAbandonada(array $usuario): bool
+    {
+        if ((int) $usuario['email_verificado'] === 1 || $usuario['ultimo_acesso'] !== null) {
+            return false;
+        }
+        if ($this->usuarios->countByLoja((int) $usuario['id_loja']) !== 1) {
+            return false;
+        }
+        // ON DELETE CASCADE leva usuário, filial, cargos e vínculos juntos.
+        $this->lojas->remover((int) $usuario['id_loja']);
+        return true;
+    }
+
+    /**
+     * Cria loja, filial Matriz, cargos de sistema e o Administrador, numa
+     * transação. Chamado só depois do código de confirmação conferido.
+     * Devolve null se o e-mail tiver sido cadastrado no meio do caminho.
+     */
+    private function criarConta(string $nome, string $email, string $senhaHash, string $nomeLoja): ?int
+    {
         // Fora da transação: dentro dela a migração do catálogo não pode ser
         // registrada (DDL faz commit implícito) e rodaria em todo cadastro.
         $this->cargos->garantirCatalogoGlobal();
@@ -94,53 +155,34 @@ final class AuthController
             // Busca direta: listByLoja() traria também as permissões e a
             // contagem de usuários de cada cargo, 7 consultas sem uso aqui.
             $idCargoAdmin = $this->cargos->idCargoSistema($idLoja, 'Administrador');
-            $idUsuario = $this->usuarios->create(
-                $idLoja,
-                $nome,
-                $email,
-                password_hash($senha, PASSWORD_BCRYPT),
-                'administrador',
-                $idCargoAdmin,
-                false
-            );
+            // O e-mail já foi confirmado pelo código: a conta nasce verificada.
+            $idUsuario = $this->usuarios->create($idLoja, $nome, $email, $senhaHash, 'administrador', $idCargoAdmin, true);
             // O Administrador não precisa do vínculo (acessa todas as
             // filiais), mas o mantém caso um dia deixe de ser Administrador
             // — o mesmo que sql/migracao_filiais.sql faz.
             $this->filiais->vincular($idUsuario, $idFilial);
             $this->usuarios->updateUltimaFilial($idUsuario, $idFilial);
             $pdo->commit();
+            return $idUsuario;
+        } catch (\PDOException $e) {
+            $pdo->rollBack();
+            // 23000: o índice UNIQUE de usuarios.email barrou um cadastro
+            // simultâneo com o mesmo e-mail.
+            if ($e->getCode() === '23000') {
+                return null;
+            }
+            throw $e;
         } catch (\Throwable $e) {
             $pdo->rollBack();
-            Response::json(['erro' => 'Não foi possível concluir o cadastro'], 500);
-            return;
+            throw $e;
         }
-
-        // Não autentica automaticamente: depois do cadastro o usuário
-        // confirma o e-mail com o código enviado e só então é levado à tela
-        // de Login para entrar com o e-mail e a senha que acabou de definir.
-        // Deixar a sessão aberta aqui deixava a conta logada em um navegador
-        // que nunca digitou a senha e pulava a confirmação de que ela foi
-        // memorizada corretamente.
-        $usuario = $this->usuarios->find($idUsuario);
-
-        RateLimit::registrarFalha('envio:' . $email);
-        $extra = $this->enviarCodigoAcesso(
-            $usuario,
-            'Confirme seu e-mail — Hydra PDV',
-            'Confirme seu e-mail',
-            'Use o código abaixo para confirmar o e-mail da sua conta no Hydra PDV.'
-        );
-
-        Response::json(
-            ['usuario' => $this->publicUser($usuario), 'requer_verificacao' => true] + $extra,
-            201
-        );
     }
 
     /**
      * POST /api/auth/verificar-email
-     * Confirma o e-mail da conta criada no Cadastro com o código enviado.
-     * Não abre sessão: o fluxo segue para a tela de Login.
+     * Segunda etapa do Cadastro: confere o código e só então cria a conta.
+     * Também confirma o e-mail de contas antigas, criadas antes dos
+     * cadastros pendentes. Não abre sessão: o fluxo segue para o Login.
      */
     public function verificarEmail(): void
     {
@@ -156,6 +198,32 @@ final class AuthController
         $chaveLimite = 'codigo:' . $email;
         RateLimit::requireNaoBloqueado($chaveLimite);
 
+        $pendentes = new CadastroPendenteRepository();
+        $pendente = $pendentes->buscar($email);
+        if ($pendente !== null) {
+            $codigoConfere = (int) $pendente['codigo_valido'] === 1
+                && hash_equals((string) $pendente['codigo_hash'], CadastroPendenteRepository::hashCodigo($codigo));
+            if (!$codigoConfere) {
+                RateLimit::registrarFalha($chaveLimite);
+                Response::json(['erro' => 'Código inválido ou expirado'], 400);
+                return;
+            }
+
+            $idUsuario = $this->usuarios->emailExists($email)
+                ? null
+                : $this->criarConta((string) $pendente['nome'], $email, (string) $pendente['senha_hash'], (string) $pendente['nome_loja']);
+            $pendentes->remover($email);
+            RateLimit::limpar($chaveLimite, 'envio:' . $email);
+
+            if ($idUsuario === null) {
+                Response::json(['erro' => 'Já existe uma conta com este e-mail. Faça login.'], 409);
+                return;
+            }
+            Response::json(['ok' => true]);
+            return;
+        }
+
+        // Conta antiga, criada antes dos cadastros pendentes.
         $usuario = $this->usuarios->findByEmail($email);
         $valido = $usuario !== null
             ? $this->usuarios->findByValidCodigoAcesso((int) $usuario['id_usuario'], $codigo)
@@ -167,8 +235,7 @@ final class AuthController
         }
 
         $this->usuarios->marcarEmailVerificadoELimparCodigo((int) $usuario['id_usuario']);
-        RateLimit::limpar($chaveLimite);
-        RateLimit::limpar('envio:' . $email);
+        RateLimit::limpar($chaveLimite, 'envio:' . $email);
 
         Response::json(['ok' => true]);
     }
@@ -186,6 +253,24 @@ final class AuthController
         // ilimitado de e-mails para a caixa de outra pessoa.
         $chaveLimite = 'envio:' . $email;
         RateLimit::requireNaoBloqueado($chaveLimite);
+
+        $pendentes = new CadastroPendenteRepository();
+        $pendente = $email !== '' ? $pendentes->buscar($email) : null;
+        if ($pendente !== null) {
+            RateLimit::registrarFalha($chaveLimite);
+            $codigo = $this->novoCodigo();
+            $pendentes->atualizarCodigo($email, $codigo, $this->expiracaoCodigo());
+            $extra = $this->despacharEmailCodigo(
+                $email,
+                (string) $pendente['nome'],
+                $codigo,
+                'Confirme seu e-mail — Hydra PDV',
+                'Confirme seu e-mail',
+                'Use o código abaixo para confirmar o e-mail e concluir a criação da sua conta no Hydra PDV.'
+            );
+            Response::json(['ok' => true] + $extra);
+            return;
+        }
 
         $usuario = $email !== '' ? $this->usuarios->findByEmail($email) : null;
         if ($usuario === null || (int) $usuario['email_verificado'] === 1) {
@@ -240,9 +325,14 @@ final class AuthController
         // cria os 3 de sistema e associa quem estiver sem cargo (ver
         // CargoRepository::ensureDefaults). Idempotente: nas próximas
         // chamadas não faz nada.
-        $this->cargos->ensureDefaults((int) $usuario['id_loja']);
+        // Quem já tem cargo está numa loja que já tem os cargos de sistema:
+        // aí basta conferir o catálogo global (um file_exists no caso normal)
+        // e o login poupa duas consultas.
         if ($usuario['id_cargo'] === null) {
+            $this->cargos->ensureDefaults((int) $usuario['id_loja']);
             $usuario = $this->usuarios->findByEmail($email);
+        } else {
+            $this->cargos->garantirCatalogoGlobal();
         }
 
         // Antes do código por e-mail: não faz sentido mandar o código a
@@ -340,12 +430,10 @@ final class AuthController
             return;
         }
 
-        $this->usuarios->marcarEmailVerificadoELimparCodigo((int) $usuario['id_usuario']);
+        $this->usuarios->concluirLoginComCodigo((int) $usuario['id_usuario']);
         unset($_SESSION['login_pendente']);
-        RateLimit::limpar($chaveLimite);
-        RateLimit::limpar('envio:' . $usuario['email']);
+        RateLimit::limpar($chaveLimite, 'envio:' . $usuario['email']);
 
-        $this->usuarios->updateUltimoAcesso((int) $usuario['id_usuario']);
         Auth::login($usuario);
 
         Response::json($this->respostaDeLogin($usuario));
@@ -412,7 +500,10 @@ final class AuthController
 
         if ($escolhida !== null) {
             Auth::definirFilial((int) $escolhida['id_filial']);
-            $this->usuarios->updateUltimaFilial((int) $usuario['id_usuario'], (int) $escolhida['id_filial']);
+            // Só grava se mudou: no login de todo dia é a mesma filial.
+            if ((int) $escolhida['id_filial'] !== (int) ($usuario['id_ultima_filial'] ?? 0)) {
+                $this->usuarios->updateUltimaFilial((int) $usuario['id_usuario'], (int) $escolhida['id_filial']);
+            }
         }
 
         return [
@@ -615,13 +706,40 @@ final class AuthController
      */
     private function enviarCodigoAcesso(array $usuario, string $assunto, string $titulo, string $texto): array
     {
-        $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $expiraEm = (new \DateTimeImmutable('+' . self::MINUTOS_CODIGO . ' minutes'))->format('Y-m-d H:i:s');
-        $this->usuarios->setCodigoAcesso((int) $usuario['id_usuario'], $codigo, $expiraEm);
+        $codigo = $this->novoCodigo();
+        $this->usuarios->setCodigoAcesso((int) $usuario['id_usuario'], $codigo, $this->expiracaoCodigo());
 
-        $destino = (string) $usuario['email'];
-        $html = $this->emailCodigoHtml(
+        return $this->despacharEmailCodigo(
+            (string) $usuario['email'],
             (string) $usuario['nome'],
+            $codigo,
+            $assunto,
+            $titulo,
+            $texto
+        );
+    }
+
+    private function novoCodigo(): string
+    {
+        return str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    }
+
+    private function expiracaoCodigo(): string
+    {
+        return (new \DateTimeImmutable('+' . self::MINUTOS_CODIGO . ' minutes'))->format('Y-m-d H:i:s');
+    }
+
+    /**
+     * Envia o e-mail com o código. Devolve o que acrescentar à resposta:
+     * o código só volta nela em desenvolvimento (APP_ENV=local) quando o
+     * e-mail não pôde ser enviado.
+     *
+     * @return array<string,string>
+     */
+    private function despacharEmailCodigo(string $destino, string $nome, string $codigo, string $assunto, string $titulo, string $texto): array
+    {
+        $html = $this->emailCodigoHtml(
+            $nome,
             $codigo,
             $titulo,
             $texto . ' Ele expira em ' . self::MINUTOS_CODIGO . ' minutos.',
@@ -636,8 +754,7 @@ final class AuthController
 
         // Em produção a resposta é a mesma com ou sem sucesso no envio: o
         // e-mail sai DEPOIS que a tela recebe a resposta, em vez de a tela
-        // esperar a chamada ao Brevo (era a maior parte da demora do
-        // cadastro e do login do administrador).
+        // esperar a chamada ao Brevo — a tela do código abre na hora.
         Response::depoisDaResposta(static fn () => Mailer::send($destino, $assunto, $html));
         return [];
     }

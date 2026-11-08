@@ -430,15 +430,24 @@ final class CargoRepository
     }
 
     /** @return string[] códigos de permissão do cargo */
+    /** @var array<int,string[]> permissões já lidas nesta requisição, por cargo */
+    private static array $cachePermissoes = [];
+
     public function permissoesDoCargo(int $idCargo): array
     {
+        // O login pedia as mesmas permissões até três vezes (filial, sessão
+        // e resposta). Vale só dentro da requisição e é zerado quando as
+        // permissões de um cargo mudam (sincronizarPermissoes).
+        if (isset(self::$cachePermissoes[$idCargo])) {
+            return self::$cachePermissoes[$idCargo];
+        }
         $stmt = db()->prepare(
             'SELECT p.codigo FROM cargo_permissoes cp
              JOIN permissoes p ON p.id_permissao = cp.id_permissao
              WHERE cp.id_cargo = :id_cargo'
         );
         $stmt->execute(['id_cargo' => $idCargo]);
-        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        return self::$cachePermissoes[$idCargo] = $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
     public function countUsuarios(int $idCargo): int
@@ -584,6 +593,7 @@ final class CargoRepository
      */
     private function sincronizarPermissoes(int $idCargo, array $codigos, bool $cargoNovo = false): void
     {
+        self::$cachePermissoes = [];
         $pdo = db();
         if (!$cargoNovo) {
             $pdo->prepare('DELETE FROM cargo_permissoes WHERE id_cargo = :id_cargo')

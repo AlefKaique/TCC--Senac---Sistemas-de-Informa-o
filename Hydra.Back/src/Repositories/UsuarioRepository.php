@@ -41,6 +41,50 @@ final class UsuarioRepository
         return (int) db()->lastInsertId();
     }
 
+    public function countByLoja(int $idLoja): int
+    {
+        $stmt = db()->prepare('SELECT COUNT(*) FROM usuarios WHERE id_loja = :id_loja');
+        $stmt->execute(['id_loja' => $idLoja]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Tudo o que Auth precisa revalidar a cada requisição, numa consulta só:
+     * o usuário, as permissões do cargo e o acesso à filial da sessão.
+     * Antes eram três idas ao banco (usuário, permissões e filial) antes
+     * de cada tela buscar os seus dados.
+     *
+     * - permissoes: códigos separados por vírgula (ou NULL sem cargo);
+     * - filial_ativa: a filial existe, está ativa e é da loja do usuário;
+     * - filial_vinculada: o usuário tem vínculo com ela (Administrador não
+     *   precisa — quem decide isso é Auth::requireFilial()).
+     */
+    public function estadoDaSessao(int $idUsuario, int $idFilial): ?array
+    {
+        $stmt = db()->prepare(
+            "SELECT u.id_usuario, u.id_loja, u.nome, u.email, u.perfil, u.id_cargo, u.status,
+                    (SELECT GROUP_CONCAT(p.codigo ORDER BY p.codigo)
+                       FROM cargo_permissoes cp
+                       JOIN permissoes p ON p.id_permissao = cp.id_permissao
+                      WHERE cp.id_cargo = u.id_cargo) AS permissoes,
+                    EXISTS (SELECT 1 FROM filiais f
+                             WHERE f.id_filial = :id_filial AND f.id_loja = u.id_loja
+                               AND f.status = 'ativa') AS filial_ativa,
+                    EXISTS (SELECT 1 FROM usuario_filiais uf
+                             WHERE uf.id_usuario = u.id_usuario
+                               AND uf.id_filial = :id_filial_vinculo) AS filial_vinculada
+               FROM usuarios u
+              WHERE u.id_usuario = :id_usuario"
+        );
+        $stmt->execute([
+            'id_filial' => $idFilial,
+            'id_filial_vinculo' => $idFilial,
+            'id_usuario' => $idUsuario,
+        ]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
     public function findByEmail(string $email): ?array
     {
         $stmt = db()->prepare('SELECT * FROM usuarios WHERE email = :email');
@@ -209,6 +253,19 @@ final class UsuarioRepository
         $stmt->execute(['id' => $idUsuario, 'codigo' => $codigo]);
         $row = $stmt->fetch();
         return $row ?: null;
+    }
+
+    /**
+     * Fim do login com código: consome o código, confirma o e-mail e grava
+     * o último acesso — antes eram dois UPDATEs seguidos.
+     */
+    public function concluirLoginComCodigo(int $idUsuario): void
+    {
+        db()->prepare(
+            'UPDATE usuarios SET email_verificado = 1, codigo_acesso = NULL, codigo_acesso_expira_em = NULL,
+                    ultimo_acesso = NOW()
+              WHERE id_usuario = :id'
+        )->execute(['id' => $idUsuario]);
     }
 
     /** Consome o código (uso único) e marca o e-mail como confirmado. */
