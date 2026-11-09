@@ -14,6 +14,7 @@ final class VendaRepository
         // Colunas de cancelamento (status, autorizador...) em bancos já em
         // uso. Antes de qualquer transação: DDL faz commit implícito.
         Migracoes::garantirCancelamentoDeVendas();
+        Migracoes::garantirRelatoriosReais();
     }
 
     /**
@@ -69,17 +70,34 @@ final class VendaRepository
         return (int) $stmt->fetchColumn();
     }
 
-    public function addItem(int $idVenda, int $idProduto, float $quantidade, float $precoUnitario): void
+    public function custoAtualProdutoBloqueado(int $idProduto): ?float
+    {
+        $stmt = db()->prepare('SELECT preco_custo FROM produtos WHERE id_produto = :id FOR UPDATE');
+        $stmt->execute(['id' => $idProduto]);
+        $custo = $stmt->fetchColumn();
+        return $custo === false || $custo === null ? null : (float) $custo;
+    }
+
+    public function addItem(
+        int $idVenda,
+        int $idProduto,
+        float $quantidade,
+        float $precoUnitario,
+        ?float $custoUnitario
+    ): void
     {
         $stmt = db()->prepare(
-            'INSERT INTO itens_venda (id_venda, id_produto, quantidade, preco_unitario)
-             VALUES (:id_venda, :id_produto, :quantidade, :preco_unitario)'
+            'INSERT INTO itens_venda
+                (id_venda, id_produto, quantidade, preco_unitario, custo_unitario, custo_estimado)
+             VALUES
+                (:id_venda, :id_produto, :quantidade, :preco_unitario, :custo_unitario, 0)'
         );
         $stmt->execute([
             'id_venda' => $idVenda,
             'id_produto' => $idProduto,
             'quantidade' => $quantidade,
             'preco_unitario' => $precoUnitario,
+            'custo_unitario' => $custoUnitario,
         ]);
     }
 
@@ -131,10 +149,8 @@ final class VendaRepository
      * Resumo de cada filial da loja no período [inicio, fim): quantidade de
      * vendas, faturamento e lucro bruto, para os cartões da tela Filiais.
      *
-     * Lucro bruto com a MESMA regra do card "Lucro Bruto do Mês" do
-     * Dashboard: valor da venda (já com desconto) menos o custo dos itens,
-     * pelo preço de custo ATUAL do produto (itens_venda não guarda o custo
-     * da época); produto sem preço de custo entra com custo 0.
+     * Lucro bruto: valor da venda (já com desconto) menos o custo gravado
+     * nos itens na época da venda; custo desconhecido entra como zero.
      *
      * O custo é somado por venda numa subconsulta antes do JOIN; somado
      * direto no JOIN com itens_venda, o valor_total de cada venda seria
@@ -151,10 +167,9 @@ final class VendaRepository
                     COALESCE(SUM(v.valor_total - COALESCE(c.custo, 0)), 0) AS lucro
                FROM vendas v
                LEFT JOIN (
-                    SELECT iv.id_venda, SUM(iv.quantidade * COALESCE(p.preco_custo, 0)) AS custo
+                    SELECT iv.id_venda, SUM(iv.quantidade * COALESCE(iv.custo_unitario, 0)) AS custo
                       FROM itens_venda iv
                       JOIN vendas v2 ON v2.id_venda = iv.id_venda
-                      JOIN produtos p ON p.id_produto = iv.id_produto
                      WHERE v2.id_loja = :id_loja2 AND v2.data_venda >= :inicio2 AND v2.data_venda < :fim2
                        AND v2.status = \'concluida\'
                      GROUP BY iv.id_venda
@@ -204,14 +219,12 @@ final class VendaRepository
         return $stmt->rowCount() === 1;
     }
 
-    /* "custo_unitario" é o preço de custo ATUAL do produto (itens_venda não
-       guarda o custo da época da venda) — é com ele que o Dashboard calcula
-       o lucro bruto. */
+    /* O histórico usa o custo gravado no item na época da venda. */
     /** @return array<int,array<string,mixed>> */
     public function listItensByVenda(int $idVenda): array
     {
         $stmt = db()->prepare(
-            'SELECT iv.*, p.nome AS nome_produto, p.preco_custo AS custo_unitario
+            'SELECT iv.*, p.nome AS nome_produto
              FROM itens_venda iv
              JOIN produtos p ON p.id_produto = iv.id_produto
              WHERE iv.id_venda = :id_venda'
@@ -242,7 +255,7 @@ final class VendaRepository
     public function listItensByVendas(array $idsVenda): array
     {
         return $this->agruparPorVenda(
-            'SELECT iv.*, p.nome AS nome_produto, p.preco_custo AS custo_unitario
+            'SELECT iv.*, p.nome AS nome_produto
                FROM itens_venda iv
                JOIN produtos p ON p.id_produto = iv.id_produto
               WHERE iv.id_venda IN (%s)',

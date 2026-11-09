@@ -20,7 +20,9 @@ use Hydra\Support\SenhaAutorizacao;
  */
 final class VendaController
 {
-    private const FORMAS_PAGAMENTO = ['pix', 'cartao_credito', 'cartao_debito', 'vale_refeicao', 'dinheiro'];
+    // Pix só pode ser gravado por PixController após a confirmação da cobrança
+    // pelo Mercado Pago; o POST comum não deve aceitar Pix sem comprovante.
+    private const FORMAS_PAGAMENTO = ['cartao_credito', 'cartao_debito', 'vale_refeicao', 'dinheiro'];
 
     private VendaRepository $vendas;
     private ProdutoRepository $produtos;
@@ -108,7 +110,9 @@ final class VendaController
             $forma = (string) ($pagamento['forma_pagamento'] ?? '');
             $valor = $pagamento['valor'] ?? null;
             if (!in_array($forma, self::FORMAS_PAGAMENTO, true)) {
-                Response::json(['erro' => 'Forma de pagamento inválida'], 422);
+                Response::json(['erro' => $forma === 'pix'
+                    ? 'Pix deve ser confirmado pelo QR Code do Mercado Pago antes de registrar a venda.'
+                    : 'Forma de pagamento inválida'], 422);
                 return;
             }
             if (!is_numeric($valor) || (float) $valor <= 0) {
@@ -140,6 +144,13 @@ final class VendaController
             $produto = $this->produtos->findInFilial($idProduto, $user['id_filial']);
             if ($produto === null || $produto['status'] !== 'ativo') {
                 Response::json(['erro' => 'Produto indisponível para venda'], 422);
+                return;
+            }
+            if ($produto['preco_venda'] === null) {
+                Response::json([
+                    'erro' => 'Defina o preço deste item antes de vender: ' . $produto['nome'],
+                    'codigo' => 'preco_nao_definido',
+                ], 422);
                 return;
             }
             // RN01/RN08 — disponibilidade de estoque.
@@ -189,7 +200,14 @@ final class VendaController
                 if (!$this->produtos->baixarQuantidadeSeHouver($item['id_produto'], $item['quantidade'])) {
                     throw new \RuntimeException('Estoque insuficiente para o produto ' . $item['id_produto']);
                 }
-                $this->vendas->addItem($idVenda, $item['id_produto'], $item['quantidade'], $item['preco_unitario']);
+                $custoUnitario = $this->vendas->custoAtualProdutoBloqueado($item['id_produto']);
+                $this->vendas->addItem(
+                    $idVenda,
+                    $item['id_produto'],
+                    $item['quantidade'],
+                    $item['preco_unitario'],
+                    $custoUnitario
+                );
                 $this->movimentacoes->create(
                     $user['id_loja'],
                     $user['id_filial'],
