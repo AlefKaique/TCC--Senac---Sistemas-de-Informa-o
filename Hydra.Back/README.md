@@ -17,12 +17,15 @@ Loja), **Cargos e Permissões**, **Produtos**, **Controle de Estoque** e
    `schema.sql` para criá-las. O arquivo descreve o estado final do
    modelo e espera um banco limpo: para reaplicá-lo, recrie o banco
    antes (as linhas de `DROP DATABASE` / `CREATE DATABASE` estão
-   comentadas no cabeçalho dele).
-3. (Opcional) Preencha `BREVO_API_KEY` e `MAIL_*` no `.env` para o envio
-   real do código da tela de Recuperar Senha. O envio usa a **API HTTP do
-   Brevo**, não SMTP — provedores como o Render bloqueiam as portas 25,
-   465 e 587. Sem a chave, o código volta na resposta da API
-   (`codigo_dev`), mas **apenas quando `APP_ENV=local`**.
+   comentadas no cabeçalho dele). Depois, execute
+   `sql/seed_catalogo_hortifruti.sql` para carregar os 120 itens padrão;
+   esse seed pode ser executado novamente sem duplicar códigos.
+3. Preencha `BREVO_API_KEY` e `MAIL_*` no `.env` para enviar os códigos
+   de acesso da Plataforma Hydra, convites e e-mails de recuperação. O
+   envio usa a **API HTTP do Brevo**, não SMTP — provedores como o Render
+   bloqueiam as portas 25, 465 e 587. Sem a chave, os fluxos da plataforma
+   informam que o envio falhou; os códigos de desenvolvimento da
+   recuperação de senha continuam disponíveis apenas com `APP_ENV=local`.
 4. Defina `APP_ENV=local` na sua máquina e `production` no servidor. Esse
    valor controla o `codigo_dev` acima e o curinga de CORS.
 
@@ -63,6 +66,7 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | PUT    | `/api/cargos/{id}`                   | `equipe.gerenciar` | Altera nome, cor, descrição e permissões |
 | DELETE | `/api/cargos/{id}`                   | `equipe.gerenciar` | Exclui cargo que não seja de sistema |
 | GET    | `/api/produtos`                      | `estoque.consultar` | Catálogo da loja (Controle de Estoque e Caixa) |
+| GET    | `/api/produtos/codigo-barras/{codigo}` | `estoque.consultar` | Busca produto da filial ativa por código de barras (8–14 dígitos) |
 | POST   | `/api/produtos`                      | `produtos.gerenciar` | Cadastra produto (Fig. 25) |
 | PUT    | `/api/produtos/{id}`                 | `produtos.gerenciar` | Edita produto (preços exigem `produtos.editar_preco`, RN04) |
 | DELETE | `/api/produtos/{id}`                 | `produtos.gerenciar` | Exclui ou inativa o produto (RN03) |
@@ -70,7 +74,30 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | GET    | `/api/estoque/movimentacoes`         | `estoque.consultar` | Movimentações da loja (Dashboard, RF06) |
 | POST   | `/api/estoque/movimentacoes`         | `estoque.lancar` | Lança entrada ou saída manual (RF03/RF12) |
 | GET    | `/api/vendas`                        | `vendas.historico` **ou** `relatorios.visualizar` | Histórico de vendas com itens, pagamentos, o nome de quem registrou e o próximo número de pedido da loja |
+| GET    | `/api/relatorios/resumo`              | `relatorios.visualizar` | Indicadores financeiros, comparativo com período anterior e visão de hoje |
+| GET    | `/api/relatorios/vendas-por-dia`      | `relatorios.visualizar` | Série diária de vendas e período anterior |
+| GET    | `/api/relatorios/pagamentos`          | `relatorios.visualizar` | Vendas agrupadas por forma de pagamento |
+| GET    | `/api/relatorios/horarios`            | `relatorios.visualizar` | Média de vendas por dia da semana e hora |
+| GET    | `/api/relatorios/produtos`            | `relatorios.visualizar` | Produtos mais vendidos, mais lucrativos, menor margem e curva ABC |
+| GET    | `/api/relatorios/estoque`             | `relatorios.visualizar` | Valoração atual, risco de ruptura, estoque sem giro e alertas de validade/mínimo |
+| GET    | `/api/relatorios/cancelamentos`       | `relatorios.visualizar` | Cancelamentos do período, responsáveis e motivos |
+| GET    | `/api/relatorios/operadores`          | `relatorios.visualizar` | Vendas, faturamento, ticket médio e cancelamentos por operador |
+| GET    | `/api/alertas/preferencias`           | `loja.configurar` | Preferências de alertas e os últimos 10 envios do administrador |
+| PUT    | `/api/alertas/preferencias`           | `loja.configurar` | Salva canais e tipos de alerta |
+| POST   | `/api/alertas/destinatarios`          | `loja.configurar` | Adiciona o celular pessoal do administrador, com consentimento explícito |
+| DELETE | `/api/alertas/destinatarios/{id}`     | `loja.configurar` | Revoga e remove um telefone da lista do administrador |
+| POST   | `/api/alertas/teste`                  | `loja.configurar` | Envia um resumo de teste da filial ativa (até 3 por hora) |
+| POST   | `/api/interno/alertas/disparar`       | `X-Cron-Token` | Executa o envio diário sem sessão de usuário |
+| GET    | `/api/whatsapp/webhook`                | verificação Meta | Confirma o webhook com `WHATSAPP_VERIFY_TOKEN` |
+| POST   | `/api/whatsapp/webhook`                | assinatura Meta | Atualiza entrega/leitura e processa pedidos de cancelamento `SAIR` |
 | POST   | `/api/vendas`                        | `vendas.operar` | Finaliza venda (itens, pagamentos e desconto) |
+| GET    | `/api/pix/mercadopago/conta`          | `loja.configurar` | Consulta se a integração Mercado Pago está configurada/conectada, sem retornar tokens |
+| POST   | `/api/pix/mercadopago/conectar`       | `loja.configurar` | Inicia OAuth para conectar a conta Mercado Pago da loja |
+| GET    | `/api/pix/mercadopago/callback`       | sessão OAuth válida | Recebe o retorno OAuth e grava os tokens criptografados |
+| DELETE | `/api/pix/mercadopago/conta`          | `loja.configurar` | Desconecta a conta Mercado Pago da loja |
+| POST   | `/api/pix/pagamentos`                 | `vendas.operar` | Cria cobrança Pix dinâmica e retorna QR Code/código copia e cola |
+| GET    | `/api/pix/pagamentos/pendente`         | `vendas.operar` | Retoma a cobrança pendente do operador atual |
+| GET    | `/api/pix/pagamentos/{id}`             | `vendas.operar` | Consulta pagamento; ao confirmar, grava venda e baixa estoque atomicamente |
 | POST   | `/api/vendas/autorizar-cancelamento` | `vendas.operar` **ou** `vendas.historico` | Confere a senha de autorização (PIN) de um gerente/administrador e libera cancelamentos por 5 minutos, nesta filial (fica na sessão) |
 | POST   | `/api/vendas/autorizar-cancelamento/encerrar` | logado | Encerra a autorização antes do prazo (a tela saiu da aba Cancelar Venda) |
 | POST   | `/api/vendas/{id}/cancelar`          | `vendas.operar` **ou** `vendas.historico` + autorização acima | Cancela a venda (`{ "motivo": "..." }`), devolve os itens ao estoque e grava quem autorizou |
@@ -79,8 +106,126 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | GET    | `/api/filiais/minhas`                | logado | Filiais ativas que o usuário pode acessar e a filial ativa da sessão |
 | POST   | `/api/filiais/trocar`                | logado | Troca a filial ativa (`{ "id_filial": N }`): 403 sem acesso, 404 inexistente, 422 inativa |
 | GET    | `/api/filiais`                       | `loja.configurar` **ou** `equipe.gerenciar` | Todas as filiais da loja (seção Filiais e tela Equipe) |
-| POST   | `/api/filiais`                       | `loja.configurar` | Cria filial |
+| POST   | `/api/filiais`                       | `loja.configurar` | Cria filial; `importar_hortifruti: true` solicita também a importação (exige `produtos.importar_catalogo`) |
 | PUT    | `/api/filiais/{id}`                  | `loja.configurar` | Edita filial; recusa inativar a única ativa ou a da própria sessão |
+| GET    | `/api/catalogo-hortifruti`           | pública | Lista o catálogo padrão de códigos hortifrúti |
+| POST   | `/api/catalogo-hortifruti/importar`  | `produtos.importar_catalogo` | Importa para a filial ativa sem sobrescrever códigos existentes |
+
+As rotas `/api/relatorios/*` aceitam `?de=AAAA-MM-DD&ate=AAAA-MM-DD`; sem
+datas, usam os últimos 30 dias. O limite é 366 dias e todas as consultas usam
+a filial ativa da sessão. O validador local das agregações pode ser executado
+somente com `APP_ENV=local` e banco em `localhost`/loopback; ele exige
+confirmação explícita, usa uma filial com usuário e produto ativos e reverte
+os registros de teste:
+
+```bash
+APP_ENV=local php bin/seed-relatorios.php --id-filial=1 --confirm-test-data
+```
+
+O custo histórico é gravado em cada item da venda; vendas anteriores à
+migração recebem o custo atual do cadastro marcado como estimado. O percentual
+de cancelamentos considera o valor cancelado dividido pelo total concluído
+mais cancelado no período.
+
+### Catálogo hortifrúti e balança
+
+O cadastro inicial permite escolher a importação para a primeira filial; a
+mesma opção fica no fim do formulário de criação de cada filial. Sem marcar
+essa opção, o fluxo continua permitindo cadastrar produtos manualmente. Os
+itens importados entram com estoque zero, preço e PLU nulos. O Administrador
+define o preço em Estoque antes de o item poder ser vendido. Códigos próprios
+podem ser cadastrados manualmente na faixa 500–599.
+
+No caixa, a busca aceita o código curto ou a etiqueta EAN-13. Para manter
+13 dígitos, a etiqueta de balança reconhecida usa um prefixo de dois dígitos
+da faixa interna `20`–`29` (configure `20`), código interno preenchido com
+zeros à esquerda até cinco dígitos, peso em gramas com cinco dígitos e o
+dígito verificador EAN-13. Exemplo: código `101` e peso `350 g` formam
+`20` + `00101` + `00350` + verificador = `2000101003502`. Configure a
+balança para emitir exatamente esse formato; a configuração do equipamento
+varia por fabricante e não é alterada pelo Hydra.
+
+O código de barras de produtos comuns é opcional e, quando informado, deve
+conter de 8 a 14 dígitos. Pode ser lido pela câmera na busca do Caixa e nos
+formulários de cadastro/edição. A câmera requer permissão do usuário, HTTPS
+(ou `localhost`) e navegador com suporte à API `BarcodeDetector`; sem esse
+suporte, o código pode ser digitado ou lido com um leitor USB. A leitura é
+processada no próprio navegador.
+
+### Pix dinâmico no Caixa (Mercado Pago)
+
+O botão **Pix com QR Code** gera uma cobrança dinâmica na conta do mercado
+conectada por OAuth. O Caixa consulta o status a cada 2,5 segundos e só grava
+a venda/baixa o estoque após confirmar o pagamento aprovado no Mercado Pago.
+O QR e o código Pix copia e cola ficam disponíveis enquanto a cobrança está
+pendente; a tela pode ser recarregada e retoma a consulta. Este fluxo usa
+polling, não webhook; a API Hydra precisa apenas de acesso HTTPS de saída ao
+Mercado Pago.
+
+**RN10 — formas de pagamento:** dinheiro, cartão de crédito, cartão de débito,
+vale-refeição e Pix. No Pix dinâmico, informar o e-mail do cliente gera uma
+cobrança única; status pendente/rejeitado não registra a venda e somente o
+status aprovado permite a finalização automática.
+
+Para habilitar:
+
+1. Crie uma aplicação no painel de desenvolvedores do Mercado Pago e configure
+   o URI de redirecionamento OAuth como
+   `https://SEU-DOMINIO/api/pix/mercadopago/callback` (tem que corresponder
+   exatamente a `MERCADOPAGO_REDIRECT_URI`).
+2. Configure `MERCADOPAGO_CLIENT_ID`, `MERCADOPAGO_CLIENT_SECRET`,
+   `MERCADOPAGO_REDIRECT_URI` e `HYDRA_FRONTEND_URL` no ambiente do Hydra.Back.
+   Gere `HYDRA_ENCRYPTION_KEY` com
+   `php -r "echo base64_encode(random_bytes(32)), PHP_EOL;"`.
+   Mantenha essa chave privada e persistente: sem ela os tokens já conectados
+   não poderão ser descriptografados.
+3. Execute o schema atualizado ou deixe a migração automática criar as tabelas.
+   Um Administrador conecta a conta da loja em **Configurações da Loja**.
+4. No Caixa, escolha **Pix com QR Code**. O operador deve manter a sessão
+   aberta até o status aprovado para concluir a venda automaticamente.
+
+Não configure um Access Token único compartilhado: cada loja conecta a própria
+conta e os tokens OAuth são criptografados em repouso. Em desenvolvimento, o
+retorno OAuth precisa chegar ao navegador e à API usando um endereço permitido
+no painel do Mercado Pago; se o celular não alcançar o servidor local, use um
+túnel HTTPS como ngrok. Não há webhook para apontar ao `localhost`.
+
+### Plataforma Hydra
+
+As telas administrativas ficam em `Hydra.Front/pages/plataforma/`. A
+autenticação da plataforma é separada das sessões de mercado: o login exige
+senha e código por e-mail, e os endpoints validam o nível do membro no
+servidor. Os níveis são **Analista** (consulta), **Gestor** (consulta,
+auditoria e suspensão/reativação) e **Proprietário** (acesso total e gestão
+da equipe).
+
+| Método | Rota | Acesso | Descrição |
+|--------|------|--------|-----------|
+| POST | `/api/plataforma/auth/login` | pública | Confere e-mail/senha e envia código de acesso |
+| POST | `/api/plataforma/auth/codigo` | login pendente | Confere o código e abre a sessão da plataforma |
+| POST | `/api/plataforma/auth/reenviar` | login pendente | Reenvia o código da segunda etapa |
+| POST | `/api/plataforma/auth/primeiro-acesso` | convite válido | Define a senha inicial de um membro convidado |
+| GET | `/api/plataforma/auth/me` | plataforma autenticada | Revalida a sessão e retorna o nível atual |
+| POST | `/api/plataforma/auth/logout` | plataforma autenticada | Registra a saída e encerra a sessão |
+| GET | `/api/plataforma/resumo` | plataforma autenticada | Indicadores agregados da visão geral |
+| GET | `/api/plataforma/rendimento?dias=30` | plataforma autenticada | Faturamento agregado, evolução e ranking dos mercados (7, 30, 90 ou 365 dias) |
+| GET | `/api/plataforma/lojas` | plataforma autenticada | Lista paginada de mercados com busca e filtros |
+| GET | `/api/plataforma/lojas/{id}` | plataforma autenticada | Detalhes agregados de um mercado |
+| POST | `/api/plataforma/lojas/{id}/suspender` | Proprietário ou Gestor | Suspende o mercado com motivo obrigatório |
+| POST | `/api/plataforma/lojas/{id}/reativar` | Proprietário ou Gestor | Reativa o mercado com motivo obrigatório |
+| GET | `/api/plataforma/cadastros-pendentes` | plataforma autenticada | Lista cadastros que ainda aguardam confirmação |
+| GET | `/api/plataforma/auditoria` | Proprietário ou Gestor | Consulta o histórico de ações administrativas |
+| GET/POST | `/api/plataforma/equipe` | Proprietário | Lista membros ou envia um convite |
+| PUT | `/api/plataforma/equipe/{id}` | Proprietário | Altera nível ou situação de um membro |
+| POST | `/api/plataforma/equipe/{id}/reenviar-convite` | Proprietário | Emite um novo convite válido por 24 horas |
+
+Não há conta padrão. Para criar o primeiro Proprietário, na pasta
+`Hydra.Back`, execute `php bin/criar-admin-plataforma.php "Nome" email@dominio.com`
+e informe a senha quando solicitado. O script valida a política de senha e
+não exibe a senha enquanto ela é digitada. Em bancos existentes, as colunas
+da equipe, o status de suspensão e os índices necessários são aplicados
+automaticamente na primeira requisição da plataforma; não é necessário
+recriar o banco nem reaplicar `schema.sql`.
 
 ### Cancelamento de venda
 
@@ -130,7 +275,7 @@ o login passa a ser recusado e a sessão aberta cai na requisição seguinte.
 
 ### Cargos e permissões
 
-São **9 permissões**, recortadas pelas funções que alguém de fato exerce no
+São **10 permissões**, recortadas pelas funções que alguém de fato exerce no
 mercadinho. É o meio-termo entre as duas tentativas anteriores: a primeira
 tinha 19 códigos (ver/criar/editar/excluir por módulo) e pedia uma decisão
 que ninguém toma — "pode editar mas não excluir produto"; a segunda caiu
@@ -242,6 +387,57 @@ logado por dias entregaria a conta do operador anterior a quem usasse a
 máquina depois, e falsearia a autoria gravada nas movimentações de
 estoque. O front-end precisa enviar `credentials: 'include'` nas
 chamadas `fetch`.
+
+## Alertas diários por WhatsApp
+
+Os alertas usam exclusivamente a **WhatsApp Cloud API oficial da Meta**.
+Somente o administrador da loja (`loja.configurar`) configura os alertas em
+Configurações da Loja e cadastra seu próprio celular para recebê-los. O
+telefone exige consentimento explícito e pode ser removido na tela ou
+cancelado respondendo `SAIR`. Os alertas só são enviados enquanto o
+administrador estiver ativo e mantiver a permissão. O resumo é calculado por
+filial, usando `produtos.estoque_minimo` e `produtos.validade`.
+
+O número remetente é da conta WhatsApp Business configurada pelo responsável
+técnico na Meta e nas variáveis do servidor; não é cadastrado na tela da loja.
+No modo de teste da Meta, cada celular destinatário também precisa ser
+autorizado no painel da Meta. A loja escolhe WhatsApp, e-mail ou ambos; uma
+falha de entrega WhatsApp usa o e-mail cadastrado na conta Hydra como
+alternativa.
+
+Defina as variáveis `WHATSAPP_*`, `ALERTAS_CRON_TOKEN` e `APP_URL` conforme
+`.env.example`. `WHATSAPP_ENABLED=false` é o padrão e nunca chama a Meta:
+os resumos seguem por e-mail. A entrega exige que o remetente e o template
+`hydra_resumo_diario` estejam aprovados no idioma `pt_BR`; o passo a passo
+está em [docs/whatsapp-template.md](docs/whatsapp-template.md). O token,
+app secret e verify token são somente de servidor e não devem ser incluídos
+no front-end ou em logs.
+
+O histórico diário reserva cada destino antes do envio e tem uma chave única
+por usuário, filial, data, canal e destinatário. Assim cada número recebe no
+máximo uma mensagem diária, mesmo quando dois agendadores executam ao mesmo tempo. Se o WhatsApp estiver desligado ou
+falhar, o resumo é enviado por e-mail. Sem alertas ativos na filial, nada é
+enviado.
+
+Disparo manual no servidor:
+
+```bash
+php bin/enviar-alertas.php
+php bin/enviar-alertas.php 2026-11-08
+```
+
+Para agendamento externo, configure uma tarefa diária às 7h no fuso
+`America/Sao_Paulo` (por exemplo, cron-job.org):
+
+- Método: `POST`
+- URL: `https://SEU-DOMINIO/api/interno/alertas/disparar`
+- Cabeçalho: `X-Cron-Token: VALOR_DE_ALERTAS_CRON_TOKEN`
+- Corpo: `{}` (opcionalmente `{"data":"AAAA-MM-DD"}` para execução manual)
+
+A resposta JSON informa `enviados`, `pulados` e `falhas`. Sem token correto,
+a rota responde `401`. A configuração preguiçosa cria as tabelas em bancos
+existentes; o `schema.sql` também contém a estrutura completa para bancos
+novos.
 
 ## Próximos módulos
 
