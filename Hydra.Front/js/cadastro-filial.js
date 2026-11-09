@@ -28,6 +28,10 @@
     const erro = document.getElementById('hydroFilialFormErro');
     const dicaStatus = document.getElementById('hydroFilialStatusDica');
     const btnSalvar = document.getElementById('hydroBtnSalvar');
+    const opcaoCatalogo = document.getElementById('hydroFilialCatalogOption');
+    const importarHortifruti = document.getElementById('hydroFilialImportarHortifruti');
+    const cnpjStatus = document.getElementById('hydroFilialCnpjBrasilApiStatus');
+    let cnpjBrasilApiVerificado = null;
 
     function mostrarErro(texto) {
         erro.textContent = texto || '';
@@ -35,8 +39,60 @@
         if (texto) erro.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
+    function mascararCnpj(valor) {
+        const cnpj = window.hydraCnpj.normalizar(valor).slice(0, 14);
+        return cnpj
+            .replace(/^(.{2})(.)/, '$1.$2')
+            .replace(/^(.{2})\.(.{3})(.)/, '$1.$2.$3')
+            .replace(/^(.{2})\.(.{3})\.(.{3})(.)/, '$1.$2.$3/$4')
+            .replace(/^(.{2})\.(.{3})\.(.{3})\/(.{4})(.)/, '$1.$2.$3/$4-$5');
+    }
+
+    function atualizarStatusCnpj(texto, estado = '') {
+        cnpjStatus.textContent = texto;
+        if (estado) cnpjStatus.dataset.status = estado;
+        else delete cnpjStatus.dataset.status;
+    }
+
+    async function verificarCnpjBrasilApi() {
+        const cnpj = window.hydraCnpj.normalizar(campos.cnpj.value);
+        if (!cnpj) {
+            cnpjBrasilApiVerificado = null;
+            atualizarStatusCnpj('');
+            return;
+        }
+        if (!window.hydraCnpj.validoLocal(cnpj)) {
+            throw new Error('CNPJ inválido. Confira os 14 caracteres e os dígitos verificadores.');
+        }
+        if (cnpjBrasilApiVerificado === cnpj) return;
+
+        atualizarStatusCnpj('Consultando CNPJ na BrasilAPI…');
+        const consulta = await window.hydraCnpj.consultarBrasilApi(cnpj);
+        cnpjBrasilApiVerificado = cnpj;
+        const situacao = consulta.situacao ? ` Situação cadastral: ${consulta.situacao}.` : '';
+        atualizarStatusCnpj(
+            consulta.consultado
+                ? `CNPJ encontrado na BrasilAPI.${situacao}`
+                : consulta.mensagem,
+            'sucesso'
+        );
+    }
+
+    campos.cnpj.addEventListener('input', () => {
+        campos.cnpj.value = mascararCnpj(campos.cnpj.value);
+        cnpjBrasilApiVerificado = null;
+        atualizarStatusCnpj('');
+    });
+    campos.cnpj.addEventListener('blur', () => {
+        verificarCnpjBrasilApi().catch((falha) => {
+            cnpjBrasilApiVerificado = null;
+            atualizarStatusCnpj(falha.message, 'erro');
+        });
+    });
+
     /* ================= Modo edição ================= */
     if (idEdicao) {
+        opcaoCatalogo.hidden = true;
         document.title = 'Hydra · Editar filial';
         document.querySelector('.hydro-topbar h1').textContent = 'Editar filial';
         document.getElementById('hydroFilialIntro').textContent =
@@ -53,7 +109,7 @@
 
     function preencher(filial) {
         campos.nome.value = filial.nome || '';
-        campos.cnpj.value = filial.cnpj || '';
+        campos.cnpj.value = mascararCnpj(filial.cnpj || '');
         campos.telefone.value = filial.telefone || '';
         campos.cep.value = filial.cep || '';
         campos.endereco.value = filial.endereco || '';
@@ -116,11 +172,20 @@
             return;
         }
 
+        try {
+            await verificarCnpjBrasilApi();
+        } catch (falha) {
+            atualizarStatusCnpj(falha.message, 'erro');
+            mostrarErro(falha.message);
+            campos.cnpj.focus();
+            return;
+        }
+
         const textoOriginal = btnSalvar.textContent;
         btnSalvar.disabled = true;
         btnSalvar.textContent = 'Salvando…';
         try {
-            await window.hydraApi(idEdicao ? `/filiais/${idEdicao}` : '/filiais', {
+            const resposta = await window.hydraApi(idEdicao ? `/filiais/${idEdicao}` : '/filiais', {
                 method: idEdicao ? 'PUT' : 'POST',
                 body: {
                     nome,
@@ -131,9 +196,12 @@
                     cidade: campos.cidade.value.trim(),
                     estado: campos.estado.value,
                     status: campos.status.value,
+                    importar_hortifruti: !idEdicao && importarHortifruti.checked,
                 },
             });
-            window.location.href = `filiais.html?ok=${idEdicao ? 'editada' : 'criada'}&nome=${encodeURIComponent(nome)}`;
+            const quantidadeImportada = Number(resposta.hortifruti_importados) || 0;
+            const importacao = quantidadeImportada > 0 ? `&hortifruti=${quantidadeImportada}` : '';
+            window.location.href = `filiais.html?ok=${idEdicao ? 'editada' : 'criada'}&nome=${encodeURIComponent(nome)}${importacao}`;
         } catch (err) {
             btnSalvar.disabled = false;
             btnSalvar.textContent = textoOriginal;
@@ -163,6 +231,7 @@
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
             window.hydraAplicarMenuPorPermissao(usuario);
+            opcaoCatalogo.hidden = Boolean(idEdicao) || !window.hydraPode(usuario, ['produtos.importar_catalogo']);
             // Mesma permissão que a API exige em POST/PUT /api/filiais.
             if (!window.hydraGuardaDeTela(usuario, ['loja.configurar'])) return;
         } catch (err) {

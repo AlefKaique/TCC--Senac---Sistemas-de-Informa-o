@@ -141,7 +141,9 @@
                         <div class="hydro-card-body hydro-settings-grid">
                             <div class="hydro-form-group">
                                 <label for="hydroFilialCnpj"><i class="hydro-ic hydro-ic-building"></i> CNPJ</label>
-                                <input type="text" id="hydroFilialCnpj" maxlength="18" inputmode="numeric" placeholder="00.000.000/0000-00">
+                                <input type="text" id="hydroFilialCnpj" maxlength="18" inputmode="text"
+                                    placeholder="00.000.000/0000-00" aria-describedby="hydroFilialCnpjBrasilApiStatus">
+                                <small class="hydro-cnpj-status" id="hydroFilialCnpjBrasilApiStatus" role="status" aria-live="polite"></small>
                             </div>
                             <div class="hydro-form-group">
                                 <label for="hydroFilialTelefone"><i class="hydro-ic hydro-ic-phone"></i> Telefone</label>
@@ -201,6 +203,22 @@
                         </div>
                     </section>
 
+                    <section class="hydro-card" id="hydroFilialCatalogOption">
+                        <div class="hydro-card-header">
+                            <h2>Catálogo de hortifrúti</h2>
+                            <p>Você pode começar com os 120 códigos padrão e ajustar os preços depois. A importação não substitui produtos que já existam nesta filial.</p>
+                        </div>
+                        <div class="hydro-card-body">
+                            <label class="hydro-form-group" style="display:flex;align-items:flex-start;gap:12px">
+                                <input type="checkbox" id="hydroFilialImportarHortifruti" style="width:auto;margin-top:4px">
+                                <span>
+                                    Importar os códigos hortifrúti padrão nesta filial
+                                    <small style="display:block;margin-top:4px">Os itens serão importados sem preço de venda; defina o preço de cada produto antes de vendê-lo.</small>
+                                </span>
+                            </label>
+                        </div>
+                    </section>
+
                     <div class="hydro-settings-footer">
                         <a class="hydro-btn hydro-btn-outline" href="filiais.html" id="hydroBtnCancelar">Cancelar</a>
                         <button type="submit" class="hydro-btn hydro-btn-primary" id="hydroBtnSalvar">Cadastrar filial</button>
@@ -222,6 +240,7 @@
     <script src="../js/trocar-filial.js"></script>
     <script src="../js/public-demo.js"></script>
     <script src="../js/font-size.js"></script>
+    <script src="../js/cnpj-brasilapi.js"></script>
     <script src="../js/cadastro-filial.js"></script>
 </body>
 
