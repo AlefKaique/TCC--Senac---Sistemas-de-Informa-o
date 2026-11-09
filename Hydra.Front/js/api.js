@@ -52,12 +52,82 @@ let hydraSessaoPromise = null;
 window.hydraSessao = function hydraSessao() {
   if (!hydraSessaoPromise) {
     hydraSessaoPromise = window.hydraApi('/auth/me');
+    // Assim que o usuário chega, o avatar do topo troca o ícone genérico
+    // pelas iniciais (ou foto). Fica aqui para nenhuma tela precisar chamar.
+    hydraSessaoPromise.then(
+      (resposta) => window.hydraRenderizarAvatar(resposta && resposta.usuario),
+      () => {}
+    );
     // Falha de rede não pode ficar em cache: a próxima chamada tenta de novo.
     hydraSessaoPromise.catch((err) => {
       if (!err || err.status === undefined) hydraSessaoPromise = null;
     });
   }
   return hydraSessaoPromise;
+};
+
+/**
+ * Avatar do topo no estilo do Microsoft Teams.
+ *
+ * Antes era uma foto fixa de um banco de imagens (i.pravatar.cc), igual
+ * para todo mundo. Agora:
+ *   - se o usuário tem foto (campo `foto_url` vindo de /auth/me), mostra a foto;
+ *   - senão, mostra as iniciais do primeiro e do último nome ("Ana Paula
+ *     Souza" → "AS") sobre uma cor suave derivada do nome — a mesma pessoa
+ *     tem sempre a mesma cor, em qualquer tela.
+ * Se a foto não carregar, volta para as iniciais.
+ */
+const HYDRA_AVATAR_CORES = [
+  // [fundo, texto] — tons claros com texto escuro, legíveis (contraste AA).
+  ['#dbe4ff', '#1d3a86'],
+  ['#d3f2e3', '#0f6b3a'],
+  ['#fde4cf', '#8a4b0f'],
+  ['#f6d9e8', '#8c2457'],
+  ['#e5dcfa', '#4b2a99'],
+  ['#d2eff4', '#0c5c6b'],
+  ['#fbe3e3', '#9b2230'],
+  ['#ece9d6', '#5c5418'],
+];
+
+window.hydraIniciais = function hydraIniciais(nome) {
+  const partes = String(nome || '').trim().split(/\s+/).filter(Boolean);
+  if (!partes.length) return '';
+  const primeira = partes[0][0];
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : '';
+  return (primeira + ultima).toUpperCase();
+};
+
+window.hydraRenderizarAvatar = function hydraRenderizarAvatar(usuario) {
+  const el = document.getElementById('hydroUserAvatar');
+  if (!el || !usuario) return;
+
+  const nome = String(usuario.nome || '').trim();
+  const iniciais = window.hydraIniciais(nome);
+
+  // Cor estável por nome (hash simples da string).
+  let hash = 0;
+  for (let i = 0; i < nome.length; i++) hash = (hash * 31 + nome.charCodeAt(i)) >>> 0;
+  const [fundo, texto] = HYDRA_AVATAR_CORES[hash % HYDRA_AVATAR_CORES.length];
+
+  const mostrarIniciais = () => {
+    el.textContent = iniciais;
+    el.style.setProperty('--avatar-bg', fundo);
+    el.style.setProperty('--avatar-fg', texto);
+  };
+
+  el.setAttribute('aria-label', nome || 'Usuário');
+  el.title = nome;
+
+  const foto = usuario.foto_url || usuario.foto;
+  if (foto) {
+    const img = document.createElement('img');
+    img.alt = '';
+    img.src = foto;
+    img.addEventListener('error', mostrarIniciais, { once: true });
+    el.replaceChildren(img);
+  } else {
+    mostrarIniciais();
+  }
 };
 window.hydraSessao.limpar = function limparSessao() {
   hydraSessaoPromise = null;
