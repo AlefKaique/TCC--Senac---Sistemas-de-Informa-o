@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="../css/menu-submenu.css">
     <link rel="stylesheet" href="../css/public-demo.css">
     <link rel="stylesheet" href="../css/font-size.css">
+    <link rel="stylesheet" href="../css/avatar.css">
 </head>
 
 <body>
@@ -54,11 +55,10 @@
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
                         <li id="hydroLiConfig">
                             <details class="hydro-submenu">
-                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
+                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configurações</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
                                 <ul class="hydro-submenu-itens">
                                     <li><a href="configuracoes-loja.html">Dados da loja</a></li>
                                     <li><a href="filiais.html">Filiais</a></li>
-                                    <li><a href="cadastro-filial.html">Cadastrar nova Filial</a></li>
                                 </ul>
                             </details>
                         </li>
@@ -85,16 +85,12 @@
                     <div class="hydro-topbar-actions">
                         <a class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroAlertasSettingsLink"
                             href="configuracoes-loja.html#alertas" hidden>Configurar alertas</a>
-                        <div class="hydro-search">
-                            <i class="hydro-ic hydro-ic-search"></i>
-                            <input type="text" id="hydroSearchInput" placeholder="Buscar">
-                        </div>
                         <button class="hydro-icon-btn" aria-label="Notificações">
                             <i class="hydro-ic hydro-ic-bell"></i>
                             <span class="hydro-notif-dot"></span>
                         </button>
                         <div class="hydro-user">
-                            <img class="hydro-avatar" src="https://i.pravatar.cc/64?img=13" alt="Foto do usuário">
+                            <span class="hydro-avatar" id="hydroUserAvatar" role="img" aria-label="Usuário"></span>
                             <span class="hydro-user-name" id="hydroUserName"></span>
                         </div>
                     </div>
@@ -194,27 +190,12 @@
 
                 <!-- Gráficos -->
                 <section class="hydro-charts-grid">
-                    <div class="hydro-card hydro-chart-card">
-                        <div class="hydro-chart-header">
-                            <h2>Produtos prestes a vencer
-                                <span class="hydro-info" tabindex="0" role="img" aria-label="Ajuda"
-                                    data-tip="Produtos em estoque que vencem nos próximos 30 dias. A barra enche conforme o vencimento se aproxima; em vermelho, faltam 7 dias ou menos. Clique em um produto para criar uma promoção.">i</span>
-                            </h2>
-                            <span class="hydro-chart-period">Próximos 30 dias</span>
-                        </div>
-                        <div class="hydro-chart-body" id="hydroExpiringChart"></div>
-                        <div class="hydro-chart-legend">
-                            <span class="hydro-legend-item"><i class="hydro-legend-dot hydro-legend-out"></i>Até 7 dias</span>
-                            <span class="hydro-legend-item"><i class="hydro-legend-dot hydro-legend-soon"></i>8 a 30 dias</span>
-                            <a class="hydro-chart-cta" id="hydroExpiringCta" href="promocoes.html" hidden>Criar promoções →</a>
-                        </div>
-                    </div>
 
                     <div class="hydro-card hydro-chart-card">
                         <div class="hydro-chart-header">
-                            <h2>Top produtos mais vendidos
+                            <h2>Produtos que mais faturaram
                                 <span class="hydro-info" tabindex="0" role="img" aria-label="Ajuda"
-                                    data-tip="Os 8 produtos com maior quantidade vendida. Sem filtro, considera os últimos 30 dias; com filtro, considera o período escolhido.">i</span>
+                                    data-tip="Os 8 produtos que mais renderam em vendas, com a quantidade vendida de cada um. Sem filtro, considera os últimos 30 dias; com filtro, o período escolhido.">i</span>
                             </h2>
                             <span class="hydro-chart-period" id="hydroTopPeriod">Últimos 30 dias</span>
                         </div>
@@ -227,13 +208,14 @@
                     <div class="hydro-alerts-header">
                         <h2>Alertas de estoque
                             <span class="hydro-info" tabindex="0" role="img" aria-label="Ajuda"
-                                data-tip="Situação atual do estoque. Esgotado: quantidade zero. Crítico e Atenção: abaixo ou perto do estoque mínimo. A tabela mostra os 6 piores; a lista de compras impressa traz todos os status marcados.">i</span>
+                                data-tip="Produtos que precisam de reposição agora. Esgotado: quantidade zero. Crítico: até 40% do estoque mínimo. Baixo: abaixo do mínimo. Atenção: no mínimo ou até 20% acima dele. A tabela mostra os 6 piores; a lista de compras impressa traz todos os status marcados.">i</span>
                         </h2>
                         <div class="hydro-print-tools">
                         <fieldset class="hydro-print-filter" id="hydroPrintFilter">
                             <legend>Incluir na lista:</legend>
                             <label><input type="checkbox" value="empty" checked> Esgotado</label>
                             <label><input type="checkbox" value="critical" checked> Crítico</label>
+                            <label><input type="checkbox" value="low" checked> Baixo</label>
                             <label><input type="checkbox" value="warning" checked> Atenção</label>
                         </fieldset>
                         <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroPrintPurchase"

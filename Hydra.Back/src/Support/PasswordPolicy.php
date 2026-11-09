@@ -20,23 +20,23 @@ final class PasswordPolicy
     /** Retorna null se a senha atende à política, ou a mensagem de erro caso contrário. */
     public static function validar(string $senha): ?string
     {
-        if (!preg_match('/[A-Z]/', $senha)) {
-            return 'A senha deve conter ao menos uma letra maiúscula';
-        }
-        if (!preg_match('/\d/', $senha)) {
-            return 'A senha deve conter ao menos um número';
-        }
-        if (!preg_match('/[a-z]/', $senha)) {
-            return 'A senha deve conter ao menos uma letra minúscula';
-        }
-        if (!preg_match('/[^A-Za-z0-9]/', $senha)) {
-            return 'A senha deve conter ao menos um caractere especial (ex.: ! @ # $ %)';
-        }
         // mb_strlen conta caracteres; strlen contaria bytes, e uma senha
         // com acentos ("Caçula1!") somaria mais bytes do que caracteres,
         // passando no mínimo com menos caracteres do que o pretendido.
         if (mb_strlen($senha, 'UTF-8') < self::MIN_LENGTH) {
             return 'A senha deve ter pelo menos ' . self::MIN_LENGTH . ' caracteres';
+        }
+        if (!preg_match('/[A-Z]/', $senha)) {
+            return 'A senha deve conter ao menos uma letra maiúscula';
+        }
+        if (!preg_match('/[a-z]/', $senha)) {
+            return 'A senha deve conter ao menos uma letra minúscula';
+        }
+        if (!preg_match('/\d/', $senha)) {
+            return 'A senha deve conter ao menos um número';
+        }
+        if (!preg_match('/[^A-Za-z0-9]/', $senha)) {
+            return 'A senha deve conter ao menos um caractere especial (ex.: ! @ # $ %)';
         }
         return null;
     }

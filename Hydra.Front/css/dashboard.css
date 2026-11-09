@@ -389,15 +389,6 @@
     border: 2px solid #fff;
 }
 
-.hydro-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid #fff;
-    box-shadow: 0 0 0 1px var(--border);
-}
-
 .hydro-user {
     display: flex;
     align-items: center;
@@ -464,7 +455,9 @@
 /* ============ KPIs ============ */
 .hydro-kpi-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    /* minmax(0, 1fr): sem isso o valor do cartão definia a largura mínima
+       da coluna, e a quarta coluna estourava a tela em notebooks de 1440 px. */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 18px;
     margin-bottom: 20px;
 }
@@ -534,9 +527,10 @@
 
 .hydro-kpi-value-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
-    gap: 10px;
+    gap: 6px 10px;
 }
 
 .hydro-kpi-value {
@@ -914,6 +908,105 @@ a.hydro-expiring-row:hover {
 
 .hydro-view-link:hover {
     filter: brightness(0.95);
+}
+
+.hydro-alert-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.hydro-view-link-promo {
+    background: var(--amber-bg);
+    color: var(--amber);
+}
+
+/* "Atenção": no mínimo ou pouco acima dele. Azul, como no Controle de Estoque. */
+.hydro-badge-attention {
+    background: var(--blue-bg);
+    color: var(--blue);
+}
+
+.hydro-alert-qty-attention {
+    background: var(--blue-bg);
+    color: var(--blue);
+}
+
+/* Um card só na faixa de gráficos ocupa a largura toda. */
+.hydro-charts-grid > :only-child {
+    grid-column: 1 / -1;
+}
+
+/* Produtos que mais faturaram: lista com nome inteiro, barra e valores. */
+.hydro-top-list {
+    display: grid;
+    gap: 10px;
+    padding: 4px 2px;
+    /* O corpo do card é flex: sem a largura, a lista encolhia ao conteúdo. */
+    flex: 1;
+    align-content: start;
+}
+
+.hydro-top-row {
+    display: grid;
+    /* Colunas fixas: cada linha é uma grade própria, e com colunas "auto"
+       a barra começava em posições diferentes conforme o nome. */
+    grid-template-columns: minmax(150px, 280px) minmax(0, 1fr) 110px 80px;
+    align-items: center;
+    gap: 14px;
+    font-size: 13.5px;
+}
+
+.hydro-top-name {
+    color: var(--navy-900);
+    font-weight: 600;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.hydro-top-bar {
+    height: 10px;
+    border-radius: 999px;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.hydro-top-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--muted-soft);
+}
+
+.hydro-top-first .hydro-top-fill {
+    background: var(--navy-active);
+}
+
+.hydro-top-valor {
+    font-weight: 700;
+    color: var(--navy-900);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.hydro-top-qtd {
+    color: var(--muted);
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    min-width: 64px;
+}
+
+@media (max-width: 640px) {
+    .hydro-top-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 4px 12px;
+    }
+
+    .hydro-top-name { grid-column: 1; grid-row: 1; }
+    .hydro-top-valor { grid-column: 2; grid-row: 1; }
+    .hydro-top-bar { grid-column: 1 / -1; grid-row: 2; }
+    .hydro-top-qtd { grid-column: 1 / -1; grid-row: 3; text-align: left; }
 }
 
 .hydro-alerts-empty {

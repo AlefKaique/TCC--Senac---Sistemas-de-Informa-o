@@ -132,7 +132,9 @@ html, body.signup-body{
   align-items: center;
   justify-content: center;
   padding: 44px 48px 90px;
-  overflow: visible;
+  /* hidden: o círculo decorativo (.signup__promo-deco) sai pela borda e
+     criava rolagem horizontal na página inteira. */
+  overflow: hidden;
   margin: 100px 16px 0 0;
   border-radius: var(--radius-lg);
   align-self: start;

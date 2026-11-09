@@ -75,8 +75,8 @@
           <button type="button" class="hydro-cargo-list-item ${selectedId === c.id_cargo ? 'hydro-active' : ''}" data-id="${c.id_cargo}">
             <span class="hydro-cargo-dot" style="background:${c.cor}"></span>
             <span class="hydro-cargo-list-item-name">${escapeHtml(c.nome)}</span>
-            ${c.cargo_sistema ? '<i class="hydro-ic hydro-ic-lock" title="Cargo de sistema"></i>' : ''}
-            <span class="hydro-cargo-list-item-count" title="Usuários neste cargo">${c.qtd_usuarios}</span>
+            ${c.cargo_sistema ? '<i class="hydro-ic hydro-ic-lock" role="img" aria-label="Cargo de sistema, não pode ser excluído" title="Cargo de sistema: não pode ser excluído"></i>' : ''}
+            <span class="hydro-cargo-list-item-count">${Number(c.qtd_usuarios)} ${Number(c.qtd_usuarios) === 1 ? 'usuário' : 'usuários'}</span>
           </button>
         </li>`)
             .join('');
@@ -96,6 +96,9 @@
     function updatePreviewDot() {
         document.getElementById('hydroCargoPreviewDot').style.background = draft.cor;
         document.getElementById('hydroCargoCorInput').value = draft.cor;
+        // O seletor mostrava um arco-íris fixo, e não a cor atual do cargo.
+        document.getElementById('hydroCargoCorAmostra').style.background = draft.cor;
+        document.getElementById('hydroCargoCorHex').textContent = String(draft.cor || '').toUpperCase();
     }
 
     /* O catálogo tem 9 permissões em 2 categorias ("Operação" e
