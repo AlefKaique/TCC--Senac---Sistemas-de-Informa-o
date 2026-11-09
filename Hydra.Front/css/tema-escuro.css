@@ -1,0 +1,548 @@
+html[data-hydra-theme="dark"] {
+  color-scheme: dark;
+  --navy: #9db4ff;
+  --navy-dark: #e5eaf5;
+  --navy-light: #bfd0ff;
+  --gray-600: #a7b2c5;
+  --gray-300: #374254;
+  --white: #171f2d;
+  --bg: #101722;
+  --theme-bg: #101722;
+  --theme-surface: #182231;
+  --theme-raised: #202c3d;
+  --theme-border: #354256;
+  --theme-text: #e6edf7;
+  --theme-muted: #a9b5c8;
+  --theme-input: #111a27;
+  --theme-shadow: 0 14px 36px rgba(0, 0, 0, .28);
+}
+
+html[data-hydra-theme="dark"] body {
+  background-color: var(--theme-bg);
+  color: var(--theme-text);
+}
+
+html[data-hydra-theme="dark"] .hydro-dash {
+  --navy-900: #d3ddff;
+  --navy-800: #a9bcff;
+  --navy-active: #5e77cb;
+  --navy-hover: #42599f;
+  --ink: #e6edf7;
+  --muted: #a9b5c8;
+  --muted-soft: #8797b0;
+  --bg: var(--theme-bg);
+  --card: var(--theme-surface);
+  --border: var(--theme-border);
+  --green-bg: #173a30;
+  --amber-bg: #3b3020;
+  --red-bg: #41252e;
+  --blue-bg: #253453;
+  --shadow-card: var(--theme-shadow);
+  --shadow-pop: 0 22px 54px rgba(0, 0, 0, .48);
+  background-color: var(--bg);
+  color: var(--ink);
+}
+
+html[data-hydra-theme="dark"] .hydro-stock,
+html[data-hydra-theme="dark"] .hydro-products,
+html[data-hydra-theme="dark"] .hydro-caixa {
+  --navy-900: #d3ddff;
+  --navy-800: #a9bcff;
+  --navy-active: #5e77cb;
+  --navy-hover: #42599f;
+  --ink: #e6edf7;
+  --muted: #a9b5c8;
+  --muted-soft: #8797b0;
+  --bg: var(--theme-bg);
+  --card: var(--theme-surface);
+  --border: var(--theme-border);
+  --green-bg: #173a30;
+  --amber-bg: #3b3020;
+  --red-bg: #41252e;
+  --blue-bg: #253453;
+  --shadow-card: var(--theme-shadow);
+  --shadow-pop: 0 22px 54px rgba(0, 0, 0, .48);
+  background-color: var(--bg);
+  color: var(--ink);
+}
+
+html[data-hydra-theme="dark"] .hydro-alerta-envio-status--enviado,
+html[data-hydra-theme="dark"] .hydro-alerta-envio-status--entregue,
+html[data-hydra-theme="dark"] .hydro-alerta-envio-status--lido {
+  background: #173a30;
+  color: #a6e3c1;
+}
+
+html[data-hydra-theme="dark"] .hydro-alerta-envio-status--falhou {
+  background: #41252e;
+  color: #ffb4ba;
+}
+
+html[data-hydra-theme="dark"] .plataforma-shell {
+  --platform-purple: #c1a8ff;
+  --platform-purple-bg: #32294a;
+}
+
+html[data-hydra-theme="dark"] .header,
+html[data-hydra-theme="dark"] .signup__form-side,
+html[data-hydra-theme="dark"] .hydro-main,
+html[data-hydra-theme="dark"] .hydro-topbar,
+html[data-hydra-theme="dark"] .hydro-card,
+html[data-hydra-theme="dark"] .hydro-stat-card,
+html[data-hydra-theme="dark"] .hydro-table-card,
+html[data-hydra-theme="dark"] .hydro-cargo-list-panel,
+html[data-hydra-theme="dark"] .hydro-catalog-panel,
+html[data-hydra-theme="dark"] .hydro-items-panel,
+html[data-hydra-theme="dark"] .hydro-order-card,
+html[data-hydra-theme="dark"] .hydro-weight-modal-dialog,
+html[data-hydra-theme="dark"] .hydro-sale-detail-meta,
+html[data-hydra-theme="dark"] .hydro-modal,
+html[data-hydra-theme="dark"] .hydra-demo-modal__dialog,
+html[data-hydra-theme="dark"] .plataforma-panel,
+html[data-hydra-theme="dark"] .plataforma-card,
+html[data-hydra-theme="dark"] .plataforma-table-wrap,
+html[data-hydra-theme="dark"] .plataforma-dialog-content,
+html[data-hydra-theme="dark"] .plataforma-first-access,
+html[data-hydra-theme="dark"] .terms__card,
+html[data-hydra-theme="dark"] .plan-card,
+html[data-hydra-theme="dark"] .feature-card,
+html[data-hydra-theme="dark"] .accordion__panel,
+html[data-hydra-theme="dark"] .hydro-font-panel,
+html[data-hydra-theme="dark"] .hydro-filial-modal,
+html[data-hydra-theme="dark"] .hydro-demo-card {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text);
+  border-color: var(--theme-border);
+  box-shadow: var(--theme-shadow);
+}
+
+html[data-hydra-theme="dark"] .hydro-dash section,
+html[data-hydra-theme="dark"] .hydro-dash article,
+html[data-hydra-theme="dark"] .hydro-stock section,
+html[data-hydra-theme="dark"] .hydro-stock article,
+html[data-hydra-theme="dark"] .hydro-products section,
+html[data-hydra-theme="dark"] .hydro-products article,
+html[data-hydra-theme="dark"] .hydro-caixa section,
+html[data-hydra-theme="dark"] .hydro-caixa article {
+  background-color: var(--theme-surface);
+  border-color: var(--theme-border);
+}
+
+html[data-hydra-theme="dark"] [role="dialog"] {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text);
+  border-color: var(--theme-border);
+}
+
+html[data-hydra-theme="dark"] .hydro-dash input:not([type="checkbox"]):not([type="radio"]),
+html[data-hydra-theme="dark"] .hydro-dash select,
+html[data-hydra-theme="dark"] .hydro-dash textarea,
+html[data-hydra-theme="dark"] .hydro-stock input:not([type="checkbox"]):not([type="radio"]),
+html[data-hydra-theme="dark"] .hydro-stock select,
+html[data-hydra-theme="dark"] .hydro-stock textarea,
+html[data-hydra-theme="dark"] .hydro-products input:not([type="checkbox"]):not([type="radio"]),
+html[data-hydra-theme="dark"] .hydro-products select,
+html[data-hydra-theme="dark"] .hydro-products textarea,
+html[data-hydra-theme="dark"] .hydro-caixa input:not([type="checkbox"]):not([type="radio"]),
+html[data-hydra-theme="dark"] .hydro-caixa select,
+html[data-hydra-theme="dark"] .hydro-caixa textarea,
+html[data-hydra-theme="dark"] .signup-body input:not([type="checkbox"]):not([type="radio"]),
+html[data-hydra-theme="dark"] .signup-body select,
+html[data-hydra-theme="dark"] .signup-body textarea,
+html[data-hydra-theme="dark"] .hydro-font-panel button,
+html[data-hydra-theme="dark"] .hydro-search,
+html[data-hydra-theme="dark"] .hydro-icon-btn,
+html[data-hydra-theme="dark"] .hydro-weight-unit-btn,
+html[data-hydra-theme="dark"] .plataforma-chip,
+html[data-hydra-theme="dark"] .plataforma-toolbar > select,
+html[data-hydra-theme="dark"] .plataforma-field input,
+html[data-hydra-theme="dark"] .plataforma-field select,
+html[data-hydra-theme="dark"] .plataforma-field textarea,
+html[data-hydra-theme="dark"] .hydra-demo-modal__secondary {
+  background-color: var(--theme-input) !important;
+  color: var(--theme-text);
+  border-color: var(--theme-border);
+}
+
+html[data-hydra-theme="dark"] input::placeholder,
+html[data-hydra-theme="dark"] textarea::placeholder {
+  color: #8290a6;
+}
+
+html[data-hydra-theme="dark"] .hydro-caixa .hydro-order-tabs,
+html[data-hydra-theme="dark"] .hydro-caixa .hydro-search,
+html[data-hydra-theme="dark"] .hydro-caixa .hydro-btn-outline,
+html[data-hydra-theme="dark"] .hydro-caixa .hydro-history-preset:not(.hydro-active),
+html[data-hydra-theme="dark"] .hydro-caixa .hydro-payment-btn:not(.hydro-selected),
+html[data-hydra-theme="dark"] .hydra-filial-chip,
+html[data-hydra-theme="dark"] .hydra-filial-opcao,
+html[data-hydra-theme="dark"] .hydra-filial-marca,
+html[data-hydra-theme="dark"] .hydra-filial-btn-secundario,
+html[data-hydra-theme="dark"] .accessibility-widget.accessibility-widget--sidebar button {
+  background-color: var(--theme-raised) !important;
+  color: var(--theme-text);
+  border-color: var(--theme-border);
+}
+
+html[data-hydra-theme="dark"] .hydro-caixa .hydro-order-tab {
+  color: var(--theme-muted);
+}
+
+html[data-hydra-theme="dark"] .hydro-caixa .hydro-order-tab:hover,
+html[data-hydra-theme="dark"] .hydro-caixa .hydro-history-preset:not(.hydro-active):hover,
+html[data-hydra-theme="dark"] .hydro-caixa .hydro-btn-outline:hover:not(:disabled),
+html[data-hydra-theme="dark"] .hydro-caixa .hydro-payment-btn:not(.hydro-selected):hover,
+html[data-hydra-theme="dark"] .hydra-filial-chip:hover,
+html[data-hydra-theme="dark"] .hydra-filial-opcao:hover,
+html[data-hydra-theme="dark"] .hydra-filial-btn-secundario:hover,
+html[data-hydra-theme="dark"] .accessibility-widget.accessibility-widget--sidebar button:hover {
+  background-color: #29384d !important;
+}
+
+html[data-hydra-theme="dark"] .hydro-caixa .hydro-order-tab.hydro-active,
+html[data-hydra-theme="dark"] .hydro-caixa .hydro-payment-btn.hydro-selected {
+  background-color: #5e77cb;
+  color: #fff;
+}
+
+html[data-hydra-theme="dark"] .hydra-filial-opcao[aria-checked="true"] {
+  background-color: #253453 !important;
+  border-color: #7189df;
+}
+
+html[data-hydra-theme="dark"] .hydra-filial-opcao[aria-checked="true"] .hydra-filial-marca {
+  border-color: #9db4ff;
+}
+
+html[data-hydra-theme="dark"] .hydra-filial-opcao[aria-checked="true"] .hydra-filial-marca::after {
+  background-color: #9db4ff;
+}
+
+html[data-hydra-theme="dark"] .hydra-filial-nome,
+html[data-hydra-theme="dark"] .hydra-filial-header h2 {
+  color: var(--theme-text);
+}
+
+html[data-hydra-theme="dark"] .hydra-filial-endereco,
+html[data-hydra-theme="dark"] .hydra-filial-header p,
+html[data-hydra-theme="dark"] .hydra-filial-carregando {
+  color: var(--theme-muted);
+}
+
+html[data-hydra-theme="dark"] .hydra-filial-header,
+html[data-hydra-theme="dark"] .hydra-filial-footer {
+  border-color: var(--theme-border);
+}
+
+html[data-hydra-theme="dark"] .hydra-filial-aviso-info {
+  border-color: #62502d;
+  background-color: #3b3020;
+  color: #f1cc7d;
+}
+
+html[data-hydra-theme="dark"] .hydra-filial-aviso-erro {
+  border-color: #69404a;
+  background-color: #41252e;
+  color: #ffabb4;
+}
+
+html[data-hydra-theme="dark"] .hydra-filial-atual-tag {
+  background-color: #193d31;
+  color: #82ddb2;
+}
+
+html[data-hydra-theme="dark"] .hydro-dash table,
+html[data-hydra-theme="dark"] .signup-body,
+html[data-hydra-theme="dark"] .hydro-modal-header,
+html[data-hydra-theme="dark"] .hydro-modal-footer {
+  border-color: var(--theme-border);
+}
+
+html[data-hydra-theme="dark"] .hydro-dash th,
+html[data-hydra-theme="dark"] .plataforma-table th,
+html[data-hydra-theme="dark"] .hydro-table th,
+html[data-hydra-theme="dark"] .hydro-table thead {
+  background-color: var(--theme-raised) !important;
+  color: var(--theme-muted);
+}
+
+html[data-hydra-theme="dark"] .hydro-dash td,
+html[data-hydra-theme="dark"] .plataforma-table td,
+html[data-hydra-theme="dark"] .hydro-table td {
+  border-color: var(--theme-border);
+  color: var(--theme-text);
+}
+
+html[data-hydra-theme="dark"] .hydro-dash tr:hover,
+html[data-hydra-theme="dark"] .plataforma-table tbody tr[data-href]:hover,
+html[data-hydra-theme="dark"] .hydro-icon-btn:hover,
+html[data-hydra-theme="dark"] .hydro-font-panel button:hover,
+html[data-hydra-theme="dark"] .hydro-weight-unit-btn:hover,
+html[data-hydra-theme="dark"] .hydra-demo-modal__close:hover {
+  background-color: var(--theme-raised) !important;
+}
+
+html[data-hydra-theme="dark"] .hydro-sidebar,
+html[data-hydra-theme="dark"] .hydro-menu,
+html[data-hydra-theme="dark"] .hydro-sidebar .hydro-brand {
+  color: #f2f5ff;
+}
+
+html[data-hydra-theme="dark"] .plataforma-empty,
+html[data-hydra-theme="dark"] .plataforma-message,
+html[data-hydra-theme="dark"] .hydro-empty,
+html[data-hydra-theme="dark"] .hydro-empty-state,
+html[data-hydra-theme="dark"] .hydro-empty-box,
+html[data-hydra-theme="dark"] .hydro-sale-detail-meta,
+html[data-hydra-theme="dark"] .plataforma-funnel-bar,
+html[data-hydra-theme="dark"] .hydro-font-panel button:hover {
+  background-color: var(--theme-raised) !important;
+  color: var(--theme-muted);
+}
+
+html[data-hydra-theme="dark"] .hydro-modal-overlay,
+html[data-hydra-theme="dark"] .hydro-weight-modal-backdrop,
+html[data-hydra-theme="dark"] .hydro-sidebar-overlay,
+html[data-hydra-theme="dark"] .plataforma-dialog-backdrop,
+html[data-hydra-theme="dark"] .hydra-demo-modal__backdrop {
+  background-color: rgba(0, 0, 0, .72);
+}
+
+html[data-hydra-theme="dark"] .hydra-demo-modal__dialog,
+html[data-hydra-theme="dark"] .hydra-demo-modal__dialog h2,
+html[data-hydra-theme="dark"] .hydra-demo-modal__dialog p,
+html[data-hydra-theme="dark"] .hydra-demo-modal__close {
+  color: var(--theme-text);
+}
+
+html[data-hydra-theme="dark"] .signup__title,
+html[data-hydra-theme="dark"] .signup__subtitle,
+html[data-hydra-theme="dark"] .signup__form-side .field label,
+html[data-hydra-theme="dark"] .hydro-topbar h1,
+html[data-hydra-theme="dark"] .hydro-modal-header h2,
+html[data-hydra-theme="dark"] .hydro-weight-modal-header h3,
+html[data-hydra-theme="dark"] .hydro-weight-modal-total,
+html[data-hydra-theme="dark"] .plataforma-panel h2,
+html[data-hydra-theme="dark"] .plataforma-page-heading h2,
+html[data-hydra-theme="dark"] .plataforma-dialog-content h2,
+html[data-hydra-theme="dark"] .plataforma-first-access h1,
+html[data-hydra-theme="dark"] .plataforma-info strong,
+html[data-hydra-theme="dark"] .hydra-demo-modal__dialog h2 {
+  color: var(--theme-text);
+}
+
+html[data-hydra-theme="dark"] .signup__hint,
+html[data-hydra-theme="dark"] .signup__login,
+html[data-hydra-theme="dark"] .checkbox,
+html[data-hydra-theme="dark"] .plataforma-page-heading p,
+html[data-hydra-theme="dark"] .plataforma-dialog-content p,
+html[data-hydra-theme="dark"] .plataforma-info span,
+html[data-hydra-theme="dark"] .plataforma-panel-heading p,
+html[data-hydra-theme="dark"] .plataforma-panel-heading > span,
+html[data-hydra-theme="dark"] .plataforma-period-hint,
+html[data-hydra-theme="dark"] .plataforma-note,
+html[data-hydra-theme="dark"] .hydro-modal-body,
+html[data-hydra-theme="dark"] .hydro-form-group label,
+html[data-hydra-theme="dark"] .hydro-weight-modal-dialog label,
+html[data-hydra-theme="dark"] .hydro-weight-modal-price,
+html[data-hydra-theme="dark"] .hydra-demo-modal__dialog p {
+  color: var(--theme-muted);
+}
+
+html[data-hydra-theme="dark"] .status-ativo,
+html[data-hydra-theme="dark"] .status-ativa { background: #193d31; color: #82ddb2; }
+html[data-hydra-theme="dark"] .status-novo { background: #223453; color: #a9c5ff; }
+html[data-hydra-theme="dark"] .status-ocioso { background: #40351f; color: #f1cc7d; }
+html[data-hydra-theme="dark"] .status-inativo { background: #303746; color: #bbc5d4; }
+html[data-hydra-theme="dark"] .status-suspenso,
+html[data-hydra-theme="dark"] .status-inativa { background: #442831; color: #ffabb4; }
+html[data-hydra-theme="dark"] .status-pendente { background: #34284d; color: #d0baff; }
+
+html[data-hydra-theme="dark"] .hydro-toast,
+html[data-hydra-theme="dark"] .toast,
+html[data-hydra-theme="dark"] .plataforma-btn-primary,
+html[data-hydra-theme="dark"] .plataforma-btn-danger,
+html[data-hydra-theme="dark"] .plataforma-btn-success,
+html[data-hydra-theme="dark"] .hydra-demo-modal__primary {
+  color: #fff;
+}
+
+html[data-hydra-theme="dark"] .hydra-theme-toggle {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1px solid #53627a;
+  border-radius: 999px;
+  background: #202c3d;
+  color: #f4f6fb;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
+  font: 600 13px/1 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+}
+
+html[data-hydra-theme="dark"] .hydra-theme-toggle:hover {
+  background: #2b3a50;
+  transform: translateY(-1px);
+}
+
+html[data-hydra-theme="dark"] .hydra-theme-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+html[data-hydra-theme="dark"] .accessibility-widget:not(.accessibility-widget--sidebar) {
+  bottom: 78px;
+}
+
+html[data-hydra-theme="dark"] .hydra-demo-modal__secondary,
+html[data-hydra-theme="dark"] .hydro-font-panel button {
+  color: var(--theme-text);
+}
+
+@media (max-width: 520px) {
+  html[data-hydra-theme="dark"] .hydra-theme-toggle {
+    right: 12px;
+    bottom: 12px;
+    min-height: 42px;
+    padding: 0 13px;
+  }
+
+  html[data-hydra-theme="dark"] .accessibility-widget:not(.accessibility-widget--sidebar) {
+    bottom: 66px;
+  }
+}
+
+html:not([data-hydra-theme="dark"]) .hydra-theme-toggle {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1px solid #d5dbea;
+  border-radius: 999px;
+  background: #fff;
+  color: #1b2a63;
+  box-shadow: 0 8px 24px rgba(19, 31, 77, .16);
+  font: 600 13px/1 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+}
+
+html:not([data-hydra-theme="dark"]) .hydra-theme-toggle:hover {
+  background: #f2f5fb;
+  transform: translateY(-1px);
+}
+
+html:not([data-hydra-theme="dark"]) .hydra-theme-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+html:not([data-hydra-theme="dark"]) .accessibility-widget:not(.accessibility-widget--sidebar) {
+  bottom: 78px;
+}
+
+@media (max-width: 520px) {
+  html:not([data-hydra-theme="dark"]) .hydra-theme-toggle {
+    right: 12px;
+    bottom: 12px;
+    min-height: 42px;
+    padding: 0 13px;
+  }
+
+  html:not([data-hydra-theme="dark"]) .accessibility-widget:not(.accessibility-widget--sidebar) {
+    bottom: 66px;
+  }
+}
+
+html[data-hydra-theme="dark"] button:not(.hydra-theme-toggle),
+html[data-hydra-theme="dark"] .btn {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 600;
+}
+
+html[data-hydra-theme="dark"] .hydro-btn-outline,
+html[data-hydra-theme="dark"] .hydro-page-btn:not(.hydro-active),
+html[data-hydra-theme="dark"] .hydro-order-tab:not(.hydro-active),
+html[data-hydra-theme="dark"] .hydro-history-preset:not(.hydro-active),
+html[data-hydra-theme="dark"] .hydro-payment-btn:not(.hydro-selected),
+html[data-hydra-theme="dark"] .plataforma-btn:not(.plataforma-btn-primary):not(.plataforma-btn-danger):not(.plataforma-btn-success),
+html[data-hydra-theme="dark"] .plataforma-chip:not([aria-pressed="true"]),
+html[data-hydra-theme="dark"] .hydra-filial-btn-secundario,
+html[data-hydra-theme="dark"] .hydra-demo-modal__secondary,
+html[data-hydra-theme="dark"] .hydro-font-panel button,
+html[data-hydra-theme="dark"] .accessibility-widget.accessibility-widget--sidebar button,
+html[data-hydra-theme="dark"] .btn--outline,
+html[data-hydra-theme="dark"] .btn--ghost {
+  border: 1px solid #8291a8;
+  border-radius: 8px;
+  background-color: var(--theme-raised) !important;
+  color: #c6d3e6 !important;
+  box-shadow: none;
+}
+
+html[data-hydra-theme="dark"] .hydro-btn-outline:hover:not(:disabled),
+html[data-hydra-theme="dark"] .hydro-page-btn:hover:not(:disabled):not(.hydro-active),
+html[data-hydra-theme="dark"] .hydro-order-tab:hover:not(.hydro-active),
+html[data-hydra-theme="dark"] .hydro-history-preset:hover:not(.hydro-active),
+html[data-hydra-theme="dark"] .hydro-payment-btn:hover:not(.hydro-selected),
+html[data-hydra-theme="dark"] .plataforma-btn:not(.plataforma-btn-primary):not(.plataforma-btn-danger):not(.plataforma-btn-success):hover,
+html[data-hydra-theme="dark"] .plataforma-chip:not([aria-pressed="true"]):hover,
+html[data-hydra-theme="dark"] .hydra-filial-btn-secundario:hover,
+html[data-hydra-theme="dark"] .hydra-demo-modal__secondary:hover,
+html[data-hydra-theme="dark"] .hydro-font-panel button:hover,
+html[data-hydra-theme="dark"] .accessibility-widget.accessibility-widget--sidebar button:hover,
+html[data-hydra-theme="dark"] .btn--outline:hover,
+html[data-hydra-theme="dark"] .btn--ghost:hover {
+  background-color: #29384d !important;
+  border-color: #aab8cd;
+  color: #f0f4fb !important;
+}
+
+html[data-hydra-theme="dark"] .hydro-btn-primary,
+html[data-hydra-theme="dark"] .hydro-page-btn.hydro-active,
+html[data-hydra-theme="dark"] .hydro-order-tab.hydro-active,
+html[data-hydra-theme="dark"] .hydro-payment-btn.hydro-selected,
+html[data-hydra-theme="dark"] .plataforma-btn-primary,
+html[data-hydra-theme="dark"] .hydra-filial-btn-primario,
+html[data-hydra-theme="dark"] .btn--primary {
+  border: 1px solid #8195e4;
+  border-radius: 8px;
+  background-color: #5e77cb !important;
+  color: #fff !important;
+}
+
+html[data-hydra-theme="dark"] .hydro-order-tab-danger:not(.hydro-active),
+html[data-hydra-theme="dark"] .hydro-btn-danger:not(:disabled),
+html[data-hydra-theme="dark"] .plataforma-btn-danger:not(:disabled) {
+  border-color: #84515d;
+}
+
+html[data-hydra-theme="dark"] button:focus-visible,
+html[data-hydra-theme="dark"] .btn:focus-visible {
+  outline: 2px solid #9db4ff;
+  outline-offset: 2px;
+}

@@ -2,6 +2,70 @@
  * Cliente HTTP para a API do Hydra.Back. Ajuste HYDRA_API_BASE se o
  * back-end estiver rodando em outro host/porta.
  */
+const hydraThemeStorageKey = 'hydra-tema-escuro';
+let hydraDarkThemeEnabled = false;
+try {
+  hydraDarkThemeEnabled = window.localStorage.getItem(hydraThemeStorageKey) === 'true';
+} catch (error) {
+  console.warn('A preferência do tema não pôde ser lida neste navegador.', error);
+}
+if (hydraDarkThemeEnabled) {
+  document.documentElement.dataset.hydraTheme = 'dark';
+}
+
+const hydraApiScript = document.currentScript;
+if (hydraApiScript && hydraApiScript.src) {
+  const hydraThemeStylesheet = document.createElement('link');
+  hydraThemeStylesheet.rel = 'stylesheet';
+  hydraThemeStylesheet.href = new URL('../css/tema-escuro.css', hydraApiScript.src).href;
+  document.head.appendChild(hydraThemeStylesheet);
+}
+
+function installHydraThemeToggle() {
+  if (document.getElementById('hydraThemeToggle')) return;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.id = 'hydraThemeToggle';
+  button.className = 'hydra-theme-toggle';
+  button.setAttribute('data-demo-allow', '');
+  button.addEventListener('click', () => {
+    hydraDarkThemeEnabled = !hydraDarkThemeEnabled;
+    if (hydraDarkThemeEnabled) {
+      document.documentElement.dataset.hydraTheme = 'dark';
+    } else {
+      delete document.documentElement.dataset.hydraTheme;
+    }
+
+    try {
+      window.localStorage.setItem(hydraThemeStorageKey, String(hydraDarkThemeEnabled));
+    } catch (error) {
+      console.warn('A preferência do tema não pôde ser salva neste navegador.', error);
+    }
+
+    updateHydraThemeToggle(button);
+  });
+  document.body.appendChild(button);
+  updateHydraThemeToggle(button);
+}
+
+function updateHydraThemeToggle(button) {
+  const nextTheme = hydraDarkThemeEnabled ? 'claro' : 'escuro';
+  const label = `Ativar tema ${nextTheme}`;
+  button.setAttribute('aria-label', label);
+  button.setAttribute('aria-pressed', String(hydraDarkThemeEnabled));
+  button.title = label;
+  button.innerHTML = hydraDarkThemeEnabled
+    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"></path></svg><span>Tema claro</span>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"></path></svg><span>Tema escuro</span>';
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', installHydraThemeToggle, { once: true });
+} else {
+  installHydraThemeToggle();
+}
+
 const defaultApiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:8080/api'
   : `${window.location.origin}/api`;
@@ -30,7 +94,10 @@ window.hydraApi = async function hydraApi(path, options = {}) {
     if (res.status === 409 && data.codigo === 'filial_nao_selecionada' && window.hydraTrocarFilial) {
       window.hydraTrocarFilial.abrir({ obrigatorio: true });
     }
-    const err = new Error(data.erro || 'Erro ao comunicar com o servidor');
+    const mensagem = data.codigo === 'loja_suspensa'
+      ? 'O acesso deste mercado está suspenso. Entre em contato com o suporte Hydra.'
+      : (data.erro || 'Erro ao comunicar com o servidor');
+    const err = new Error(mensagem);
     err.status = res.status;
     err.data = data;
     throw err;
