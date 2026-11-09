@@ -24,6 +24,10 @@
             window.hydraAplicarMenuPorPermissao(usuario);
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
+            const alertasLink = document.getElementById('hydroAlertasSettingsLink');
+            if (alertasLink && window.hydraPode(usuario, ['relatorios.visualizar'])) {
+                alertasLink.hidden = false;
+            }
             window.hydraGuardaDeTela(usuario, ['relatorios.visualizar']);
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém a tela visível.
