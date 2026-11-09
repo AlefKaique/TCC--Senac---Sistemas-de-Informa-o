@@ -58,6 +58,9 @@
        Venda" logo após recarregar via "funciona apenas com login" (QA 012). */
     let sessaoEstado = 'carregando';
     let catalog = [];
+    let registeredProducts = [];
+    let standardHortifruti = [];
+    let standardCatalogError = '';
     let salesHistory = [];
     // Usuário autenticado: o histórico e o cabeçalho do pedido mostram quem
     // operou o caixa (null para o visitante da demo pública).
@@ -80,10 +83,13 @@
             name: p.nome,
             desc: p.descricao || '',
             category: p.categoria,
-            price: promo != null ? promo : Number(p.preco_venda),
-            regularPrice: promo != null ? Number(p.preco_venda) : null,
+            price: p.preco_venda == null ? null : (promo != null ? promo : Number(p.preco_venda)),
+            regularPrice: promo != null && p.preco_venda != null ? Number(p.preco_venda) : null,
             quantity: Number(p.quantidade),
             unit: p.unidade,
+            code: p.codigo == null ? null : String(p.codigo),
+            barcode: p.codigo_barras == null ? null : String(p.codigo_barras),
+            status: p.status || 'ativo',
         };
     }
 
@@ -124,7 +130,7 @@
        adicionado à venda, o Caixa abre o modal de peso para o operador
        digitar os gramas/quilos lidos na balança. */
     function isWeightUnit(unit) {
-        return unit === 'kg';
+        return String(unit || '').toLowerCase() === 'kg';
     }
 
     /* Define (não soma) o peso da linha do pedido para um produto pesável. */
@@ -154,7 +160,7 @@
     let proximoNumero = 1;
 
     function createOrder() {
-        return { id: proximoNumero, items: {}, payment: null, cashReceived: '' };
+        return { id: proximoNumero, items: {}, payment: null, cashReceived: '', pixPayerEmail: '' };
     }
 
     let order = createOrder();
@@ -380,7 +386,9 @@
         return getCatalog()
             .filter(
                 (p) =>
-                    (!catalogState.search || p.name.toLowerCase().includes(catalogState.search)) &&
+                    (!catalogState.search || p.name.toLowerCase().includes(catalogState.search)
+                        || String(p.code || '').includes(catalogState.search)
+                        || String(p.barcode || '').includes(catalogState.search)) &&
                     (!catalogState.category || p.category === catalogState.category)
             )
             // Sem estoque vai para o fim em vez de desaparecer: escondido, o
@@ -409,7 +417,9 @@
             .map((p) => {
                 const outOfStock = p.quantity <= 0;
                 const perKg = isWeightUnit(p.unit) ? '/kg' : '';
-                const priceLabel = `${money(p.price)}${perKg}`;
+                const priceLabel = p.price == null
+                    ? 'Defina o preço deste item'
+                    : `${money(p.price)}${perKg}`;
                 const promoLabel = p.regularPrice != null
                     ? `<span class="hydro-catalog-promo"><s>${money(p.regularPrice)}${perKg}</s> Promoção</span>`
                     : '';
@@ -417,7 +427,7 @@
                     <span class="hydro-catalog-name">${escapeHtml(p.name)}</span>
                     <span class="hydro-catalog-meta">${escapeHtml(p.category || '—')}</span>
                     ${promoLabel}
-                    <span class="hydro-catalog-price">${priceLabel}</span>
+                    <span class="hydro-catalog-price${p.price == null ? ' hydro-catalog-price-missing' : ''}">${priceLabel}</span>
                     <span class="hydro-catalog-stock${outOfStock ? ' hydro-catalog-stock-empty' : ''}">${outOfStock ? 'Esgotado' : formatStock(p.quantity, p.unit)}</span>
                 </button>`;
             })
@@ -446,6 +456,10 @@
     function selectProduct(productId) {
         const product = findProduct(productId);
         if (!product) return;
+        if (product.price == null) {
+            showToast('Defina o preço deste item no cadastro de produtos antes de vendê-lo.', true);
+            return;
+        }
 
         if (isWeightUnit(product.unit)) {
             openWeightModal(product);
@@ -465,18 +479,118 @@
         renderCatalog();
     });
 
-    searchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            searchInput.value = '';
-            catalogState.search = '';
-            renderCatalog();
-            return;
-        }
-        if (e.key !== 'Enter') return;
+    function lookupProductByBarcode(codigoBarras) {
+        window.hydraApi(`/produtos/codigo-barras/${encodeURIComponent(codigoBarras)}`)
+            .then(({ produto }) => {
+                const encontrado = mapApiProduct(produto);
+                const existingIndex = registeredProducts.findIndex((item) => item.id === encontrado.id);
+                if (existingIndex >= 0) registeredProducts[existingIndex] = encontrado;
+                else registeredProducts.push(encontrado);
 
-        // Atalho de teclado: com a busca reduzida a um único produto, o Enter
-        // já o põe na venda sem exigir o clique no card.
-        e.preventDefault();
+                if (encontrado.status !== 'ativo') {
+                    showToast('Este produto está inativo nesta filial.', true);
+                    return;
+                }
+
+                const catalogIndex = catalog.findIndex((item) => item.id === encontrado.id);
+                if (catalogIndex >= 0) catalog[catalogIndex] = encontrado;
+                else catalog.push(encontrado);
+                renderCatalog();
+                selectProduct(encontrado.id);
+            })
+            .catch((error) => {
+                showToast(error.status === 404
+                    ? 'Código de barras não encontrado nesta filial.'
+                    : error.message, true);
+            });
+    }
+
+    function processProductSearch(termoEntrada) {
+        const termo = String(termoEntrada || '').trim();
+        if (!termo) return false;
+
+        const produtoPorBarras = registeredProducts.find((item) => item.barcode === termo);
+        if (produtoPorBarras) {
+            if (produtoPorBarras.status !== 'ativo') {
+                showToast('Este produto está inativo nesta filial.', true);
+                return true;
+            }
+            selectProduct(produtoPorBarras.id);
+            return true;
+        }
+
+        const etiqueta = /^\d{13}$/.test(termo) && termo.startsWith('2') ? termo : null;
+        if (etiqueta) {
+            const digitos = Array.from(etiqueta.slice(0, 12), Number);
+            const soma = digitos.reduce((total, digito, indice) => total + digito * (indice % 2 === 0 ? 1 : 3), 0);
+            const verificador = (10 - (soma % 10)) % 10;
+            if (verificador !== Number(etiqueta[12])) {
+                showToast('Etiqueta EAN-13 inválida. Confira o código de barras.', true);
+                return true;
+            }
+
+            const codigo = String(Number(etiqueta.slice(2, 7)));
+            const produto = catalog.find((item) => item.code === codigo);
+            if (!produto) {
+                const produtoCadastrado = registeredProducts.find((item) => item.code === codigo);
+                const itemPadrao = standardHortifruti.find((item) => String(item.codigo) === codigo);
+                showToast(
+                    produtoCadastrado
+                        ? `O produto ${codigo} está inativo nesta filial.`
+                        : itemPadrao
+                            ? `O código ${codigo} ainda não foi importado para esta filial.`
+                            : 'Código de produto não encontrado.',
+                    true
+                );
+                return true;
+            }
+            if (produto.price == null) {
+                showToast('Defina o preço deste item no cadastro de produtos antes de vendê-lo.', true);
+                return true;
+            }
+            if (!isWeightUnit(produto.unit)) {
+                showToast('A etiqueta de balança só pode ser usada com produtos cadastrados em KG.', true);
+                return true;
+            }
+            const pesoKg = Number(etiqueta.slice(7, 12)) / 1000;
+            const pesoAtual = getActiveOrder().items[produto.id] || 0;
+            if (!(pesoKg > 0) || pesoAtual + pesoKg > produto.quantity + 1e-6) {
+                showToast('Peso inválido ou quantidade em estoque insuficiente.', true);
+                return true;
+            }
+            getActiveOrder().items[produto.id] = Math.round((pesoAtual + pesoKg) * 1000) / 1000;
+            renderAll();
+            return true;
+        }
+
+        if (/^\d{1,5}$/.test(termo)) {
+            const codigo = String(Number(termo));
+            const produto = catalog.find((item) => item.code === codigo);
+            if (produto) {
+                selectProduct(produto.id);
+                return true;
+            }
+            if (registeredProducts.some((item) => item.code === codigo)) {
+                showToast(`O produto ${codigo} está inativo nesta filial.`, true);
+                return true;
+            }
+            if (standardHortifruti.some((item) => String(item.codigo) === codigo)) {
+                showToast(`O código ${codigo} ainda não foi importado para esta filial.`, true);
+                return true;
+            }
+            showToast('Código de produto não encontrado.', true);
+            return true;
+        }
+
+        if (/^\d{8,14}$/.test(termo)) {
+            if (usingRealApi) {
+                lookupProductByBarcode(termo);
+            } else {
+                showToast('Código de barras não encontrado nesta filial.', true);
+            }
+            return true;
+        }
+
         const matches = getFilteredCatalog().filter((p) => p.quantity > 0);
         if (matches.length === 1) {
             selectProduct(matches[0].id);
@@ -485,11 +599,243 @@
         } else {
             showToast('Refine a busca ou clique no produto desejado');
         }
+        return true;
+    }
+
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            searchInput.value = '';
+            catalogState.search = '';
+            renderCatalog();
+            return;
+        }
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        processProductSearch(searchInput.value);
+    });
+
+    const saleCameraModal = document.getElementById('hydroSaleCameraModal');
+    const saleCameraVideo = document.getElementById('hydroSaleCameraVideo');
+    const saleCameraStatus = document.getElementById('hydroSaleCameraStatus');
+    let activeSaleScanner = null;
+    let saleCameraRequest = 0;
+
+    function closeSaleCamera() {
+        saleCameraRequest++;
+        if (activeSaleScanner) activeSaleScanner.stop();
+        activeSaleScanner = null;
+        saleCameraModal.hidden = true;
+    }
+
+    document.getElementById('hydroScanSaleBarcode').addEventListener('click', async () => {
+        const request = ++saleCameraRequest;
+        saleCameraModal.hidden = false;
+        saleCameraStatus.textContent = 'Solicitando acesso à câmera…';
+        try {
+            const scanner = await window.HydraBarcodeScanner.start(
+                saleCameraVideo,
+                (value) => {
+                    const codigoBarras = String(value || '').trim();
+                    if (!/^\d{8,14}$/.test(codigoBarras)) {
+                        saleCameraStatus.textContent = 'Código lido fora do limite de 8 a 14 dígitos. Tente novamente.';
+                        return;
+                    }
+                    closeSaleCamera();
+                    searchInput.value = codigoBarras;
+                    catalogState.search = codigoBarras.toLowerCase();
+                    renderCatalog();
+                    if (/^\d{13}$/.test(codigoBarras) && codigoBarras.startsWith('2')) {
+                        processProductSearch(codigoBarras);
+                    } else if (usingRealApi) {
+                        lookupProductByBarcode(codigoBarras);
+                    } else {
+                        processProductSearch(codigoBarras);
+                    }
+                    searchInput.focus();
+                },
+                (error) => {
+                    saleCameraStatus.textContent = error.message || 'Não foi possível ler o código.';
+                }
+            );
+            if (request !== saleCameraRequest || saleCameraModal.hidden) {
+                scanner.stop();
+                return;
+            }
+            activeSaleScanner = scanner;
+            saleCameraStatus.textContent = 'Aponte a câmera para o código de barras do produto.';
+        } catch (error) {
+            if (request === saleCameraRequest && !saleCameraModal.hidden) {
+                saleCameraStatus.textContent = error.message || 'Não foi possível iniciar a câmera.';
+            }
+        }
+    });
+
+    saleCameraModal.addEventListener('click', (event) => {
+        if (event.target.closest('[data-sale-camera-close]')) closeSaleCamera();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !saleCameraModal.hidden) closeSaleCamera();
     });
 
     catalogCategoryEl.addEventListener('change', () => {
         catalogState.category = catalogCategoryEl.value;
         renderCatalog();
+    });
+
+    /* ================= Catálogo de códigos de frutas, vegetais e pesáveis ================= */
+    const weightedCatalogModal = document.getElementById('hydroWeightedCatalogModal');
+    const weightedCatalogOpenBtn = document.getElementById('hydroOpenWeightedCatalog');
+    const weightedCatalogSearchEl = document.getElementById('hydroWeightedCatalogSearch');
+    const weightedCatalogListEl = document.getElementById('hydroWeightedCatalogList');
+    const weightedCatalogEmptyEl = document.getElementById('hydroWeightedCatalogEmpty');
+    const weightedCatalogErrorEl = document.getElementById('hydroWeightedCatalogError');
+    const weightedCatalogCountEl = document.getElementById('hydroWeightedCatalogCount');
+    const printHortifrutiBtn = document.getElementById('hydroPrintHortifrutiCatalog');
+    let weightedCatalogSearch = '';
+
+    function normalizeCatalogText(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLocaleLowerCase('pt-BR')
+            .trim();
+    }
+
+    function isWeightedCatalogProduct(product) {
+        const category = normalizeCatalogText(product.category);
+        return [
+            'fruta', 'frutas', 'legume', 'legumes', 'verdura', 'verduras',
+            'vegetal', 'vegetais', 'hortifruti', 'hortifrutis', 'pesavel', 'pesaveis',
+        ].includes(category)
+            || isWeightUnit(product.unit);
+    }
+
+    function getWeightedCatalogProducts() {
+        const standardCodes = new Set(standardHortifruti.map((item) => String(item.codigo)));
+        const products = standardHortifruti.map((item) => {
+            const code = String(item.codigo);
+            return {
+                code,
+                name: item.nome,
+                category: item.categoria,
+                unit: item.unidade,
+                product: registeredProducts.find((product) => product.code === code) || null,
+            };
+        });
+        registeredProducts
+            .filter((product) => isWeightedCatalogProduct(product)
+                && (!product.code || !standardCodes.has(product.code)))
+            .forEach((product) => products.push({
+                code: product.code || '—',
+                name: product.name,
+                category: product.category,
+                unit: product.unit,
+                product,
+            }));
+
+        return products.filter((item) => !weightedCatalogSearch || [
+            item.name,
+            item.category,
+            item.code,
+        ].some((value) => normalizeCatalogText(value).includes(weightedCatalogSearch)));
+    }
+
+    function renderWeightedCatalog() {
+        const products = getWeightedCatalogProducts();
+        weightedCatalogCountEl.textContent = `${products.length} ${products.length === 1 ? 'produto encontrado' : 'produtos encontrados'}`;
+        weightedCatalogErrorEl.hidden = !standardCatalogError;
+        weightedCatalogErrorEl.textContent = standardCatalogError
+            ? `Não foi possível carregar os códigos padrão: ${standardCatalogError}`
+            : '';
+        weightedCatalogEmptyEl.hidden = products.length > 0 || Boolean(standardCatalogError);
+        weightedCatalogListEl.innerHTML = products.map((item) => {
+            const product = item.product;
+            const active = product !== null && product.status !== 'inativo';
+            const code = item.code === '—' ? '—' : `#${escapeHtml(item.code)}`;
+            const stockLabel = !product
+                ? 'Não importado nesta filial'
+                : !active
+                    ? 'Inativo'
+                    : product.price == null
+                        ? 'Defina o preço deste item'
+                        : formatStock(product.quantity, product.unit);
+            const priceLabel = product && product.price != null
+                ? `${money(product.price)}${isWeightUnit(item.unit) ? '/kg' : ''}`
+                : (product ? 'Preço pendente' : `${escapeHtml(item.unit)} · código padrão`);
+            return `<button type="button" class="hydro-weighted-catalog-item" ${product ? `data-product-id="${escapeHtml(product.id)}"` : ''} ${active ? '' : 'disabled'}>
+                <span class="hydro-weighted-catalog-code">${code}</span>
+                <span class="hydro-weighted-catalog-info">
+                    <strong>${escapeHtml(item.name)}</strong>
+                    <span>${escapeHtml(item.category || 'Sem categoria')} · ${escapeHtml(priceLabel)}</span>
+                </span>
+                <span class="hydro-weighted-catalog-stock">${escapeHtml(stockLabel)}</span>
+            </button>`;
+        }).join('');
+    }
+
+    function openWeightedCatalog() {
+        weightedCatalogSearch = '';
+        weightedCatalogSearchEl.value = '';
+        renderWeightedCatalog();
+        weightedCatalogModal.hidden = false;
+        document.body.classList.add('hydro-weighted-catalog-open');
+        weightedCatalogSearchEl.focus();
+    }
+
+    function closeWeightedCatalog() {
+        weightedCatalogModal.hidden = true;
+        document.body.classList.remove('hydro-weighted-catalog-open');
+        weightedCatalogOpenBtn.focus();
+    }
+
+    weightedCatalogOpenBtn.addEventListener('click', openWeightedCatalog);
+    weightedCatalogModal.addEventListener('click', (event) => {
+        if (event.target.closest('[data-weighted-catalog-close]')) {
+            closeWeightedCatalog();
+            return;
+        }
+        const item = event.target.closest('[data-product-id]');
+        if (!item || item.disabled) return;
+        closeWeightedCatalog();
+        selectProduct(item.dataset.productId);
+    });
+    weightedCatalogSearchEl.addEventListener('input', () => {
+        weightedCatalogSearch = normalizeCatalogText(weightedCatalogSearchEl.value);
+        renderWeightedCatalog();
+    });
+    printHortifrutiBtn.addEventListener('click', () => {
+        if (standardHortifruti.length === 0) {
+            showToast('Os códigos padrão não foram carregados. Tente novamente quando o servidor estiver disponível.', true);
+            return;
+        }
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showToast('Permita a abertura de janelas para imprimir a lista A4.', true);
+            return;
+        }
+        const categorias = ['FRUTAS', 'LEGUMES', 'VERDURAS', 'TEMPEROS', 'RAIZES'];
+        const secoes = categorias.map((categoria) => {
+            const itens = standardHortifruti.filter((item) => item.categoria === categoria);
+            if (itens.length === 0) return '';
+            return `<section><h2>${escapeHtml(categoria)}</h2><div class="itens">${itens.map((item) =>
+                `<div class="item"><strong>${escapeHtml(item.codigo)}</strong><span>${escapeHtml(item.nome)}</span></div>`
+            ).join('')}</div></section>`;
+        }).join('');
+        printWindow.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Códigos hortifrúti padrão</title>
+            <style>
+                @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0}
+                h1{font-size:22px;margin:0 0 6px}header{margin-bottom:18px}header p{font-size:11px;margin:0;color:#444}
+                section{break-inside:avoid;margin:0 0 16px}h2{font-size:14px;border-bottom:2px solid #222;padding-bottom:4px;margin:0 0 7px}
+                .itens{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px}.item{display:flex;align-items:center;gap:10px;min-height:25px;border-bottom:1px solid #ddd}
+                .item strong{font-size:17px;min-width:40px;font-variant-numeric:tabular-nums}.item span{font-size:10px;font-weight:600}
+            </style></head><body><header><h1>Códigos hortifrúti padrão</h1><p>Códigos internos para consulta no caixa. Etiquetas EAN-13 de balança devem ser configuradas conforme a convenção descrita na documentação da loja.</p></header>${secoes}</body></html>`);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 250);
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !weightedCatalogModal.hidden) closeWeightedCatalog();
     });
 
     /* ================= Render: tabela de itens do pedido ================= */
@@ -503,6 +849,8 @@
     const footerTotalEl = document.getElementById('hydroFooterTotal');
     const paymentButtons = document.querySelectorAll('.hydro-payment-btn');
     const cashBoxEl = document.getElementById('hydroCashBox');
+    const pixPayerBoxEl = document.getElementById('hydroPixPayerBox');
+    const pixPayerEmailEl = document.getElementById('hydroPixPayerEmail');
     const cashInputEl = document.getElementById('hydroCashReceived');
     const cashInputWrapEl = cashInputEl.closest('.hydro-cash-input-wrap');
     const cashChangeRowEl = document.getElementById('hydroCashChangeRow');
@@ -547,6 +895,10 @@
         order.cashReceived = cashInputEl.value;
         const { total } = computeTotals(order);
         updateCashUI(order, total, { skipInputValue: true });
+    });
+
+    pixPayerEmailEl.addEventListener('input', () => {
+        getActiveOrder().pixPayerEmail = pixPayerEmailEl.value.trim();
     });
 
     function renderOrderPanel() {
@@ -611,6 +963,8 @@
         paymentButtons.forEach((btn) => {
             btn.classList.toggle('hydro-selected', btn.dataset.method === order.payment);
         });
+        pixPayerBoxEl.hidden = order.payment !== 'pix';
+        pixPayerEmailEl.value = order.pixPayerEmail || '';
 
         updateCashUI(order, total);
     }
@@ -666,6 +1020,172 @@
         }
     });
 
+    const pixModal = document.getElementById('hydroPixModal');
+    const pixAmount = document.getElementById('hydroPixAmount');
+    const pixQrImage = document.getElementById('hydroPixQrImage');
+    const pixStatus = document.getElementById('hydroPixStatus');
+    const pixCopyCode = document.getElementById('hydroPixCopyCode');
+    const pixReopenButton = document.getElementById('hydroPixReopenButton');
+    const PENDING_PIX_KEY = 'hydra-pix-pagamento-pendente';
+
+    function salvarPixPendente(id) {
+        try {
+            window.localStorage.setItem(PENDING_PIX_KEY, id);
+        } catch (error) {
+            console.warn('A cobrança Pix não pôde ser salva para retomada após recarregar a página.', error);
+            showToast('Mantenha esta tela aberta até a confirmação do Pix.', true);
+        }
+    }
+
+    function limparPixPendente() {
+        try {
+            window.localStorage.removeItem(PENDING_PIX_KEY);
+        } catch (error) {
+            console.warn('Não foi possível limpar o identificador local da cobrança Pix.', error);
+        }
+    }
+
+    function mostrarQrPix(pagamento) {
+        pixAmount.textContent = money(Number(pagamento.valor));
+        pixQrImage.src = `data:image/png;base64,${pagamento.qr_code_base64}`;
+        pixCopyCode.value = pagamento.qr_code || '';
+        pixStatus.textContent = 'Aguardando o pagamento do cliente…';
+        pixModal.hidden = false;
+        pixReopenButton.hidden = true;
+    }
+
+    function aguardar(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function monitorarPagamentoPix(id, qrInicial) {
+        pixModal.hidden = false;
+        pixReopenButton.hidden = true;
+        if (qrInicial) mostrarQrPix(qrInicial);
+        else pixStatus.textContent = 'Retomando a cobrança Pix pendente…';
+
+        while (true) {
+            try {
+                const resposta = await window.hydraApi(`/pix/pagamentos/${encodeURIComponent(id)}`);
+                if (resposta.status === 'approved' && resposta.venda) {
+                    limparPixPendente();
+                    pixStatus.textContent = 'Pagamento confirmado. Finalizando a venda…';
+                    pixModal.hidden = true;
+                    pixReopenButton.hidden = true;
+                    return resposta.venda;
+                }
+                if (resposta.status === 'pending') {
+                    if (resposta.qr_code && resposta.qr_code_base64) {
+                        mostrarQrPix(resposta);
+                    } else if (!pixModal.hidden) {
+                        pixStatus.textContent = 'Aguardando a confirmação da cobrança no Mercado Pago…';
+                    }
+                    await aguardar(2500);
+                    continue;
+                }
+                if (['rejeitado', 'cancelado', 'expired', 'expirado'].includes(resposta.status)) {
+                    limparPixPendente();
+                    pixModal.hidden = true;
+                    pixReopenButton.hidden = true;
+                    const terminalError = new Error(resposta.status === 'expired' || resposta.status === 'expirado'
+                        ? 'A cobrança Pix expirou. Gere um novo QR Code.'
+                        : 'O pagamento Pix não foi aprovado. Confira com o cliente e tente novamente.');
+                    terminalError.status = 422;
+                    throw terminalError;
+                }
+                await aguardar(2500);
+            } catch (error) {
+                if (error.data && error.data.codigo === 'pix_aprovado_venda_pendente') {
+                    pixStatus.textContent = error.message;
+                    await aguardar(5000);
+                    continue;
+                }
+                if (error.status === 404) {
+                    limparPixPendente();
+                    pixModal.hidden = true;
+                    pixReopenButton.hidden = true;
+                }
+                if (error.status === 502 || error.status === undefined) {
+                    pixStatus.textContent = 'Sem resposta temporária do Mercado Pago. Tentando consultar novamente…';
+                    await aguardar(5000);
+                    continue;
+                }
+                throw error;
+            }
+        }
+    }
+
+    function registrarVendaApiNaTela(venda, entries, baixarEstoque) {
+        if (baixarEstoque) {
+            entries.forEach(([productId, qty]) => {
+                const product = findProduct(productId);
+                if (product) product.quantity -= qty;
+            });
+        }
+        const vendaGravada = mapApiVenda(venda);
+        if (!salesHistory.some((item) => item.id === vendaGravada.id)) salesHistory.unshift(vendaGravada);
+        order.id = vendaGravada.orderId;
+        proximoNumero = vendaGravada.orderId + 1;
+    }
+
+    document.getElementById('hydroPixCopyButton').addEventListener('click', async () => {
+        if (!pixCopyCode.value) return;
+        try {
+            await navigator.clipboard.writeText(pixCopyCode.value);
+            showToast('Código Pix copiado.');
+        } catch (error) {
+            pixCopyCode.focus();
+            pixCopyCode.select();
+            showToast('Não foi possível copiar automaticamente. Selecione e copie o código Pix.');
+        }
+    });
+
+    document.getElementById('hydroPixHideButton').addEventListener('click', () => {
+        pixModal.hidden = true;
+        pixReopenButton.hidden = false;
+        showToast('A cobrança continua sendo consultada; a venda será finalizada após a confirmação.');
+    });
+
+    pixReopenButton.addEventListener('click', () => {
+        pixModal.hidden = false;
+        pixReopenButton.hidden = true;
+    });
+
+    async function retomarPixPendente() {
+        let id = null;
+        let cobranca = null;
+        try {
+            id = window.localStorage.getItem(PENDING_PIX_KEY);
+        } catch (error) {
+            console.warn('Não foi possível verificar uma cobrança Pix pendente neste navegador.', error);
+        }
+        if (!id) {
+            try {
+                ({ pagamento: cobranca } = await window.hydraApi('/pix/pagamentos/pendente'));
+                id = cobranca ? cobranca.id : null;
+                if (id) salvarPixPendente(id);
+            } catch (error) {
+                showToast(error.message || 'Não foi possível verificar cobranças Pix pendentes.', true);
+                return;
+            }
+        }
+        if (!id) return;
+
+        const finishBtn = document.getElementById('hydroFinishOrderBtn');
+        finishBtn.disabled = true;
+        try {
+            const venda = await monitorarPagamentoPix(id, cobranca);
+            registrarVendaApiNaTela(venda, [], false);
+            renderAll();
+            if (!historyViewEl.hidden) renderHistory();
+            showToast(`${rotuloPedido(order.id)} confirmado automaticamente pelo Pix.`);
+        } catch (error) {
+            showToast(error.message || 'Não foi possível retomar a cobrança Pix.', true);
+        } finally {
+            finishBtn.disabled = false;
+        }
+    }
+
     /* ================= Finalizar pedido ================= */
     document.getElementById('hydroFinishOrderBtn').addEventListener('click', async () => {
         const { entries, subtotal, total } = computeTotals(order);
@@ -676,6 +1196,11 @@
         }
         if (!order.payment) {
             showToast('Selecione a forma de pagamento', true);
+            return;
+        }
+        if (order.payment === 'pix' && (!pixPayerEmailEl.value.trim() || !pixPayerEmailEl.validity.valid)) {
+            showToast('Informe um e-mail válido do cliente para gerar o Pix.', true);
+            pixPayerEmailEl.focus();
             return;
         }
 
@@ -705,24 +1230,30 @@
         if (usingRealApi) {
             finishBtn.disabled = true;
             try {
-                const { venda } = await window.hydraApi('/vendas', {
-                    method: 'POST',
-                    body: {
-                        itens: entries.map(([productId, qty]) => ({ id_produto: Number(productId), quantidade: qty })),
-                        pagamentos: [{ forma_pagamento: PAYMENT_METHOD_TO_API[order.payment], valor: Math.round(total * 100) / 100 }],
-                    },
-                });
-                // Baixa local do estoque exibido — o back-end já deu a baixa real (RN11).
-                entries.forEach(([productId, qty]) => {
-                    const product = findProduct(productId);
-                    if (product) product.quantity -= qty;
-                });
-                const vendaGravada = mapApiVenda(venda);
-                salesHistory.unshift(vendaGravada);
-                // O número efetivo é o que o back-end gravou — pode não ser
-                // o previsto, se outro caixa finalizou primeiro.
-                order.id = vendaGravada.orderId;
-                proximoNumero = vendaGravada.orderId + 1;
+                let venda;
+                if (order.payment === 'pix') {
+                    const cobranca = await window.hydraApi('/pix/pagamentos', {
+                        method: 'POST',
+                        body: {
+                            payer_email: order.pixPayerEmail,
+                            itens: entries.map(([productId, qty]) => ({
+                                id_produto: Number(productId),
+                                quantidade: qty,
+                            })),
+                        },
+                    });
+                    salvarPixPendente(cobranca.id);
+                    venda = await monitorarPagamentoPix(cobranca.id, cobranca);
+                } else {
+                    ({ venda } = await window.hydraApi('/vendas', {
+                        method: 'POST',
+                        body: {
+                            itens: entries.map(([productId, qty]) => ({ id_produto: Number(productId), quantidade: qty })),
+                            pagamentos: [{ forma_pagamento: PAYMENT_METHOD_TO_API[order.payment], valor: Math.round(total * 100) / 100 }],
+                        },
+                    }));
+                }
+                registrarVendaApiNaTela(venda, entries, true);
             } catch (err) {
                 showToast(err.message, true);
                 finishBtn.disabled = false;
@@ -1191,6 +1722,7 @@
        o próximo número sai do próprio histórico local. */
     function carregarDemonstracao() {
         catalog = HydroStore.getProducts();
+        registeredProducts = catalog;
         salesHistory = HydroStore.getSales();
         proximoNumero = salesHistory.reduce((maior, s) => Math.max(maior, Number(s.orderId) || 0), 0) + 1;
     }
@@ -1210,10 +1742,23 @@
     (async function init() {
         if (!window.hydraApi) {
             sessaoEstado = 'visitante';
+            standardCatalogError = 'Servidor da API indisponível.';
             carregarDemonstracao();
             finalizarCarga();
             return;
         }
+
+        const standardCatalogPromise = window.hydraApi('/catalogo-hortifruti')
+            .then((resposta) => {
+                standardHortifruti = Array.isArray(resposta.itens) ? resposta.itens : [];
+                if (standardHortifruti.length !== 120) {
+                    standardHortifruti = [];
+                    throw new Error('O catálogo padrão não contém os 120 itens.');
+                }
+            })
+            .catch((err) => {
+                standardCatalogError = err.message || 'Falha de comunicação com o servidor.';
+            });
 
         /* Os dados saem junto com a sessão, e não depois dela: com o lock de
            sessão liberado no back-end, as três chamadas rodam em paralelo. */
@@ -1230,6 +1775,7 @@
             // navegável com o catálogo local.
             sessaoEstado = 'visitante';
             carregarDemonstracao();
+            await standardCatalogPromise;
             finalizarCarga();
             return;
         }
@@ -1250,14 +1796,14 @@
            só de histórico não deveria perder o catálogo por causa disso.
            Cada parte da tela carrega o que lhe cabe. */
         const [produtosRes, vendasRes] = await dadosPromise;
+        await standardCatalogPromise;
 
         if (produtosRes.status === 'fulfilled') {
+            registeredProducts = produtosRes.value.produtos.map(mapApiProduct);
             // Só produtos ativos vão para a vitrine. Um produto inativado
             // (RN03) aparecia na grade e só era recusado ao finalizar a
             // venda, com "Produto indisponível para venda".
-            catalog = produtosRes.value.produtos
-                .filter((p) => p.status === 'ativo')
-                .map(mapApiProduct);
+            catalog = registeredProducts.filter((p) => p.status === 'ativo');
         }
         if (vendasRes.status === 'fulfilled') {
             salesHistory = vendasRes.value.vendas.map(mapApiVenda);
@@ -1273,6 +1819,7 @@
         usingRealApi = true;
         sessaoEstado = 'autenticado';
         finalizarCarga();
+        retomarPixPendente();
     })();
 
     function finalizarCarga() {
