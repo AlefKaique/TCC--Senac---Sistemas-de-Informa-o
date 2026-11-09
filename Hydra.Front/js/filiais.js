@@ -26,6 +26,8 @@
 
     let filiais = [];
     let idFilialAtiva = null;
+    // Dados da loja: filial sem dados próprios mostra os da loja.
+    let loja = null;
     let nomeMes = '';
 
     function escapeHtml(str) {
@@ -98,15 +100,29 @@
                 </div>`;
     }
 
-    function dadosHtml(f) {
-        const linhas = [
-            ['CNPJ', f.cnpj],
-            ['Telefone', f.telefone],
-            ['Endereço', f.endereco],
-            ['CEP', f.cep],
+    function linhasDeDados(origem) {
+        return [
+            ['CNPJ', origem.cnpj],
+            ['Telefone', origem.telefone],
+            ['Endereço', origem.endereco],
+            ['CEP', origem.cep],
         ].filter(([, valor]) => valor);
+    }
+
+    function dadosHtml(f) {
+        let linhas = linhasDeDados(f);
+        // Sem dados próprios, a filial usa os da loja (tela Dados da Loja).
+        // Antes aparecia "Não preenchidos" mesmo com a loja toda preenchida.
+        if (linhas.length === 0 && loja) {
+            const daLoja = linhasDeDados(loja);
+            if (daLoja.length) {
+                return `<dl class="hydro-filial-dados">${daLoja
+                    .map(([rotulo, valor]) => `<dt>${rotulo}</dt><dd>${escapeHtml(valor)}</dd>`)
+                    .join('')}</dl><p class="hydro-filial-herdado">Usa os dados da loja.</p>`;
+            }
+        }
         if (linhas.length === 0) {
-            return '<dl class="hydro-filial-dados"><dt>Dados</dt><dd>Não preenchidos — clique em "Editar".</dd></dl>';
+            return '<dl class="hydro-filial-dados"><dt>Dados</dt><dd>Não preenchidos. Clique em "Editar" ou preencha os Dados da Loja.</dd></dl>';
         }
         return `<dl class="hydro-filial-dados">${linhas
             .map(([rotulo, valor]) => `<dt>${rotulo}</dt><dd>${escapeHtml(valor)}</dd>`)
@@ -117,7 +133,9 @@
         const ativa = f.status === 'ativa';
         const aqui = Number(f.id_filial) === Number(idFilialAtiva);
         const cor = CORES_LOGO[Number(f.id_filial) % CORES_LOGO.length];
-        const local = [f.cidade, f.estado].filter(Boolean).join('/') || 'Cidade não informada';
+        const localProprio = [f.cidade, f.estado].filter(Boolean).join('/');
+        const localLoja = loja ? [loja.cidade, loja.estado].filter(Boolean).join('/') : '';
+        const local = localProprio || localLoja || 'Cidade não informada';
         return `
             <li class="hydro-filial-card${ativa ? '' : ' hydro-filial-card-inativa'}">
                 <div class="hydro-filial-perfil">
@@ -143,13 +161,6 @@
     function renderStats() {
         document.getElementById('hydroStatTotalFiliais').textContent = filiais.length;
         document.getElementById('hydroStatFiliaisAtivas').textContent = filiais.filter((f) => f.status === 'ativa').length;
-
-        const comResumo = filiais.filter((f) => f.resumo_mes);
-        const lucroTotal = comResumo.reduce((soma, f) => soma + Number(f.resumo_mes.lucro || 0), 0);
-        document.getElementById('hydroStatLucroLabel').textContent = nomeMes
-            ? `Lucro de ${nomeMes} (todas)`
-            : 'Lucro do mês (todas)';
-        document.getElementById('hydroStatLucroTotal').textContent = comResumo.length ? dinheiro(lucroTotal) : '—';
     }
 
     function render() {
@@ -166,7 +177,7 @@
         });
 
         if (filiais.length === 0) {
-            mostrarMensagem('Nenhuma filial cadastrada ainda. <a href="cadastro-filial.html">Cadastrar nova Filial</a>');
+            mostrarMensagem('Nenhuma filial cadastrada ainda. Use o botão "Cadastrar nova Filial".');
         } else if (visiveis.length === 0) {
             mostrarMensagem('Nenhuma filial encontrada com esses filtros.');
         } else {
@@ -228,7 +239,13 @@
         }
 
         try {
-            const resposta = await window.hydraApi('/filiais');
+            // A loja vem junto (mesma permissão): é a origem dos dados das
+            // filiais que não têm os próprios.
+            const [resposta, dadosLoja] = await Promise.all([
+                window.hydraApi('/filiais'),
+                window.hydraApi('/loja').catch(() => null),
+            ]);
+            loja = dadosLoja && dadosLoja.loja ? dadosLoja.loja : null;
             filiais = resposta.filiais || [];
             idFilialAtiva = resposta.id_filial_ativa;
             const [ano, mes] = String(resposta.mes_referencia || '').split('-');

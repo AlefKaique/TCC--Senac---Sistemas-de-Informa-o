@@ -117,15 +117,6 @@
     let activeBarcodeScanner = null;
     let productCameraRequest = 0;
 
-    const dropzone = document.getElementById('hydroDropzone');
-    const fileInput = document.getElementById('hydroProdImageInput');
-    const previewWrap = document.getElementById('hydroDropzonePreview');
-    const previewImg = document.getElementById('hydroDropzoneImg');
-    const emptyState = document.getElementById('hydroDropzoneEmpty');
-    const removeBtn = document.getElementById('hydroDropzoneRemove');
-
-    let imageDataUrl = null;
-
     /* ================= Unidade "Caixa" =================
        "Caixa" nunca é gravada como unidade do produto: é só um atalho
        para o operador indicar a unidade real (a que existe dentro da
@@ -211,65 +202,6 @@
         const errorEl = form.querySelector('[data-error-for="hydroProdBarcode"]');
         if (errorEl) errorEl.textContent = '';
         barcodeInput.classList.remove('hydro-invalid');
-    });
-
-    /* ================= Upload de imagem ================= */
-    function setImage(file) {
-        if (!file) return;
-        if (!file.type.startsWith('image/')) {
-            showToast('Selecione um arquivo de imagem válido (PNG, JPG ou WEBP)', true);
-            return;
-        }
-        if (file.size > 5 * 1024 * 1024) {
-            showToast('A imagem deve ter no máximo 5MB', true);
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            imageDataUrl = e.target.result;
-            previewImg.src = imageDataUrl;
-            previewWrap.hidden = false;
-            emptyState.hidden = true;
-            removeBtn.hidden = false;
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function clearImage() {
-        imageDataUrl = null;
-        fileInput.value = '';
-        previewImg.src = '';
-        previewWrap.hidden = true;
-        emptyState.hidden = false;
-        removeBtn.hidden = true;
-    }
-
-    fileInput.addEventListener('change', (e) => setImage(e.target.files[0]));
-
-    removeBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        clearImage();
-    });
-
-    ['dragenter', 'dragover'].forEach((evt) => {
-        dropzone.addEventListener(evt, (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dropzone.classList.add('hydro-dragover');
-        });
-    });
-
-    ['dragleave', 'drop'].forEach((evt) => {
-        dropzone.addEventListener(evt, (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dropzone.classList.remove('hydro-dragover');
-        });
-    });
-
-    dropzone.addEventListener('drop', (e) => {
-        const file = e.dataTransfer.files && e.dataTransfer.files[0];
-        setImage(file);
     });
 
     /* ================= Validação ================= */
@@ -365,16 +297,13 @@
             unit: data.unidade,
             lote: data.lote.trim() || null,
             validade: data.validade || null,
-            image: imageDataUrl,
             criadoEm: new Date().toISOString(),
         };
         HydroStore.addProduct(product);
         return product;
     }
 
-    /* Grava o produto via API real (RF02). A imagem ainda não é enviada
-       ao back-end — assim como o logotipo da loja, permanece, por ora,
-       como pré-visualização local (sem endpoint de armazenamento). */
+    /* Grava o produto via API real (RF02). */
     async function saveProductRemote(data) {
         const { produto } = await window.hydraApi('/produtos', {
             method: 'POST',

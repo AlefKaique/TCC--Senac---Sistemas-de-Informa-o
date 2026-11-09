@@ -63,6 +63,19 @@
     cursor: pointer;
 }
 
+/* Tira a borda padrão do navegador (cinza-escura, 2px) de todo botão que
+   não define a sua. Era ela que contornava as abas "Nova Venda" /
+   "Histórico" / "Cancelar Venda" e os botões de quantidade. O :where()
+   zera a especificidade, então qualquer classe que declare border vence. */
+:where(.hydro-caixa button) {
+    border: 0;
+}
+
+.hydro-caixa button:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
 .hydro-caixa input {
     font-family: inherit;
 }
@@ -645,15 +658,6 @@
     }
 }
 
-.hydro-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid #fff;
-    box-shadow: 0 0 0 1px var(--border);
-}
-
 /* ============ Botões ============ */
 .hydro-btn {
     display: inline-flex;
@@ -694,37 +698,47 @@
 }
 
 /* ============ Abas de pedidos ============ */
+/* Barra de abas no estilo "controle segmentado": as abas são texto puro
+   sobre o cartão e só a ativa ganha fundo. "Cancelar Venda" fica afastada
+   à direita por ser uma ação restrita e destrutiva. */
 .hydro-order-tabs {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    background: #fff;
+    gap: 4px;
+    background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
     padding: 6px;
     margin-bottom: 20px;
-    overflow-x: auto;
 }
 
 .hydro-order-tab {
     flex-shrink: 0;
-    padding: 10px 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border: 0;
     border-radius: 8px;
     font-size: 14px;
     font-weight: 600;
     color: var(--muted);
     background: transparent;
     white-space: nowrap;
-    transition: background .15s, color .15s;
+    transition: background .15s, color .15s, box-shadow .15s;
 }
 
 .hydro-order-tab:hover {
-    background: #f6f7fb;
+    background: var(--blue-bg);
+    color: var(--navy-900);
 }
 
 .hydro-order-tab.hydro-active {
     background: var(--navy-active);
     color: #fff;
+    box-shadow: 0 4px 12px -6px rgba(21, 46, 109, .6);
 }
 
 /* ============ Filtro de data do Histórico de Vendas ============ */
@@ -751,6 +765,7 @@
    são os dois controles de navegação desta tela. */
 .hydro-history-preset {
     padding: 7px 14px;
+    border: 0;
     border-radius: 8px;
     font-size: 13px;
     font-weight: 600;
@@ -888,7 +903,8 @@
     grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
     gap: 12px;
     padding: 14px;
-    max-height: 340px;
+    /* Os itens do pedido saíram desta coluna: a vitrine usa a altura da tela. */
+    max-height: max(340px, calc(100vh - 300px));
     overflow-y: auto;
 }
 
@@ -1110,6 +1126,127 @@
 
 .hydro-items-table-wrap.hydro-empty .hydro-items-empty {
     display: flex;
+}
+
+/* ============ Itens do pedido no painel da direita ============ */
+.hydro-cart {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.hydro-cart .hydro-order-section-label {
+    margin: 0;
+}
+
+.hydro-cart-count {
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--muted);
+}
+
+.hydro-cart-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 290px;
+    overflow-y: auto;
+}
+
+.hydro-cart.hydro-empty .hydro-cart-list {
+    display: none;
+}
+
+.hydro-cart.hydro-empty .hydro-items-empty {
+    display: flex;
+    padding: 18px 10px;
+}
+
+.hydro-cart .hydro-items-empty .hydro-ic {
+    width: 30px;
+    height: 30px;
+}
+
+.hydro-cart .hydro-items-empty-title {
+    font-size: 14px;
+}
+
+.hydro-cart-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "info  remove"
+        "qty   total";
+    align-items: center;
+    gap: 6px 10px;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+}
+
+.hydro-cart-item:first-child {
+    border-top: 0;
+}
+
+.hydro-cart-info { grid-area: info; min-width: 0; }
+.hydro-cart-qty { grid-area: qty; }
+.hydro-cart-total { grid-area: total; justify-self: end; font-weight: 800; color: var(--navy-900); font-variant-numeric: tabular-nums; }
+.hydro-cart-item .hydro-item-remove { grid-area: remove; justify-self: end; }
+
+.hydro-cart-info .hydro-item-name {
+    margin: 0;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.hydro-cart-unit {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+/* ============ Pagamento dividido ============ */
+.hydro-split-toggle {
+    align-self: flex-start;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--navy-900);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.hydro-split-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+}
+
+.hydro-split-box label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.hydro-split-box select {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--ink);
 }
 
 .hydro-items-empty .hydro-ic {
@@ -1642,9 +1779,7 @@
 }
 
 .hydro-order-tab-danger {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+    margin-left: auto;
     color: var(--red);
 }
 
@@ -1655,11 +1790,19 @@
 
 .hydro-order-tab-danger:hover {
     background: var(--red-bg);
+    color: var(--red);
 }
 
 .hydro-order-tab-danger.hydro-active {
     background: var(--red);
     color: #fff;
+    box-shadow: 0 4px 12px -6px rgba(226, 76, 92, .7);
+}
+
+@media (max-width: 640px) {
+    .hydro-order-tab-danger {
+        margin-left: 0;
+    }
 }
 
 .hydro-btn-danger {

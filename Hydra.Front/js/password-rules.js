@@ -12,11 +12,11 @@
     'use strict';
 
     const RULES = [
+        { id: 'tamanho', label: 'No mínimo 8 caracteres', test: (v) => v.length >= 8 },
         { id: 'maiuscula', label: 'Pelo menos uma letra maiúscula', test: (v) => /[A-Z]/.test(v) },
-        { id: 'numero', label: 'No mínimo um número', test: (v) => /\d/.test(v) },
         { id: 'minuscula', label: 'Pelo menos uma letra minúscula', test: (v) => /[a-z]/.test(v) },
+        { id: 'numero', label: 'Pelo menos um número', test: (v) => /\d/.test(v) },
         { id: 'especial', label: 'Um caractere especial (ex.: ! @ # $ %)', test: (v) => /[^A-Za-z0-9]/.test(v) },
-        { id: 'tamanho', label: 'Total de oito caracteres válidos', test: (v) => v.length >= 8 },
     ];
 
     const EYE_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -43,12 +43,15 @@
             '</ul>';
 
         function update(valor) {
+            // Campo vazio fica neutro: antes todas as regras já começavam
+            // com um X laranja, como se a pessoa tivesse errado algo.
+            const vazio = !valor;
             RULES.forEach((regra) => {
                 const li = containerEl.querySelector(`[data-rule="${regra.id}"]`);
                 if (!li) return;
                 const ok = regra.test(valor || '');
-                li.classList.toggle('hydro-pwd-rule-ok', ok);
-                li.classList.toggle('hydro-pwd-rule-fail', !ok);
+                li.classList.toggle('hydro-pwd-rule-ok', !vazio && ok);
+                li.classList.toggle('hydro-pwd-rule-fail', !vazio && !ok);
             });
         }
 

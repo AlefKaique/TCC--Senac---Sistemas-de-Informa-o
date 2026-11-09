@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hydra · Configurações da Loja</title>
+    <title>Hydra · Dados da Loja</title>
   <link rel="icon" type="image/png" href="../img/logo-hydra.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="../css/menu-submenu.css">
     <link rel="stylesheet" href="../css/public-demo.css">
     <link rel="stylesheet" href="../css/font-size.css">
+    <link rel="stylesheet" href="../css/avatar.css">
 </head>
 
 <body>
@@ -56,11 +57,10 @@
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
                         <li id="hydroLiConfig">
                             <details class="hydro-submenu" open>
-                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
+                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configurações</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
                                 <ul class="hydro-submenu-itens">
                                     <li><a href="configuracoes-loja.html" class="hydro-active" aria-current="page">Dados da loja</a></li>
                                     <li><a href="filiais.html">Filiais</a></li>
-                                    <li><a href="cadastro-filial.html">Cadastrar nova Filial</a></li>
                                 </ul>
                             </details>
                         </li>
@@ -84,31 +84,29 @@
             <main class="hydro-main">
                 <header class="hydro-topbar">
                     <div class="hydro-topbar-title">
-                        <h1>Configurações da Loja</h1>
+                        <h1>Dados da Loja</h1>
                         <span class="hydro-restricted-badge" id="hydroConfigAdminBadge"><i class="hydro-ic hydro-ic-lock"></i> Apenas Administrador</span>
                     </div>
                     <div class="hydro-topbar-actions">
-                        <a class="hydro-icon-btn" href="gerenciar-usuarios.html" aria-label="Equipe"><i
-                                class="hydro-ic hydro-ic-users"></i></a>
                         <button class="hydro-icon-btn" aria-label="Notificações">
                             <i class="hydro-ic hydro-ic-bell"></i>
                             <span class="hydro-notif-dot"></span>
                         </button>
                         <div class="hydro-user">
-                            <img class="hydro-avatar" src="https://i.pravatar.cc/64?img=13" alt="Foto do usuário">
+                            <span class="hydro-avatar" id="hydroUserAvatar" role="img" aria-label="Usuário"></span>
                             <span class="hydro-user-name" id="hydroUserName"></span>
                         </div>
                     </div>
                 </header>
 
-                <p class="hydro-settings-intro" id="hydroSettingsIntro" data-hydro-config-admin>Estes dados são diferentes das informações preenchidas no cadastro inicial da conta — aqui você mantém os dados da loja atualizados conforme o negócio cresce.</p>
+                <p class="hydro-settings-intro" id="hydroSettingsIntro" data-hydro-config-admin>Mantenha aqui os dados da loja atualizados. Filiais sem dados próprios usam estes.</p>
 
                 <form id="hydroSettingsForm" novalidate>
 
                     <section class="hydro-card" data-hydro-config-admin>
                         <div class="hydro-card-header">
                             <h2>Identidade da loja</h2>
-                            <p>Nome e logo exibidos no sistema e nos comprovantes de venda.</p>
+                            <p>Nome e logo exibidos no sistema.</p>
                         </div>
                         <div class="hydro-card-body">
                             <div class="hydro-logo-row">
@@ -120,7 +118,7 @@
                                         <i class="hydro-ic hydro-ic-upload"></i> Enviar logo
                                     </label>
                                     <input type="file" id="hydroLogoInput" accept="image/*" hidden>
-                                    <span class="hydro-logo-hint">PNG ou JPG, até 2MB</span>
+                                    <span class="hydro-logo-hint">PNG, JPG ou WEBP. A imagem é reduzida automaticamente.</span>
                                 </div>
                             </div>
                             <div class="hydro-form-group">
@@ -133,7 +131,7 @@
                     <section class="hydro-card" data-hydro-config-admin>
                         <div class="hydro-card-header">
                             <h2>Dados cadastrais</h2>
-                            <p>Usados em relatórios financeiros e documentos fiscais.</p>
+                            <p>CNPJ e telefone de contato da loja.</p>
                         </div>
                         <div class="hydro-card-body hydro-settings-grid">
                             <div class="hydro-form-group">
@@ -170,14 +168,34 @@
                             <div class="hydro-form-group">
                                 <label for="hydroEstado">Estado</label>
                                 <select id="hydroEstado">
-                                    <option value="SP" selected>São Paulo</option>
-                                    <option value="RJ">Rio de Janeiro</option>
-                                    <option value="MG">Minas Gerais</option>
-                                    <option value="PR">Paraná</option>
-                                    <option value="SC">Santa Catarina</option>
-                                    <option value="RS">Rio Grande do Sul</option>
+                                    <option value="">Selecione o estado</option>
+                                    <option value="AC">Acre</option>
+                                    <option value="AL">Alagoas</option>
+                                    <option value="AP">Amapá</option>
+                                    <option value="AM">Amazonas</option>
                                     <option value="BA">Bahia</option>
-                                    <option value="">Outro</option>
+                                    <option value="CE">Ceará</option>
+                                    <option value="DF">Distrito Federal</option>
+                                    <option value="ES">Espírito Santo</option>
+                                    <option value="GO">Goiás</option>
+                                    <option value="MA">Maranhão</option>
+                                    <option value="MT">Mato Grosso</option>
+                                    <option value="MS">Mato Grosso do Sul</option>
+                                    <option value="MG">Minas Gerais</option>
+                                    <option value="PA">Pará</option>
+                                    <option value="PB">Paraíba</option>
+                                    <option value="PR">Paraná</option>
+                                    <option value="PE">Pernambuco</option>
+                                    <option value="PI">Piauí</option>
+                                    <option value="RJ">Rio de Janeiro</option>
+                                    <option value="RN">Rio Grande do Norte</option>
+                                    <option value="RS">Rio Grande do Sul</option>
+                                    <option value="RO">Rondônia</option>
+                                    <option value="RR">Roraima</option>
+                                    <option value="SC">Santa Catarina</option>
+                                    <option value="SP">São Paulo</option>
+                                    <option value="SE">Sergipe</option>
+                                    <option value="TO">Tocantins</option>
                                 </select>
                             </div>
                         </div>

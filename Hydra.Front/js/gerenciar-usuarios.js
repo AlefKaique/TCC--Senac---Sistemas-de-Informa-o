@@ -35,7 +35,7 @@
             return `
         <div class="hydro-form-group">
           <span class="hydro-filiais-legenda">Filiais que pode acessar</span>
-          <p class="hydro-filiais-vazio">Nenhuma filial cadastrada. Crie as filiais em <a href="cadastro-filial.html">Configuração Loja › Cadastrar nova Filial</a>.</p>
+          <p class="hydro-filiais-vazio">Nenhuma filial cadastrada. Crie as filiais em <a href="filiais.html">Configurações › Filiais</a>.</p>
         </div>`;
         }
         const ids = (marcadas || []).map(Number);
@@ -218,8 +218,10 @@
     /* ================= Rendering: stats ================= */
     function renderStats() {
         document.getElementById('hydroStatTotalUsers').textContent = users.length;
-        document.getElementById('hydroStatCaixa').textContent = users.filter((u) => u.perfil === 'operador_caixa').length;
-        document.getElementById('hydroStatEstoquista').textContent = users.filter((u) => u.perfil === 'estoquista').length;
+        // Antes contava só Operadores de Caixa e Estoquistas pelo perfil fixo:
+        // quem estava num cargo personalizado (ex.: Gerente) não aparecia.
+        document.getElementById('hydroStatAtivos').textContent = users.filter((u) => u.status === 'ativo').length;
+        document.getElementById('hydroStatInativos').textContent = users.filter((u) => u.status !== 'ativo').length;
     }
 
     /* ================= Rendering: table ================= */

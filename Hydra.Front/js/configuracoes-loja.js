@@ -463,7 +463,7 @@
         cepInput.value = mascaraCep(loja.cep);
         document.getElementById('hydroEndereco').value = loja.endereco || '';
         document.getElementById('hydroCidade').value = loja.cidade || '';
-        document.getElementById('hydroEstado').value = loja.estado || 'SP';
+        document.getElementById('hydroEstado').value = loja.estado || '';
         logoPendente = undefined;
         mostrarLogo(loja.logo || null);
         [cnpjInput, telefoneInput, cepInput].forEach(limparErroCampo);
