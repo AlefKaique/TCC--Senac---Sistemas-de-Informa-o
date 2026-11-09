@@ -1,0 +1,56 @@
+/* Páginas de Termos de Uso e Política de Privacidade.
+   Usa as variáveis de style.css (cores e fontes da página inicial). */
+.legal-topo {
+  border-bottom: 1px solid var(--gray-300);
+  background: var(--white);
+}
+.legal-topo__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 16px;
+}
+.legal-topo img { height: 34px; width: auto; }
+.legal-topo nav { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 0.9rem; }
+.legal-topo nav a { color: var(--navy); font-weight: 600; text-decoration: none; }
+.legal-topo nav a:hover, .legal-topo nav a[aria-current="page"] { color: var(--orange-dark); }
+
+.legal {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 48px 20px 80px;
+  color: #2b3350;
+  font-family: var(--font-body);
+  line-height: 1.7;
+}
+.legal h1 {
+  font-family: var(--font-display);
+  color: var(--navy);
+  font-size: clamp(1.7rem, 4vw, 2.3rem);
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
+.legal__meta { color: var(--gray-600); font-size: 0.9rem; margin-bottom: 28px; }
+.legal__intro { margin-bottom: 26px; }
+.legal h2 {
+  font-family: var(--font-display);
+  color: var(--navy);
+  font-size: 1.15rem;
+  margin: 32px 0 10px;
+  scroll-margin-top: 20px;
+}
+.legal p + p { margin-top: 10px; }
+.legal ul { margin: 10px 0 0 22px; display: grid; gap: 4px; }
+.legal a { color: var(--navy); }
+.legal__contato {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: #f1f3f9;
+  font-family: var(--font-body);
+  font-weight: 600;
+  user-select: all;
+}
+.legal__voltar { display: inline-block; margin-top: 40px; font-weight: 600; }

@@ -198,19 +198,14 @@
     }
 
     /* ================= Regra única de status de estoque ================= */
+    /* Delega para a regra única do sistema (api.js), a mesma do Controle
+       de Estoque. */
     function stockStatus(quantity, minStock) {
-        quantity = Number(quantity) || 0;
-        minStock = Number(minStock) || 0;
-        /* Prateleira vazia tem estado próprio ("Esgotado"), separado de
-           "Crítico": são coisas diferentes para quem repõe o estoque. */
-        if (quantity <= 0) return 'empty';
-        if (minStock <= 0) return 'ok';
-        if (quantity < minStock / 2) return 'critical';
-        if (quantity < minStock) return 'warning';
-        return 'ok';
+        return window.hydraSituacaoEstoque(quantity, minStock);
     }
 
-    var STATUS_LABELS = { empty: 'Esgotado', critical: 'Crítico', warning: 'Atenção', ok: 'Em estoque' };
+    // Mesmos rótulos de window.HYDRA_SITUACAO_ROTULOS (api.js carrega depois deste arquivo).
+    var STATUS_LABELS = { empty: 'Esgotado', critical: 'Crítico', low: 'Baixo', warning: 'Atenção', ok: 'Em estoque' };
 
     var EXPIRY_WARNING_DAYS = 30;
 

@@ -57,11 +57,10 @@
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
                         <li id="hydroLiConfig">
                             <details class="hydro-submenu" open>
-                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
+                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configurações</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
                                 <ul class="hydro-submenu-itens">
                                     <li><a href="configuracoes-loja.html">Dados da loja</a></li>
-                                    <li><a href="filiais.html">Filiais</a></li>
-                                    <li><a href="cadastro-filial.html" class="hydro-active" aria-current="page">Cadastrar nova Filial</a></li>
+                                    <li><a href="filiais.html" class="hydro-active" aria-current="page">Filiais</a></li>
                                 </ul>
                             </details>
                         </li>
@@ -89,8 +88,6 @@
                         <span class="hydro-restricted-badge"><i class="hydro-ic hydro-ic-lock"></i> Apenas Administrador</span>
                     </div>
                     <div class="hydro-topbar-actions">
-                        <a class="hydro-icon-btn" href="gerenciar-usuarios.html" aria-label="Equipe"><i
-                                class="hydro-ic hydro-ic-users"></i></a>
                         <button class="hydro-icon-btn" aria-label="Notificações">
                             <i class="hydro-ic hydro-ic-bell"></i>
                             <span class="hydro-notif-dot"></span>
@@ -111,21 +108,9 @@
                     <section class="hydro-card">
                         <div class="hydro-card-header">
                             <h2>Identidade da filial</h2>
-                            <p>Nome e logo exibidos no sistema e na janela "Trocar Filial".</p>
+                            <p>Nome exibido no sistema e na janela "Trocar Filial".</p>
                         </div>
                         <div class="hydro-card-body">
-                            <div class="hydro-logo-row">
-                                <div class="hydro-logo-preview" id="hydroLogoPreview">
-                                    <i class="hydro-ic hydro-ic-image"></i>
-                                </div>
-                                <div class="hydro-logo-actions">
-                                    <label class="hydro-btn hydro-btn-outline hydro-btn-sm hydro-upload-btn" for="hydroLogoInput">
-                                        <i class="hydro-ic hydro-ic-upload"></i> Enviar logo
-                                    </label>
-                                    <input type="file" id="hydroLogoInput" accept="image/*" hidden>
-                                    <span class="hydro-logo-hint">PNG ou JPG, até 2MB</span>
-                                </div>
-                            </div>
                             <div class="hydro-form-group">
                                 <label for="hydroFilialNome">Nome da filial</label>
                                 <input type="text" id="hydroFilialNome" maxlength="120" placeholder="Ex.: Centro" required>
@@ -136,7 +121,7 @@
                     <section class="hydro-card">
                         <div class="hydro-card-header">
                             <h2>Dados cadastrais</h2>
-                            <p>Usados em relatórios financeiros e documentos fiscais.</p>
+                            <p>CNPJ e telefone da filial. Em branco, a filial usa os dados da loja.</p>
                         </div>
                         <div class="hydro-card-body hydro-settings-grid">
                             <div class="hydro-form-group">
@@ -153,7 +138,7 @@
                     <section class="hydro-card">
                         <div class="hydro-card-header">
                             <h2>Endereço</h2>
-                            <p>Endereço físico da filial.</p>
+                            <p>Endereço físico da filial. Em branco, a filial usa o endereço da loja.</p>
                         </div>
                         <div class="hydro-card-body hydro-settings-grid">
                             <div class="hydro-form-group">
@@ -171,20 +156,41 @@
                             <div class="hydro-form-group">
                                 <label for="hydroFilialEstado">Estado</label>
                                 <select id="hydroFilialEstado">
-                                    <option value="SP" selected>São Paulo</option>
-                                    <option value="RJ">Rio de Janeiro</option>
-                                    <option value="MG">Minas Gerais</option>
-                                    <option value="PR">Paraná</option>
-                                    <option value="SC">Santa Catarina</option>
-                                    <option value="RS">Rio Grande do Sul</option>
+                                    <option value="">Selecione o estado</option>
+                                    <option value="AC">Acre</option>
+                                    <option value="AL">Alagoas</option>
+                                    <option value="AP">Amapá</option>
+                                    <option value="AM">Amazonas</option>
                                     <option value="BA">Bahia</option>
-                                    <option value="">Outro</option>
+                                    <option value="CE">Ceará</option>
+                                    <option value="DF">Distrito Federal</option>
+                                    <option value="ES">Espírito Santo</option>
+                                    <option value="GO">Goiás</option>
+                                    <option value="MA">Maranhão</option>
+                                    <option value="MT">Mato Grosso</option>
+                                    <option value="MS">Mato Grosso do Sul</option>
+                                    <option value="MG">Minas Gerais</option>
+                                    <option value="PA">Pará</option>
+                                    <option value="PB">Paraíba</option>
+                                    <option value="PR">Paraná</option>
+                                    <option value="PE">Pernambuco</option>
+                                    <option value="PI">Piauí</option>
+                                    <option value="RJ">Rio de Janeiro</option>
+                                    <option value="RN">Rio Grande do Norte</option>
+                                    <option value="RS">Rio Grande do Sul</option>
+                                    <option value="RO">Rondônia</option>
+                                    <option value="RR">Roraima</option>
+                                    <option value="SC">Santa Catarina</option>
+                                    <option value="SP">São Paulo</option>
+                                    <option value="SE">Sergipe</option>
+                                    <option value="TO">Tocantins</option>
                                 </select>
                             </div>
                         </div>
                     </section>
 
-                    <section class="hydro-card">
+                    <!-- Só na edição: uma filial nova sempre nasce ativa. -->
+                    <section class="hydro-card" id="hydroFilialSecaoSituacao" hidden>
                         <div class="hydro-card-header">
                             <h2>Situação</h2>
                             <p>Filial desativada some da janela "Trocar Filial" e ninguém consegue entrar nela.</p>

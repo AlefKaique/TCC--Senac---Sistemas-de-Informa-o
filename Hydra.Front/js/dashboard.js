@@ -43,6 +43,7 @@
         return {
             id: String(p.id_produto),
             name: p.nome,
+            unit: p.unidade,
             quantity: Number(p.quantidade),
             minStock: Number(p.estoque_minimo),
             validade: p.validade,
@@ -58,6 +59,7 @@
                 productId: String(i.id_produto),
                 name: i.nome_produto,
                 qty: Number(i.quantidade),
+                price: Number(i.preco_unitario) || 0,
                 cost: i.custo_unitario == null ? null : Number(i.custo_unitario),
             })),
         };
@@ -149,9 +151,7 @@
         }
 
         function deltaHtml(pct) {
-            if (pct === null) {
-                return `<span class="hydro-kpi-delta hydro-kpi-delta-neutral">sem comparativo</span>`;
-            }
+            if (pct === null) return '';
             const up = pct >= 0;
             const icon = up ? 'hydro-ic-trending-up' : 'hydro-ic-trending-down';
             const cls = up ? 'hydro-kpi-delta-up' : 'hydro-kpi-delta-down';
@@ -328,62 +328,10 @@
             )
             .join('');
 
-        /* ================= Gráfico: Produtos prestes a vencer (próximos 30 dias) ================= */
-        /* Só os que ainda não venceram (os vencidos ficam na tabela de
-           validade): ainda dá tempo de vender com promoção. A barra enche
-           conforme o vencimento se aproxima; até 7 dias fica vermelha. */
-        const EXPIRING_WINDOW = 30;
-        const EXPIRING_URGENT = 7;
-        const EXPIRING_MAX_ROWS = 6;
-
-        function daysUntil(validade) {
-            const todayDate = new Date();
-            todayDate.setHours(0, 0, 0, 0);
-            return Math.round((new Date(validade + 'T00:00:00') - todayDate) / 86400000);
-        }
-
-        const expiring = products
-            .filter((p) => p.validade && p.quantity > 0)
-            .map((p) => ({ product: p, days: daysUntil(p.validade) }))
-            .filter(({ days }) => days >= 0 && days <= EXPIRING_WINDOW)
-            .sort((a, b) => a.days - b.days);
-
-        function expiringDaysLabel(days) {
-            if (days === 0) return 'Hoje';
-            return `${days} ${days === 1 ? 'dia' : 'dias'}`;
-        }
-
-        function expiringListHtml(items) {
-            const rows = items
-                .slice(0, EXPIRING_MAX_ROWS)
-                .map(({ product, days }) => {
-                    const urgent = days <= EXPIRING_URGENT ? ' hydro-expiring-urgent' : '';
-                    const fill = Math.max(8, Math.round(((EXPIRING_WINDOW - days) / EXPIRING_WINDOW) * 100));
-                    return `
-                <a class="hydro-expiring-row" href="promocoes.html?produto=${encodeURIComponent(product.id)}" title="Criar promoção para ${escapeHtml(product.name)}">
-                    <span class="hydro-expiring-name">${escapeHtml(product.name)}</span>
-                    <span class="hydro-expiring-bar"><span class="hydro-expiring-fill${urgent}" style="width:${fill}%"></span></span>
-                    <span class="hydro-expiring-days${urgent}">${expiringDaysLabel(days)}</span>
-                </a>`;
-                })
-                .join('');
-            const rest = items.length - EXPIRING_MAX_ROWS;
-            const more = rest > 0
-                ? `<p class="hydro-expiring-more">+ ${rest} ${rest === 1 ? 'produto' : 'produtos'} vencendo nos próximos 30 dias</p>`
-                : '';
-            return `<div class="hydro-expiring-list">${rows}${more}</div>`;
-        }
-
-        document.getElementById('hydroExpiringChart').innerHTML = expiring.length
-            ? expiringListHtml(expiring)
-            : '<p class="hydro-chart-empty">Nenhum produto vencendo nos próximos 30 dias.</p>';
-        const expiringCta = document.getElementById('hydroExpiringCta');
-        if (expiringCta) expiringCta.hidden = !expiring.length;
-
-        /* ================= Gráfico: Top produtos mais vendidos ================= */
-        /* Soma a quantidade vendida de cada produto nos itens das vendas dos
-           últimos 30 dias (não as movimentações de estoque, que misturam
-           entradas, ajustes e perdas com as vendas). */
+        /* ================= Produtos que mais faturaram ================= */
+        /* Ordena pelo valor vendido (R$), e não pela quantidade: somar quilos
+           com unidades na mesma barra não comparava nada. Nomes inteiros, em
+           lista, no lugar dos rótulos cortados do gráfico de colunas. */
         function buildTopProducts() {
             const cutoffDate = new Date();
             cutoffDate.setDate(cutoffDate.getDate() - 29);
@@ -397,60 +345,43 @@
                 .forEach((s) => {
                     (s.items || []).forEach((it) => {
                         const id = String(it.productId);
-                        if (!totals[id]) totals[id] = { qty: 0, name: it.name };
-                        totals[id].qty += Number(it.qty) || 0;
+                        if (!totals[id]) totals[id] = { qty: 0, revenue: 0, name: it.name };
+                        const qty = Number(it.qty) || 0;
+                        totals[id].qty += qty;
+                        totals[id].revenue += qty * (Number(it.price) || 0);
                     });
                 });
             return Object.entries(totals)
                 .map(([productId, t]) => {
                     const product = products.find((p) => String(p.id) === productId);
-                    // Arredonda para não exibir "2.4999999" em produtos vendidos por kg.
-                    return { name: product ? product.name : t.name || 'Produto removido', qty: Math.round(t.qty * 1000) / 1000 };
+                    return {
+                        name: product ? product.name : t.name || 'Produto removido',
+                        unit: product ? product.unit : null,
+                        qty: Math.round(t.qty * 1000) / 1000,
+                        revenue: Math.round(t.revenue * 100) / 100,
+                    };
                 })
-                .sort((a, b) => b.qty - a.qty)
+                .sort((a, b) => b.revenue - a.revenue || b.qty - a.qty)
                 .slice(0, 8);
         }
 
-        function shortName(name) {
-            return name.length > 12 ? name.slice(0, 11) + '…' : name;
-        }
-
-        function barChartSvg(items) {
-            const width = 720;
-            const height = 230;
-            const padding = { top: 16, right: 16, bottom: 40, left: 30 };
-            const chartW = width - padding.left - padding.right;
-            const chartH = height - padding.top - padding.bottom;
-            const maxVal = Math.max(1, ...items.map((i) => i.qty));
-            const barGap = 14;
-            const barW = (chartW - barGap * (items.length - 1)) / items.length;
-
-            const bars = items
-                .map((item, i) => {
-                    const x = padding.left + i * (barW + barGap);
-                    const barH = (item.qty / maxVal) * chartH;
-                    const y = padding.top + chartH - barH;
-                    const isTop = i === 0;
-                    const fill = isTop ? 'var(--navy-active)' : 'var(--muted-soft)';
-                    const opacity = isTop ? '1' : '.35';
-                    return `
-                <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="5" fill="${fill}" fill-opacity="${opacity}" />
-                <text x="${(x + barW / 2).toFixed(1)}" y="${(y - 6).toFixed(1)}" font-size="11" font-weight="700" fill="var(--navy-900)" text-anchor="middle">${item.qty.toLocaleString('pt-BR')}</text>
-                <text x="${(x + barW / 2).toFixed(1)}" y="${height - 20}" font-size="10" fill="var(--muted-soft)" text-anchor="middle">${escapeHtml(shortName(item.name))}</text>`;
-                })
-                .join('');
-
-            return `
-        <svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-            <line x1="${padding.left}" y1="${padding.top + chartH}" x2="${width - padding.right}" y2="${padding.top + chartH}" stroke="var(--border)" stroke-width="1" />
-            ${bars}
-        </svg>`;
+        function topListHtml(items) {
+            const maxVal = Math.max(0.01, ...items.map((i) => i.revenue));
+            return `<div class="hydro-top-list">${items
+                .map((item, i) => `
+                <div class="hydro-top-row${i === 0 ? ' hydro-top-first' : ''}">
+                    <span class="hydro-top-name">${escapeHtml(item.name)}</span>
+                    <span class="hydro-top-bar"><span class="hydro-top-fill" style="width:${Math.max(4, Math.round((item.revenue / maxVal) * 100))}%"></span></span>
+                    <span class="hydro-top-valor">${money(item.revenue)}</span>
+                    <span class="hydro-top-qtd">${window.hydraFormatarQuantidade(item.qty, item.unit)}</span>
+                </div>`)
+                .join('')}</div>`;
         }
 
         const topProducts = buildTopProducts();
         document.getElementById('hydroTopPeriod').textContent = period ? periodLabel(period) : 'Últimos 30 dias';
         document.getElementById('hydroTopChart').innerHTML = topProducts.length
-            ? barChartSvg(topProducts)
+            ? topListHtml(topProducts)
             : `<p class="hydro-chart-empty">${period ? 'Nenhum produto vendido no período escolhido.' : 'Ainda não há produtos vendidos nos últimos 30 dias.'}</p>`;
 
         /* ================= Alertas de estoque ================= */
@@ -460,7 +391,8 @@
         const STATUS_META = {
             empty: { label: 'Esgotado', badge: 'hydro-badge-critical', qty: 'hydro-alert-qty-critical' },
             critical: { label: 'Crítico', badge: 'hydro-badge-critical', qty: 'hydro-alert-qty-critical' },
-            warning: { label: 'Atenção', badge: 'hydro-badge-warning', qty: 'hydro-alert-qty-warning' },
+            low: { label: 'Baixo', badge: 'hydro-badge-warning', qty: 'hydro-alert-qty-warning' },
+            warning: { label: 'Atenção', badge: 'hydro-badge-attention', qty: 'hydro-alert-qty-attention' },
             ok: { label: 'Em estoque', badge: 'hydro-badge-ok', qty: 'hydro-alert-qty-ok' },
         };
 
@@ -469,9 +401,11 @@
             statusKey: HydroStore.stockStatus(p.quantity, p.minStock),
         }));
 
-        const severityOrder = { empty: 0, critical: 1, warning: 2, ok: 3 };
+        const severityOrder = { empty: 0, critical: 1, low: 2, warning: 3, ok: 4 };
         withStatus.sort((a, b) => severityOrder[a.statusKey] - severityOrder[b.statusKey] || a.product.quantity - b.product.quantity);
-        const alertRows = withStatus.slice(0, 6);
+        // Só quem precisa de reposição. Antes a tabela pegava os 6 primeiros
+        // de todos os produtos e se completava com itens "Em estoque".
+        const alertRows = withStatus.filter(({ statusKey }) => statusKey !== 'ok').slice(0, 6);
 
         // A tabela mostra só os 6 piores; a lista de compras impressa leva
         // todos os que precisam de reposição, na mesma ordem de gravidade.
@@ -491,8 +425,8 @@
                     return `
                 <tr>
                     <td class="hydro-alert-product">${escapeHtml(product.name)}</td>
-                    <td><span class="hydro-alert-qty ${meta.qty}">${product.quantity}</span></td>
-                    <td>${product.minStock}</td>
+                    <td><span class="hydro-alert-qty ${meta.qty}">${window.hydraFormatarQuantidade(product.quantity, product.unit)}</span></td>
+                    <td>${window.hydraFormatarQuantidade(product.minStock, product.unit)}</td>
                     <td><span class="hydro-badge ${meta.badge}">${meta.label}</span></td>
                     <td><a class="hydro-view-link" href="controle-estoque.html?busca=${encodeURIComponent(product.name)}">Ver produto</a></td>
                 </tr>`;
@@ -538,10 +472,12 @@
                     return `
                 <tr>
                     <td class="hydro-alert-product">${escapeHtml(product.name)}</td>
-                    <td><span class="hydro-alert-qty ${meta.qty}">${product.quantity}</span></td>
+                    <td><span class="hydro-alert-qty ${meta.qty}">${window.hydraFormatarQuantidade(product.quantity, product.unit)}</span></td>
                     <td>${formatDate(product.validade)}</td>
                     <td><span class="hydro-badge ${meta.badge}">${meta.label}</span></td>
-                    <td><a class="hydro-view-link" href="controle-estoque.html?busca=${encodeURIComponent(product.name)}">Ver produto</a></td>
+                    <td class="hydro-alert-acoes">${statusKey === 'warning' && product.quantity > 0
+                        ? `<a class="hydro-view-link hydro-view-link-promo" href="promocoes.html?produto=${encodeURIComponent(product.id)}">Criar promoção</a>`
+                        : ''}<a class="hydro-view-link" href="controle-estoque.html?busca=${encodeURIComponent(product.name)}">Ver produto</a></td>
                 </tr>`;
                 })
                 .join('');
@@ -706,6 +642,7 @@
         const groups = [
             { title: 'Esgotado', key: 'empty' },
             { title: 'Crítico', key: 'critical' },
+            { title: 'Baixo', key: 'low' },
             { title: 'Atenção', key: 'warning' },
         ];
 
@@ -721,9 +658,9 @@
                         <td class="check">&#9744;</td>
                         <td>${escapeHtml(product.name)}</td>
                         <td>${label}</td>
-                        <td class="num">${product.quantity}</td>
-                        <td class="num">${product.minStock}</td>
-                        <td class="num strong">${comprar}</td>
+                        <td class="num">${window.hydraFormatarQuantidade(product.quantity, product.unit)}</td>
+                        <td class="num">${window.hydraFormatarQuantidade(product.minStock, product.unit)}</td>
+                        <td class="num strong">${window.hydraFormatarQuantidade(comprar, product.unit)}</td>
                     </tr>`;
                     })
                     .join('');
@@ -875,13 +812,6 @@
         buildHtml: buildExpiryReportHtml,
         noneSelectedMsg: 'Marque pelo menos um status (Vencido ou Vence em breve).',
         emptyMsg: 'Nenhum produto nos status marcados.',
-    });
-
-    /* ================= Busca (atalho para Estoque) ================= */
-    document.getElementById('hydroSearchInput').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && e.target.value.trim()) {
-            window.location.href = 'controle-estoque.html?busca=' + encodeURIComponent(e.target.value.trim());
-        }
     });
 
     /* ================= Mobile sidebar ================= */

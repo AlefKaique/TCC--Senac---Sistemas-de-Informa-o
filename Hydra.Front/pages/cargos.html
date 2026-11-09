@@ -56,11 +56,10 @@
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
                         <li id="hydroLiConfig">
                             <details class="hydro-submenu">
-                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
+                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configurações</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
                                 <ul class="hydro-submenu-itens">
                                     <li><a href="configuracoes-loja.html">Dados da loja</a></li>
                                     <li><a href="filiais.html">Filiais</a></li>
-                                    <li><a href="cadastro-filial.html">Cadastrar nova Filial</a></li>
                                 </ul>
                             </details>
                         </li>
@@ -155,9 +154,11 @@
                                 <div class="hydro-form-group">
                                     <label for="hydroCargoCorInput">Cor do cargo</label>
                                     <div class="hydro-cargo-color-row">
-                                        <label class="hydro-cargo-custom-color" title="Escolher a cor do cargo">
+                                        <label class="hydro-cargo-custom-color" id="hydroCargoCorAmostra" title="Escolher a cor do cargo">
                                             <input type="color" id="hydroCargoCorInput" value="#5865F2">
                                         </label>
+                                        <span class="hydro-cargo-color-hex" id="hydroCargoCorHex">#5865F2</span>
+                                        <span class="hydro-cargo-color-dica">Clique na cor para trocar</span>
                                     </div>
                                 </div>
 
