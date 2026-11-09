@@ -151,6 +151,212 @@
     padding: 16px 4px 40px;
 }
 
+.hydro-mp-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 14px 0 10px;
+}
+
+.hydro-mp-actions button[hidden] {
+    display: none;
+}
+
+.hydro-restricted-badge[hidden] {
+    display: none;
+}
+
+.hydro-alertas-card {
+    margin-bottom: 36px;
+}
+
+.hydro-cnpj-status {
+    display: block;
+    min-height: 16px;
+    margin-top: 5px;
+    color: var(--muted-soft);
+    font-size: 12px;
+}
+
+.hydro-cnpj-status[data-status="sucesso"] {
+    color: #16803c;
+}
+
+.hydro-cnpj-status[data-status="erro"] {
+    color: #b42318;
+}
+
+.hydro-alertas-hint {
+    display: block;
+    color: var(--muted-soft);
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+.hydro-alertas-consentimento-grupo {
+    align-self: end;
+}
+
+.hydro-alertas-destinatarios {
+    display: grid;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.hydro-alerta-destinatario {
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+    padding: 10px 12px;
+}
+
+.hydro-alerta-destinatario-info {
+    display: grid;
+    gap: 3px;
+}
+
+.hydro-alerta-destinatario-info strong {
+    color: var(--navy-900);
+    font-size: 14px;
+}
+
+.hydro-alerta-destinatario-info small,
+.hydro-alertas-sem-destinatarios {
+    color: var(--muted-soft);
+    font-size: 12px;
+}
+
+.hydro-alertas-sem-destinatarios {
+    margin: 0;
+}
+
+.hydro-alertas-sem-destinatarios[hidden] {
+    display: none;
+}
+
+.hydro-alertas-opcoes {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 16px;
+}
+
+.hydro-alertas-opcoes legend {
+    color: var(--navy-900);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 0 6px;
+}
+
+.hydro-alertas-opcoes > label,
+.hydro-alertas-consentimento {
+    align-items: flex-start;
+    color: var(--navy-900);
+    display: flex;
+    font-size: 13px;
+    gap: 10px;
+    line-height: 1.5;
+}
+
+.hydro-alertas-opcoes input[type="checkbox"],
+.hydro-alertas-consentimento input[type="checkbox"] {
+    accent-color: var(--primary, #3b5ccc);
+    flex: 0 0 auto;
+    margin-top: 3px;
+}
+
+.hydro-alertas-dias {
+    max-width: 280px;
+}
+
+.hydro-alertas-consentimento {
+    background: var(--theme-raised, #f7f8fc);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+}
+
+.hydro-alertas-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.hydro-alertas-acoes button:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}
+
+.hydro-alertas-status {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.hydro-alertas-historico {
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+}
+
+.hydro-alertas-historico h3 {
+    color: var(--navy-900);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.hydro-alertas-historico > p {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.hydro-alertas-historico ul {
+    display: grid;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.hydro-alerta-envio {
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 13px;
+    gap: 8px 14px;
+    justify-content: space-between;
+    padding: 10px 12px;
+}
+
+.hydro-alerta-envio-status {
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+}
+
+.hydro-alerta-envio-status--enviado,
+.hydro-alerta-envio-status--entregue,
+.hydro-alerta-envio-status--lido {
+    background: #e7f7ee;
+    color: #176b3a;
+}
+
+.hydro-alerta-envio-status--falhou {
+    background: #fdecec;
+    color: #a52e2e;
+}
+
 .hydro-settings-saved {
     margin-right: auto;
     font-size: 13px;
@@ -176,6 +382,14 @@
 
     .hydro-settings-footer {
         flex-wrap: wrap;
+    }
+
+    .hydro-alertas-acoes {
+        flex-direction: column;
+    }
+
+    .hydro-alertas-acoes button {
+        width: 100%;
     }
 
     .hydro-settings-saved {
