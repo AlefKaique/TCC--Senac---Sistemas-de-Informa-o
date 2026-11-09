@@ -13,7 +13,7 @@ use Hydra\Support\Migracoes;
  * (Administrador, Operador de Caixa e Estoquista) — ver ensureDefaults(),
  * que também é onde vive a migração preguiçosa do catálogo de permissões.
  *
- * O catálogo tem 9 permissões, recortadas pelas funções que alguém de fato
+ * O catálogo tem 10 permissões, recortadas pelas funções que alguém de fato
  * exerce no mercadinho. Ele é o meio-termo entre as duas tentativas
  * anteriores: a primeira tinha 19 códigos (ver/criar/editar/excluir por
  * módulo) e pedia uma decisão que ninguém toma — "pode editar mas não
@@ -42,6 +42,7 @@ final class CargoRepository
             'estoque.lancar',
             'produtos.gerenciar',
             'produtos.editar_preco',
+            'produtos.importar_catalogo',
             'vendas.operar',
             'vendas.historico',
             'relatorios.visualizar',
@@ -62,7 +63,7 @@ final class CargoRepository
     ];
 
     /**
-     * Catálogo das 9 permissões, espelhando o bloco INSERT do schema.sql.
+     * Catálogo das 10 permissões, espelhando o bloco INSERT do schema.sql.
      * Existe também em PHP porque o INSERT do schema só roda se o arquivo
      * for reaplicado à mão: sem isto, um banco criado na versão anterior
      * ficaria com ZERO permissões no catálogo depois da aposentadoria dos
@@ -83,6 +84,7 @@ final class CargoRepository
         ['estoque.lancar',        'Entradas e Saídas de Estoque', 'Lançar entrada e saída de mercadoria — marque também "Consultar Estoque"',                        'Operação',      11],
         ['produtos.gerenciar',    'Cadastro de Produtos',        'Cadastrar, editar e excluir produtos — marque também "Consultar Estoque"',                         'Operação',      12],
         ['produtos.editar_preco', 'Alterar Preços e Promoções',  'Criar promoções e, junto com "Cadastro de Produtos", alterar preço de custo e de venda',    'Operação',      13],
+        ['produtos.importar_catalogo', 'Importar Catálogo Padrão', 'Importar os códigos hortifrúti padrão para uma filial sem substituir produtos existentes',         'Operação',      14],
         ['vendas.operar',         'Vendas no Caixa',             'Operar o Caixa (PDV) e finalizar vendas',                                                          'Operação',      20],
         ['vendas.historico',      'Histórico de Vendas',         'Consultar as vendas já finalizadas e os detalhes de cada uma',                                     'Operação',      21],
         ['relatorios.visualizar', 'Relatórios',                  'Abrir o Relatório com o faturamento e os indicadores da loja',                        'Operação',      22],
@@ -213,6 +215,15 @@ final class CargoRepository
                 $this->removerPermissoesAposentadas();
                 $this->resincronizarPerfilDeTodosOsCargos();
             }
+        });
+        Migracoes::garantir('permissao_importar_hortifruti_v1', static function (): void {
+            db()->exec(
+                'INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
+                 SELECT c.id_cargo, p.id_permissao
+                   FROM cargos c
+                   JOIN permissoes p ON p.codigo = \'produtos.importar_catalogo\'
+                  WHERE c.cargo_sistema = 1 AND c.nome = \'Administrador\''
+            );
         });
     }
 

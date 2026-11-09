@@ -196,7 +196,11 @@
         const ok = params.get('ok');
         if (!ok) return;
         const nome = params.get('nome') || '';
-        showToast(ok === 'criada' ? `Filial "${nome}" cadastrada` : `Filial "${nome}" atualizada`);
+        const importados = Number(params.get('hortifruti')) || 0;
+        const aviso = importados > 0
+            ? ` · ${importados} códigos hortifrúti importados sem preço`
+            : '';
+        showToast(`${ok === 'criada' ? `Filial "${nome}" cadastrada` : `Filial "${nome}" atualizada`}${aviso}`);
         // Tira o aviso da barra de endereço, para não repetir ao recarregar.
         window.history.replaceState(null, '', window.location.pathname);
     })();

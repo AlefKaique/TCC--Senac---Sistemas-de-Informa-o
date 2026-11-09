@@ -46,7 +46,9 @@ CREATE TABLE IF NOT EXISTS lojas (
     cep             VARCHAR(10)  NULL,
     -- Logo como data URL (imagem já reduzida pela tela, ~256 px).
     logo            MEDIUMTEXT   NULL,
-    status          ENUM('ativa', 'inativa') NOT NULL DEFAULT 'ativa',
+    status          ENUM('ativa', 'inativa', 'suspensa') NOT NULL DEFAULT 'ativa',
+    motivo_status   VARCHAR(255) NULL,
+    status_alterado_em DATETIME NULL,
     data_criacao    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -162,6 +164,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
 
 -- Índices de apoio às consultas mais frequentes do módulo
 CREATE INDEX idx_usuarios_id_loja  ON usuarios (id_loja);
+CREATE INDEX idx_usuarios_loja_ultimo_acesso ON usuarios (id_loja, ultimo_acesso);
 CREATE INDEX idx_usuarios_perfil   ON usuarios (perfil);
 CREATE INDEX idx_usuarios_id_cargo ON usuarios (id_cargo);
 
@@ -179,6 +182,75 @@ CREATE TABLE IF NOT EXISTS usuario_filiais (
         ON DELETE CASCADE,
     FOREIGN KEY (id_filial) REFERENCES filiais(id_filial)
         ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- Preferências e histórico dos alertas por WhatsApp/e-mail. O consentimento
+-- é individual por usuário; a entrega e a trava diária são por filial e canal.
+CREATE TABLE IF NOT EXISTS preferencias_alerta (
+    id_usuario          INT PRIMARY KEY,
+    telefone_whatsapp   VARCHAR(15) NULL,
+    canal               ENUM('whatsapp','email','ambos') NOT NULL DEFAULT 'whatsapp',
+    consentimento       TINYINT(1) NOT NULL DEFAULT 0,
+    consentimento_em    DATETIME NULL,
+    alerta_estoque      TINYINT(1) NOT NULL DEFAULT 1,
+    alerta_validade     TINYINT(1) NOT NULL DEFAULT 1,
+    dias_validade       TINYINT NOT NULL DEFAULT 7,
+    atualizado_em       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_preferencias_alerta_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
+    INDEX idx_pref_telefone (telefone_whatsapp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS destinatarios_alerta (
+    id_destinatario     INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario          INT NOT NULL,
+    id_loja             INT NOT NULL,
+    telefone_whatsapp   VARCHAR(15) NOT NULL,
+    consentimento       TINYINT(1) NOT NULL DEFAULT 0,
+    consentimento_em    DATETIME NULL,
+    ativo               TINYINT(1) NOT NULL DEFAULT 1,
+    criado_em           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_destinatario_usuario_telefone (id_usuario, telefone_whatsapp),
+    INDEX idx_destinatario_loja_ativo (id_loja, ativo, consentimento),
+    CONSTRAINT fk_destinatario_alerta_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
+    CONSTRAINT fk_destinatario_alerta_loja
+        FOREIGN KEY (id_loja) REFERENCES lojas(id_loja) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS alertas_enviados (
+    id_alerta        INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario       INT NOT NULL,
+    id_loja          INT NOT NULL,
+    id_filial        INT NOT NULL,
+    data_referencia  DATE NOT NULL,
+    canal            ENUM('whatsapp','email') NOT NULL,
+    id_destinatario_alerta INT NOT NULL DEFAULT 0,
+    qtd_estoque       INT NOT NULL DEFAULT 0,
+    qtd_validade     INT NOT NULL DEFAULT 0,
+    status           ENUM('enviado','entregue','lido','falhou') NOT NULL DEFAULT 'enviado',
+    id_mensagem_meta VARCHAR(100) NULL,
+    erro             VARCHAR(255) NULL,
+    criado_em        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_alerta_dia_destinatario (id_usuario, id_filial, data_referencia, canal, id_destinatario_alerta),
+    INDEX idx_alerta_mensagem (id_mensagem_meta),
+    CONSTRAINT fk_alertas_enviados_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
+    CONSTRAINT fk_alertas_enviados_loja
+        FOREIGN KEY (id_loja) REFERENCES lojas(id_loja) ON DELETE CASCADE,
+    CONSTRAINT fk_alertas_enviados_filial
+        FOREIGN KEY (id_loja, id_filial) REFERENCES filiais(id_loja, id_filial) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Limita o envio manual de mensagens de teste por usuário a 3 por hora.
+CREATE TABLE IF NOT EXISTS limites_testes_alertas (
+    id_usuario  INT PRIMARY KEY,
+    inicio      DATETIME NOT NULL,
+    quantidade  TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    CONSTRAINT fk_limites_testes_alertas_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
@@ -232,17 +304,8 @@ CREATE INDEX idx_clientes_email   ON clientes (email);
 -- Corresponde à entidade PRODUTO do DER (Figura 9) e ao atributo de
 -- status + método inativar() do Diagrama de Classes (Figura 6).
 --
--- O código de barras foi removido do sistema: o mercadinho de bairro
--- não tem leitor nem etiqueta padronizada, e o produto passou a ser
--- identificado pelo nome. Em um banco JÁ EM USO (criado antes dessa
--- remoção), execute os dois comandos abaixo NESTA ORDEM:
---
---     ALTER TABLE produtos DROP INDEX uq_produtos_loja_codigo_barras;
---     ALTER TABLE produtos DROP COLUMN codigo_barras;
---
--- A ordem importa: o índice era composto (id_loja, codigo_barras).
--- Soltar a coluna primeiro faria o MySQL reduzir o índice a
--- UNIQUE (id_loja), o que passaria a permitir só UM produto por loja.
+-- O código de barras é opcional. Quando preenchido, guarda somente dígitos
+-- (8 a 14 caracteres) e é único por filial para permitir busca rápida no PDV.
 --
 -- O catálogo é POR FILIAL: cada filial tem o próprio cadastro, com sua
 -- quantidade, lote e validade. Não há restrição de unicidade em produtos
@@ -260,7 +323,10 @@ CREATE TABLE IF NOT EXISTS produtos (
     -- usadas na loja oferecidas como sugestão (não há lista fixa).
     categoria       VARCHAR(60)  NOT NULL,
     preco_custo     DECIMAL(10,2) NULL,
-    preco_venda     DECIMAL(10,2) NOT NULL,
+    preco_venda     DECIMAL(10,2) NULL,
+    codigo          SMALLINT UNSIGNED NULL,
+    codigo_barras   VARCHAR(14) NULL,
+    plu             CHAR(4) NULL,
     quantidade      DECIMAL(10,3) NOT NULL DEFAULT 0,
     estoque_minimo  DECIMAL(10,3) NOT NULL DEFAULT 0,
     unidade         VARCHAR(10)  NOT NULL DEFAULT 'un',
@@ -272,6 +338,7 @@ CREATE TABLE IF NOT EXISTS produtos (
     FOREIGN KEY (id_loja) REFERENCES lojas(id_loja)
         ON DELETE CASCADE,
     INDEX idx_produtos_loja_filial (id_loja, id_filial),
+    UNIQUE INDEX uq_produtos_filial_codigo_barras (id_filial, codigo_barras),
     CONSTRAINT fk_produtos_filial
         FOREIGN KEY (id_loja, id_filial) REFERENCES filiais(id_loja, id_filial)
         ON DELETE CASCADE
@@ -281,6 +348,19 @@ CREATE INDEX idx_produtos_id_loja  ON produtos (id_loja);
 CREATE INDEX idx_produtos_categoria ON produtos (categoria);
 CREATE INDEX idx_produtos_validade  ON produtos (validade);
 
+-- Catálogo modelo global de hortifrúti. Os dados são inseridos pelo script
+-- idempotente sql/seed_catalogo_hortifruti.sql; cada loja importa para sua
+-- filial e define seus próprios preços.
+CREATE TABLE IF NOT EXISTS catalogo_hortifruti (
+codigo      SMALLINT UNSIGNED PRIMARY KEY,
+nome        VARCHAR(150) NOT NULL,
+categoria  VARCHAR(60) NOT NULL,
+unidade     VARCHAR(10) NOT NULL,
+plu         CHAR(4) NULL,
+INDEX idx_catalogo_hortifruti_categoria (categoria, codigo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE UNIQUE INDEX uq_produtos_filial_codigo ON produtos (id_filial, codigo);
 
 -- ============================================================
 -- Módulo de Vendas (PDV)
@@ -375,6 +455,8 @@ CREATE INDEX idx_vendas_id_loja    ON vendas (id_loja);
 CREATE INDEX idx_vendas_id_usuario ON vendas (id_usuario);
 CREATE INDEX idx_vendas_id_cliente ON vendas (id_cliente);
 CREATE INDEX idx_vendas_data_venda ON vendas (data_venda);
+CREATE INDEX idx_vendas_loja_data ON vendas (id_loja, data_venda);
+CREATE INDEX idx_vendas_relatorio_filial_status_data ON vendas (id_filial, status, data_venda);
 
 
 CREATE TABLE IF NOT EXISTS itens_venda (
@@ -383,6 +465,8 @@ CREATE TABLE IF NOT EXISTS itens_venda (
     id_produto      INT NOT NULL,
     quantidade      DECIMAL(10,3) NOT NULL,
     preco_unitario  DECIMAL(10,2) NOT NULL,
+    custo_unitario  DECIMAL(10,2) NULL,
+    custo_estimado  TINYINT(1) NOT NULL DEFAULT 0,
 
     FOREIGN KEY (id_venda) REFERENCES vendas(id_venda)
         ON DELETE CASCADE,
@@ -393,6 +477,7 @@ CREATE TABLE IF NOT EXISTS itens_venda (
 
 CREATE INDEX idx_itens_venda_id_venda   ON itens_venda (id_venda);
 CREATE INDEX idx_itens_venda_id_produto ON itens_venda (id_produto);
+CREATE INDEX idx_itens_venda_relatorio ON itens_venda (id_venda, id_produto);
 
 
 -- ============================================================
@@ -443,6 +528,39 @@ CREATE TABLE IF NOT EXISTS pagamentos (
 
     FOREIGN KEY (id_venda) REFERENCES vendas(id_venda)
         ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Credenciais OAuth do Mercado Pago por loja (tokens criptografados pelo
+-- back-end) e pagamentos PIX pendentes, necessários para concluir a venda
+-- somente depois da confirmação do provedor.
+CREATE TABLE IF NOT EXISTS mercadopago_contas (
+    id_loja             INT PRIMARY KEY,
+    mp_user_id          VARCHAR(40) NOT NULL,
+    access_token        TEXT NOT NULL,
+    refresh_token       TEXT NOT NULL,
+    expira_em           DATETIME NOT NULL,
+    atualizado_em       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_loja) REFERENCES lojas(id_loja) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pagamentos_pix_pendentes (
+    id_pagamento_pix    CHAR(36) PRIMARY KEY,
+    id_loja             INT NOT NULL,
+    id_filial           INT NOT NULL,
+    id_usuario          INT NOT NULL,
+    id_mp               VARCHAR(40) NULL UNIQUE,
+    qr_code             TEXT NULL,
+    qr_code_base64      TEXT NULL,
+    ticket_url          VARCHAR(500) NULL,
+    itens_json          JSON NOT NULL,
+    valor               DECIMAL(10,2) NOT NULL,
+    status              ENUM('criando','pendente','aprovado','rejeitado','cancelado','expirado','concluido') NOT NULL,
+    id_venda            INT NULL,
+    expira_em           DATETIME NOT NULL,
+    criado_em           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_pix_filial_status (id_filial, status, criado_em),
+    FOREIGN KEY (id_venda) REFERENCES vendas(id_venda) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX idx_pagamentos_id_venda ON pagamentos (id_venda);
@@ -581,6 +699,38 @@ CREATE TABLE IF NOT EXISTS tentativas_acesso (
 
 CREATE INDEX idx_tentativas_acesso_atualizado ON tentativas_acesso (atualizado_em);
 
+-- Contas e auditoria dos administradores da plataforma são separadas dos
+-- usuários das lojas; estas contas nunca recebem contexto de loja ou filial.
+CREATE TABLE IF NOT EXISTS admins_plataforma (
+    id_admin                INT AUTO_INCREMENT PRIMARY KEY,
+    nome                    VARCHAR(100) NOT NULL,
+    email                   VARCHAR(100) NOT NULL UNIQUE,
+    senha                   VARCHAR(255) NOT NULL,
+    codigo_acesso_hash      CHAR(64) NULL,
+    codigo_acesso_expira_em DATETIME NULL,
+    status                  ENUM('ativo','inativo') NOT NULL DEFAULT 'ativo',
+    nivel                   ENUM('proprietario','gestor','analista') NOT NULL DEFAULT 'analista',
+    senha_definida          TINYINT(1) NOT NULL DEFAULT 1,
+    criado_por              INT NULL,
+    ultimo_acesso           DATETIME NULL,
+    data_criacao            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_admins_plataforma_criado_por
+        FOREIGN KEY (criado_por) REFERENCES admins_plataforma(id_admin)
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS auditoria_plataforma (
+    id_auditoria INT AUTO_INCREMENT PRIMARY KEY,
+    id_admin     INT NULL,
+    acao         VARCHAR(50) NOT NULL,
+    id_loja      INT NULL,
+    detalhe      VARCHAR(255) NULL,
+    ip           VARCHAR(45) NULL,
+    data         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_admin) REFERENCES admins_plataforma(id_admin),
+    INDEX idx_auditoria_data (data)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 CREATE TABLE IF NOT EXISTS permissoes (
     id_permissao    INT AUTO_INCREMENT PRIMARY KEY,
@@ -652,6 +802,7 @@ INSERT INTO permissoes (codigo, nome, descricao, categoria, ordem) VALUES
     ('estoque.lancar',        'Entradas e Saídas de Estoque', 'Lançar entrada e saída de mercadoria — marque também "Consultar Estoque"',                   'Operação',      11),
     ('produtos.gerenciar',    'Cadastro de Produtos',         'Cadastrar, editar e excluir produtos — marque também "Consultar Estoque"',                   'Operação',      12),
     ('produtos.editar_preco', 'Alterar Preços e Promoções',   'Criar promoções e, junto com "Cadastro de Produtos", alterar preço de custo e de venda', 'Operação',      13),
+    ('produtos.importar_catalogo', 'Importar Catálogo Padrão', 'Importar os códigos hortifrúti padrão para uma filial sem substituir produtos existentes', 'Operação', 14),
     ('vendas.operar',         'Vendas no Caixa',              'Operar o Caixa (PDV) e finalizar vendas',                                                   'Operação',      20),
     ('vendas.historico',      'Histórico de Vendas',          'Consultar as vendas já finalizadas e os detalhes de cada uma',                              'Operação',      21),
     ('relatorios.visualizar', 'Relatórios',                   'Abrir o Relatório com o faturamento e os indicadores da loja',                 'Operação',      22),

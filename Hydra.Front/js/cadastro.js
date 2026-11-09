@@ -121,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
           email: document.getElementById('email').value.trim(),
           senha: senha.value,
           nome_loja: document.getElementById('nome-loja').value.trim(),
+          importar_hortifruti: document.getElementById('importar-hortifruti').checked,
         },
       });
 
