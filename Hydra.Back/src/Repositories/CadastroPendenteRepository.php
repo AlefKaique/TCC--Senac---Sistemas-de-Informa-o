@@ -38,6 +38,20 @@ final class CadastroPendenteRepository
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
             );
         });
+        Migracoes::garantir('cadastros_pendentes_importacao_hortifruti_v1', static function (): void {
+            $stmt = db()->prepare(
+                'SELECT 1 FROM information_schema.COLUMNS
+                  WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = :tabela AND COLUMN_NAME = :coluna'
+            );
+            $stmt->execute(['tabela' => 'cadastros_pendentes', 'coluna' => 'importar_hortifruti']);
+            if (!$stmt->fetchColumn()) {
+                db()->exec(
+                    'ALTER TABLE cadastros_pendentes
+                     ADD COLUMN importar_hortifruti TINYINT(1) NOT NULL DEFAULT 0'
+                );
+            }
+        });
     }
 
     public static function hashCodigo(string $codigo): string
@@ -46,14 +60,24 @@ final class CadastroPendenteRepository
     }
 
     /** Grava ou substitui o cadastro pendente do e-mail (um novo "Criar conta" recomeça do zero). */
-    public function salvar(string $email, string $nome, string $nomeLoja, string $senhaHash, string $codigo, string $expiraEm): void
+    public function salvar(
+        string $email,
+        string $nome,
+        string $nomeLoja,
+        string $senhaHash,
+        string $codigo,
+        string $expiraEm,
+        bool $importarHortifruti = false
+    ): void
     {
         db()->prepare(
-            'INSERT INTO cadastros_pendentes (email, nome, nome_loja, senha_hash, codigo_hash, codigo_expira_em, criado_em)
-             VALUES (:email, :nome, :nome_loja, :senha_hash, :codigo_hash, :expira, NOW())
+            'INSERT INTO cadastros_pendentes
+                (email, nome, nome_loja, senha_hash, codigo_hash, codigo_expira_em, importar_hortifruti, criado_em)
+             VALUES (:email, :nome, :nome_loja, :senha_hash, :codigo_hash, :expira, :importar_hortifruti, NOW())
              ON DUPLICATE KEY UPDATE
                 nome = VALUES(nome), nome_loja = VALUES(nome_loja), senha_hash = VALUES(senha_hash),
-                codigo_hash = VALUES(codigo_hash), codigo_expira_em = VALUES(codigo_expira_em), criado_em = NOW()'
+                codigo_hash = VALUES(codigo_hash), codigo_expira_em = VALUES(codigo_expira_em),
+                importar_hortifruti = VALUES(importar_hortifruti), criado_em = NOW()'
         )->execute([
             'email' => $email,
             'nome' => $nome,
@@ -61,6 +85,7 @@ final class CadastroPendenteRepository
             'senha_hash' => $senhaHash,
             'codigo_hash' => self::hashCodigo($codigo),
             'expira' => $expiraEm,
+            'importar_hortifruti' => $importarHortifruti ? 1 : 0,
         ]);
     }
 
