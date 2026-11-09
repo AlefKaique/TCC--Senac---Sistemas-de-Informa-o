@@ -110,6 +110,12 @@
     const form = document.getElementById('hydroProductForm');
     const saveBtn = document.getElementById('hydroSaveBtn');
     const toast = document.getElementById('hydroToast');
+    const barcodeInput = document.getElementById('hydroProdBarcode');
+    const cameraModal = document.getElementById('hydroProductCameraModal');
+    const cameraVideo = document.getElementById('hydroProductCameraVideo');
+    const cameraStatus = document.getElementById('hydroProductCameraStatus');
+    let activeBarcodeScanner = null;
+    let productCameraRequest = 0;
 
     const dropzone = document.getElementById('hydroDropzone');
     const fileInput = document.getElementById('hydroProdImageInput');
@@ -148,6 +154,64 @@
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => toast.classList.remove('hydro-show'), 3200);
     }
+
+    function closeProductCamera() {
+        productCameraRequest++;
+        if (activeBarcodeScanner) activeBarcodeScanner.stop();
+        activeBarcodeScanner = null;
+        cameraModal.hidden = true;
+    }
+
+    document.getElementById('hydroScanProductBarcode').addEventListener('click', async () => {
+        const request = ++productCameraRequest;
+        cameraModal.hidden = false;
+        cameraStatus.textContent = 'Solicitando acesso à câmera…';
+        try {
+            const scanner = await window.HydraBarcodeScanner.start(
+                cameraVideo,
+                (value) => {
+                    const digits = String(value || '').trim();
+                    if (!/^\d{8,14}$/.test(digits)) {
+                        cameraStatus.textContent = 'Código lido fora do limite de 8 a 14 dígitos. Tente novamente.';
+                        return;
+                    }
+                    barcodeInput.value = digits;
+                    barcodeInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    closeProductCamera();
+                    barcodeInput.focus();
+                    showToast('Código de barras capturado.');
+                },
+                (error) => {
+                    cameraStatus.textContent = error.message || 'Não foi possível ler o código.';
+                }
+            );
+            if (request !== productCameraRequest || cameraModal.hidden) {
+                scanner.stop();
+                return;
+            }
+            activeBarcodeScanner = scanner;
+            cameraStatus.textContent = 'Aponte a câmera para o código de barras.';
+        } catch (error) {
+            if (request === productCameraRequest && !cameraModal.hidden) {
+                cameraStatus.textContent = error.message || 'Não foi possível iniciar a câmera.';
+            }
+        }
+    });
+
+    cameraModal.addEventListener('click', (event) => {
+        if (event.target.closest('[data-product-camera-close]')) closeProductCamera();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !cameraModal.hidden) closeProductCamera();
+    });
+
+    barcodeInput.addEventListener('input', () => {
+        barcodeInput.value = barcodeInput.value.replace(/\D/g, '').slice(0, 14);
+        const errorEl = form.querySelector('[data-error-for="hydroProdBarcode"]');
+        if (errorEl) errorEl.textContent = '';
+        barcodeInput.classList.remove('hydro-invalid');
+    });
 
     /* ================= Upload de imagem ================= */
     function setImage(file) {
@@ -233,6 +297,15 @@
             setError('hydroProdCategory', 'Informe a categoria do produto');
             valid = false;
         }
+        if (data.codigo !== ''
+            && (!Number.isInteger(Number(data.codigo)) || Number(data.codigo) < 500 || Number(data.codigo) > 599)) {
+            setError('hydroProdCode', 'Use um código inteiro de 500 a 599');
+            valid = false;
+        }
+        if (data.codigoBarras !== '' && !/^\d{8,14}$/.test(data.codigoBarras)) {
+            setError('hydroProdBarcode', 'Informe de 8 a 14 dígitos numéricos ou deixe o campo vazio');
+            valid = false;
+        }
         if (data.precoVenda === '' || Number(data.precoVenda) <= 0) {
             setError('hydroProdSalePrice', 'Informe um preço de venda válido');
             valid = false;
@@ -262,6 +335,8 @@
         return {
             nome: (fd.get('nome') || '').toString(),
             categoria: (fd.get('categoria') || '').toString(),
+            codigo: (fd.get('codigo') || '').toString(),
+            codigoBarras: (fd.get('codigo_barras') || '').toString(),
             precoCusto: (fd.get('precoCusto') || '').toString(),
             precoVenda: (fd.get('precoVenda') || '').toString(),
             quantidade: (fd.get('quantidade') || '').toString(),
@@ -281,6 +356,8 @@
             name: name,
             desc: '',
             category: normalizeCategory(data.categoria, categoriasDaLoja),
+            code: data.codigo ? String(Number(data.codigo)) : null,
+            barcode: data.codigoBarras || null,
             costPrice: data.precoCusto ? Number(data.precoCusto) : 0,
             price: Number(data.precoVenda),
             quantity: Number(data.quantidade),
@@ -304,6 +381,8 @@
             body: {
                 nome: data.nome.trim(),
                 categoria: normalizeCategory(data.categoria, categoriasDaLoja),
+                codigo: data.codigo === '' ? null : Number(data.codigo),
+                codigo_barras: data.codigoBarras || null,
                 preco_custo: data.precoCusto || null,
                 preco_venda: Number(data.precoVenda),
                 quantidade: Number(data.quantidade),
