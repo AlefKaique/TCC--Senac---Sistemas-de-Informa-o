@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="../css/menu-submenu.css">
     <link rel="stylesheet" href="../css/public-demo.css">
     <link rel="stylesheet" href="../css/font-size.css">
+    <link rel="stylesheet" href="../css/barcode-scanner.css">
 </head>
 
 <body>
@@ -103,6 +104,9 @@
                     <button type="button" class="hydro-order-tab hydro-order-tab-danger" data-view="cancelar">
                         <i class="hydro-ic hydro-ic-lock" aria-hidden="true"></i>Cancelar Venda
                     </button>
+                    <button type="button" class="hydro-order-tab hydro-catalog-open-btn" id="hydroOpenWeightedCatalog" data-demo-allow>
+                        <i class="hydro-ic hydro-ic-search" aria-hidden="true"></i>Códigos hortifrúti padrão
+                    </button>
                 </div>
 
                 <!-- Subtela: Nova Venda (PDV) -->
@@ -112,7 +116,10 @@
                 <div class="hydro-scan-bar">
                     <i class="hydro-ic hydro-ic-search"></i>
                     <input type="text" id="hydroProductSearch" autocomplete="off"
-                        placeholder="Buscar produto pelo nome...">
+                        placeholder="Digite o código, leia a etiqueta ou busque pelo nome...">
+                    <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroScanSaleBarcode" aria-label="Pesquisar produto com a câmera">
+                        <i class="hydro-ic hydro-ic-camera" aria-hidden="true"></i><span>Ler com câmera</span>
+                    </button>
                 </div>
 
                 <div class="hydro-pos-layout">
@@ -191,13 +198,22 @@
                             </button>
                             <button type="button" class="hydro-payment-btn" data-method="pix">
                                 <i class="hydro-ic hydro-ic-pix"></i>
-                                <span>PIX</span>
+                                <span>Pix com QR Code</span>
                             </button>
                             <button type="button" class="hydro-payment-btn" data-method="vale">
                                 <i class="hydro-ic hydro-ic-voucher"></i>
                                 <span>Vale</span>
                             </button>
                         </div>
+
+                        <div class="hydro-cash-box" id="hydroPixPayerBox" hidden>
+                            <label for="hydroPixPayerEmail">E-mail do cliente para o pagamento Pix</label>
+                            <input type="email" id="hydroPixPayerEmail" autocomplete="email"
+                                placeholder="cliente@exemplo.com">
+                        </div>
+                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroPixReopenButton" hidden>
+                            Ver cobrança Pix pendente
+                        </button>
 
                         <div class="hydro-cash-box" id="hydroCashBox" hidden>
                             <label for="hydroCashReceived">Valor recebido em dinheiro</label>
@@ -337,6 +353,75 @@
         </div>
 
         <div class="hydro-toast" id="hydroToast"></div>
+
+        <div class="hydro-pix-modal" id="hydroPixModal" hidden>
+            <div class="hydro-pix-backdrop"></div>
+            <section class="hydro-pix-dialog" role="dialog" aria-modal="true" aria-labelledby="hydroPixTitle">
+                <header class="hydro-pix-header">
+                    <div>
+                        <p class="hydro-pix-eyebrow">Pagamento Mercado Pago</p>
+                        <h2 id="hydroPixTitle">Pix com QR Code</h2>
+                    </div>
+                    <strong id="hydroPixAmount">R$ 0,00</strong>
+                </header>
+                <img id="hydroPixQrImage" class="hydro-pix-qr" alt="QR Code Pix para pagamento">
+                <p class="hydro-pix-status" id="hydroPixStatus" role="status" aria-live="polite">
+                    Aguardando pagamento do cliente…
+                </p>
+                <label for="hydroPixCopyCode">Código Pix copia e cola</label>
+                <textarea id="hydroPixCopyCode" class="hydro-pix-copy-code" readonly rows="3"></textarea>
+                <div class="hydro-pix-actions">
+                    <button type="button" class="hydro-btn hydro-btn-primary" id="hydroPixCopyButton">Copiar código Pix</button>
+                    <button type="button" class="hydro-btn hydro-btn-outline" id="hydroPixHideButton">Ocultar QR e continuar aguardando</button>
+                </div>
+            </section>
+        </div>
+
+        <div class="hydro-camera-modal" id="hydroSaleCameraModal" hidden>
+            <button type="button" class="hydro-camera-backdrop" data-sale-camera-close aria-label="Fechar câmera"></button>
+            <section class="hydro-camera-dialog" role="dialog" aria-modal="true" aria-labelledby="hydroSaleCameraTitle">
+                <header class="hydro-camera-header">
+                    <div>
+                        <h2 id="hydroSaleCameraTitle">Buscar produto pelo código de barras</h2>
+                        <p>Aponte a câmera para o código do produto.</p>
+                    </div>
+                    <button type="button" class="hydro-icon-btn" data-sale-camera-close aria-label="Fechar">
+                        <i class="hydro-ic hydro-ic-close"></i>
+                    </button>
+                </header>
+                <video class="hydro-camera-video" id="hydroSaleCameraVideo" autoplay muted playsinline></video>
+                <p class="hydro-camera-status" id="hydroSaleCameraStatus" role="status">Solicitando acesso à câmera…</p>
+            </section>
+        </div>
+
+        <!-- Catálogo de códigos dos produtos de frutas, vegetais e pesáveis -->
+        <div class="hydro-weighted-catalog" id="hydroWeightedCatalogModal" hidden>
+            <button type="button" class="hydro-weighted-catalog-backdrop" data-weighted-catalog-close data-demo-allow aria-label="Fechar catálogo"></button>
+            <section class="hydro-weighted-catalog-dialog" role="dialog" aria-modal="true" aria-labelledby="hydroWeightedCatalogTitle">
+                <header class="hydro-weighted-catalog-header">
+                    <div>
+                        <p class="hydro-weight-modal-eyebrow">Consulta rápida</p>
+                        <h2 id="hydroWeightedCatalogTitle">Códigos hortifrúti padrão</h2>
+                        <p>Consulte os 120 códigos separados por categoria. Produtos ainda não importados nesta filial não podem ser vendidos.</p>
+                    </div>
+                    <div class="hydro-weighted-catalog-actions">
+                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroPrintHortifrutiCatalog" data-demo-allow>Imprimir lista A4</button>
+                        <button type="button" class="hydro-icon-btn hydro-icon-btn-sm" data-weighted-catalog-close data-demo-allow aria-label="Fechar catálogo">
+                            <i class="hydro-ic hydro-ic-close"></i>
+                        </button>
+                    </div>
+                </header>
+                <label class="hydro-weighted-catalog-search">
+                    <i class="hydro-ic hydro-ic-search" aria-hidden="true"></i>
+                    <span class="sr-only">Buscar produto no catálogo</span>
+                    <input type="search" id="hydroWeightedCatalogSearch" autocomplete="off" placeholder="Buscar pelo nome, categoria ou código...">
+                </label>
+                <p class="hydro-weighted-catalog-count" id="hydroWeightedCatalogCount" aria-live="polite"></p>
+                <div class="hydro-weighted-catalog-list" id="hydroWeightedCatalogList"></div>
+                <p class="hydro-catalog-empty" id="hydroWeightedCatalogError" role="alert" hidden></p>
+                <p class="hydro-catalog-empty" id="hydroWeightedCatalogEmpty" hidden>Nenhum produto encontrado neste catálogo.</p>
+            </section>
+        </div>
 
         <!-- Modal: item pesável (peso embutido / entrada manual) -->
         <div class="hydro-weight-modal" id="hydroWeightModal" hidden>
@@ -512,6 +597,7 @@
     <script src="../js/trocar-filial.js"></script>
     <script src="../js/public-demo.js"></script>
     <script src="../js/font-size.js"></script>
+    <script src="../js/barcode-scanner.js"></script>
     <script src="../js/caixa.js"></script>
 </body>
 
