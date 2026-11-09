@@ -42,6 +42,28 @@ final class RateLimit
         exit;
     }
 
+    /** Limita ações bem-sucedidas usando uma janela móvel por usuário. */
+    public static function requireDentroDaJanela(int $idUsuario, int $maximo, int $horas): void
+    {
+        Migracoes::garantirAlertasWhatsApp();
+        $horas = max(1, min(24, $horas));
+        $stmt = db()->prepare(
+            "INSERT INTO limites_testes_alertas (id_usuario, inicio, quantidade)
+             VALUES (:id_usuario, NOW(), 1)
+             ON DUPLICATE KEY UPDATE
+                quantidade = IF(inicio <= DATE_SUB(NOW(), INTERVAL {$horas} HOUR), 1, quantidade + 1),
+                inicio = IF(inicio <= DATE_SUB(NOW(), INTERVAL {$horas} HOUR), NOW(), inicio)"
+        );
+        $stmt->execute(['id_usuario' => $idUsuario]);
+
+        $stmt = db()->prepare('SELECT quantidade FROM limites_testes_alertas WHERE id_usuario = :id_usuario');
+        $stmt->execute(['id_usuario' => $idUsuario]);
+        if ((int) $stmt->fetchColumn() > $maximo) {
+            Response::json(['erro' => "Limite de {$maximo} testes por hora atingido. Tente novamente mais tarde."], 429);
+            exit;
+        }
+    }
+
     /** Registra uma tentativa que falhou e bloqueia ao atingir o limite. */
     public static function registrarFalha(string $chave): void
     {

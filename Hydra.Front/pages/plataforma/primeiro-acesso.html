@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Hydra · Primeiro acesso</title>
+  <link rel="icon" type="image/png" href="../../img/logo-hydra.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="../../css/style.css"><link rel="stylesheet" href="../../css/login.css"><link rel="stylesheet" href="../../css/password-rules.css"><link rel="stylesheet" href="../../css/plataforma.css">
+</head>
+<body>
+  <main class="plataforma-first-access"><a class="logo" href="login.html"><img src="../../img/logo-hydra.png" alt="Hydra"></a>
+    <h1>Crie sua senha</h1><p>Use o código recebido por e-mail para ativar seu acesso à equipe Hydra.</p>
+    <form id="form-primeiro-acesso" novalidate>
+      <label>E-mail<input type="email" name="email" id="primeiro-email" autocomplete="email" required></label>
+      <label>Código do convite<input type="text" name="codigo" id="primeiro-codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" required></label>
+      <label>Nova senha<input type="password" name="senha" id="primeiro-senha" autocomplete="new-password" required></label>
+      <label>Confirme a senha<input type="password" name="confirmacao" id="primeiro-confirmacao" autocomplete="new-password" required></label>
+      <div id="regras-senha" class="password-rules" aria-live="polite"></div><div id="primeiro-erro" role="alert"></div>
+      <button class="plataforma-btn plataforma-btn-primary" type="submit">Criar senha</button>
+    </form>
+  </main>
+  <script src="../../js/api.js"></script><script src="../../js/password-rules.js"></script><script src="../../js/plataforma-primeiro-acesso.js"></script>
+</body>
+</html>
