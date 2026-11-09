@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hydra · Visão geral da plataforma</title>
+  <link rel="icon" type="image/png" href="../../img/logo-hydra.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/dashboard.css">
+  <link rel="stylesheet" href="../../css/menu-submenu.css">
+  <link rel="stylesheet" href="../../css/plataforma.css">
+</head>
+
+<body data-niveis="proprietario,gestor,analista">
+  <div class="hydro-dash plataforma-shell" data-page="visao-geral">
+    <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+    <div class="hydro-app">
+      <aside class="hydro-sidebar" id="hydroSidebar">
+        <a class="hydro-brand" href="visao-geral.html" aria-label="Hydra Plataforma">
+          <img src="../../img/logo-hydra.png" alt="Hydra"><span class="plataforma-brand-label">Plataforma</span>
+        </a>
+        <nav class="hydro-menu">
+          <p class="hydro-menu-label">Painel</p>
+          <ul>
+            <li><a class="hydro-active" href="visao-geral.html"><i class="hydro-ic hydro-ic-home"></i><span>Visão geral</span></a></li>
+            <li><a href="mercados.html"><i class="hydro-ic hydro-ic-inventory"></i><span>Mercados</span></a></li>
+            <li><a href="rendimento.html"><i class="hydro-ic hydro-ic-chart"></i><span>Rendimento</span></a></li>
+            <li><a href="cadastros-pendentes.html"><i class="hydro-ic hydro-ic-users"></i><span>Cadastros pendentes</span></a></li>
+            <li data-niveis="proprietario,gestor"><a href="auditoria.html"><i class="hydro-ic hydro-ic-lock"></i><span>Auditoria</span></a></li>
+            <li data-niveis="proprietario"><a href="equipe.html"><i class="hydro-ic hydro-ic-users"></i><span>Equipe Hydra</span></a></li>
+          </ul>
+        </nav>
+      </aside>
+      <main class="hydro-main">
+        <header class="hydro-topbar">
+          <h1>Visão geral</h1>
+          <div class="hydro-topbar-actions">
+            <div class="plataforma-user"><div class="plataforma-user-meta"><span class="plataforma-user-name" id="plataforma-admin-nome">Carregando…</span><span class="plataforma-level" id="plataforma-admin-nivel"></span></div></div>
+            <button type="button" class="plataforma-btn" id="plataforma-sair">Sair</button>
+          </div>
+        </header>
+        <div class="plataforma-content">
+          <div class="plataforma-page-heading"><div><h2>Acompanhe os mercados</h2><p>Veja como estão os mercados cadastrados e identifique quem precisa de atenção.</p></div><a class="plataforma-btn plataforma-btn-primary" href="rendimento.html">Ver rendimento dos mercados</a></div>
+          <div id="plataforma-erro" role="alert"></div>
+          <section class="plataforma-cards" id="resumo-cards" aria-label="Resumo dos mercados"><p class="plataforma-loading">Carregando indicadores…</p></section>
+          <div class="plataforma-grid-2">
+            <section class="plataforma-panel"><h2>Novos mercados por mês</h2><div class="plataforma-chart" id="cadastros-chart" aria-label="Gráfico de novos cadastros"></div></section>
+            <section class="plataforma-panel"><h2>Etapas de cadastro</h2><div class="plataforma-funnel" id="cadastros-funil"></div></section>
+          </div>
+          <section class="plataforma-panel"><h2>Precisam de atenção</h2><div class="plataforma-attention" id="mercados-atencao"></div></section>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../../js/api.js"></script>
+  <script src="../../js/plataforma-guard.js"></script>
+  <script src="../../js/plataforma-app.js"></script>
+</body>
+
+</html>

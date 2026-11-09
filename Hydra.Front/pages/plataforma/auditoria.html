@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Hydra · Auditoria</title>
+  <link rel="icon" type="image/png" href="../../img/logo-hydra.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="../../css/dashboard.css"><link rel="stylesheet" href="../../css/menu-submenu.css"><link rel="stylesheet" href="../../css/plataforma.css">
+</head>
+<body data-niveis="proprietario,gestor">
+  <div class="hydro-dash plataforma-shell" data-page="auditoria">
+    <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+    <div class="hydro-app"><aside class="hydro-sidebar" id="hydroSidebar"><a class="hydro-brand" href="visao-geral.html"><img src="../../img/logo-hydra.png" alt="Hydra"><span class="plataforma-brand-label">Plataforma</span></a><nav class="hydro-menu"><p class="hydro-menu-label">Painel</p><ul>
+      <li><a href="visao-geral.html"><i class="hydro-ic hydro-ic-home"></i><span>Visão geral</span></a></li><li><a href="mercados.html"><i class="hydro-ic hydro-ic-inventory"></i><span>Mercados</span></a></li><li><a href="rendimento.html"><i class="hydro-ic hydro-ic-chart"></i><span>Rendimento</span></a></li><li><a href="cadastros-pendentes.html"><i class="hydro-ic hydro-ic-users"></i><span>Cadastros pendentes</span></a></li><li><a class="hydro-active" href="auditoria.html"><i class="hydro-ic hydro-ic-lock"></i><span>Auditoria</span></a></li><li data-niveis="proprietario"><a href="equipe.html"><i class="hydro-ic hydro-ic-users"></i><span>Equipe Hydra</span></a></li>
+    </ul></nav></aside><main class="hydro-main"><header class="hydro-topbar"><h1>Auditoria</h1><div class="hydro-topbar-actions"><div class="plataforma-user"><div class="plataforma-user-meta"><span class="plataforma-user-name" id="plataforma-admin-nome">Carregando…</span><span class="plataforma-level" id="plataforma-admin-nivel"></span></div></div><button class="plataforma-btn" id="plataforma-sair" type="button">Sair</button></div></header>
+      <div class="plataforma-content"><div class="plataforma-page-heading"><div><h2>Histórico de atividades</h2><p>Este registro é somente para consulta. Ele ajuda a entender quem fez cada ação e quando.</p></div></div><div id="plataforma-erro" role="alert"></div>
+        <section class="plataforma-panel"><form class="plataforma-toolbar" id="filtros-auditoria">
+          <label class="plataforma-field">Ação<select name="acao" id="auditoria-acao"><option value="">Todas as ações</option><option value="login_ok">Entrou no sistema</option><option value="login_falha_senha">Errou a senha</option><option value="login_falha_codigo">Errou o código</option><option value="logout">Saiu do sistema</option><option value="mercado_suspenso">Suspendeu mercado</option><option value="mercado_reativado">Reativou mercado</option><option value="equipe_convidada">Convidou membro</option><option value="equipe_alterada">Alterou membro</option><option value="equipe_convite_reenviado">Reenviou convite</option><option value="equipe_primeiro_acesso">Concluiu primeiro acesso</option></select></label>
+          <label class="plataforma-field">Membro<select name="id_admin" id="auditoria-membro"><option value="">Todos os membros</option></select></label>
+          <label class="plataforma-field">De<input type="date" name="de" id="auditoria-de"></label><label class="plataforma-field">Até<input type="date" name="ate" id="auditoria-ate"></label>
+          <button class="plataforma-btn plataforma-btn-primary" type="submit">Filtrar</button><button class="plataforma-btn" type="button" id="limpar-auditoria">Limpar</button>
+        </form><div class="plataforma-table-wrap"><table class="plataforma-table"><thead><tr><th>Data e hora</th><th>Membro</th><th>Ação</th><th>Mercado</th><th>Detalhe / motivo</th><th>IP</th></tr></thead><tbody id="auditoria-body"></tbody></table></div><div id="auditoria-vazio" class="plataforma-empty" hidden>Nenhuma atividade encontrada para o período escolhido.</div><div class="plataforma-pagination" id="auditoria-paginacao"></div></section>
+      </div></main></div>
+  </div>
+  <script src="../../js/api.js"></script><script src="../../js/plataforma-guard.js"></script><script src="../../js/plataforma-app.js"></script>
+</body>
+</html>
