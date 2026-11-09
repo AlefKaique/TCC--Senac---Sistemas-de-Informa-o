@@ -45,12 +45,19 @@ spl_autoload_register(function (string $class) use ($appRoot): void {
 require $appRoot . '/config/database.php';
 
 use Hydra\Controllers\AuthController;
+use Hydra\Controllers\AlertaController;
+use Hydra\Controllers\CatalogoHortifrutiController;
 use Hydra\Controllers\CargoController;
 use Hydra\Controllers\EstoqueController;
 use Hydra\Controllers\FilialController;
 use Hydra\Controllers\LojaController;
+use Hydra\Controllers\PlataformaAuthController;
+use Hydra\Controllers\PlataformaController;
+use Hydra\Controllers\PlataformaEquipeController;
+use Hydra\Controllers\PixController;
 use Hydra\Controllers\ProdutoController;
 use Hydra\Controllers\PromocaoController;
+use Hydra\Controllers\RelatorioController;
 use Hydra\Controllers\UsuarioController;
 use Hydra\Controllers\VendaController;
 use Hydra\Support\Auth;
@@ -85,7 +92,7 @@ if ($origin !== null) {
     // próprio navegador bloqueia a leitura da resposta.
 }
 
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, X-Cron-Token, X-Hub-Signature-256');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Vary: Origin');
 
@@ -93,13 +100,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
-
-Auth::start();
-
-set_exception_handler(function (Throwable $e): void {
-    error_log($e->getMessage());
-    Response::json(['erro' => 'Erro interno no servidor'], 500);
-});
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
@@ -110,6 +110,16 @@ $path = rtrim($path, '/');
 if ($path === '') {
     $path = '/';
 }
+
+// Webhook e agendador usam autenticação própria e não precisam iniciar sessão.
+if (!in_array($path, ['/api/whatsapp/webhook', '/api/interno/alertas/disparar'], true)) {
+    Auth::start();
+}
+
+set_exception_handler(function (Throwable $e): void {
+    error_log($e->getMessage());
+    Response::json(['erro' => 'Erro interno no servidor'], 500);
+});
 
 /** @var array<int,array{0:string,1:string,2:callable}> $routes */
 $routes = [
@@ -126,6 +136,26 @@ $routes = [
     ['POST', '#^/api/auth/login/codigo$#', fn () => (new AuthController())->loginCodigo()],
     ['POST', '#^/api/auth/login/reenviar$#', fn () => (new AuthController())->loginReenviar()],
 
+    // Plataforma: autenticação isolada das contas e sessões das lojas.
+    ['POST', '#^/api/plataforma/auth/login$#', fn () => (new PlataformaAuthController())->login()],
+    ['POST', '#^/api/plataforma/auth/codigo$#', fn () => (new PlataformaAuthController())->codigo()],
+    ['POST', '#^/api/plataforma/auth/reenviar$#', fn () => (new PlataformaAuthController())->reenviar()],
+    ['GET', '#^/api/plataforma/auth/me$#', fn () => (new PlataformaAuthController())->me()],
+    ['POST', '#^/api/plataforma/auth/logout$#', fn () => (new PlataformaAuthController())->logout()],
+    ['POST', '#^/api/plataforma/auth/primeiro-acesso$#', fn () => (new PlataformaEquipeController())->primeiroAcesso()],
+    ['GET', '#^/api/plataforma/resumo$#', fn () => (new PlataformaController())->resumo()],
+    ['GET', '#^/api/plataforma/rendimento$#', fn () => (new PlataformaController())->rendimento()],
+    ['GET', '#^/api/plataforma/lojas$#', fn () => (new PlataformaController())->lojas()],
+    ['GET', '#^/api/plataforma/lojas/(\d+)$#', fn ($id) => (new PlataformaController())->detalheLoja((int) $id)],
+    ['POST', '#^/api/plataforma/lojas/(\d+)/suspender$#', fn ($id) => (new PlataformaController())->suspender((int) $id)],
+    ['POST', '#^/api/plataforma/lojas/(\d+)/reativar$#', fn ($id) => (new PlataformaController())->reativar((int) $id)],
+    ['GET', '#^/api/plataforma/cadastros-pendentes$#', fn () => (new PlataformaController())->cadastrosPendentes()],
+    ['GET', '#^/api/plataforma/auditoria$#', fn () => (new PlataformaController())->auditoria()],
+    ['GET', '#^/api/plataforma/equipe$#', fn () => (new PlataformaEquipeController())->index()],
+    ['POST', '#^/api/plataforma/equipe$#', fn () => (new PlataformaEquipeController())->criar()],
+    ['PUT', '#^/api/plataforma/equipe/(\d+)$#', fn ($id) => (new PlataformaEquipeController())->atualizar((int) $id)],
+    ['POST', '#^/api/plataforma/equipe/(\d+)/reenviar-convite$#', fn ($id) => (new PlataformaEquipeController())->reenviarConvite((int) $id)],
+
     ['GET', '#^/api/usuarios$#', fn () => (new UsuarioController())->index()],
     ['POST', '#^/api/usuarios$#', fn () => (new UsuarioController())->store()],
     ['PUT', '#^/api/usuarios/(\d+)$#', fn ($id) => (new UsuarioController())->update((int) $id)],
@@ -133,6 +163,32 @@ $routes = [
 
     ['GET', '#^/api/loja$#', fn () => (new LojaController())->show()],
     ['PUT', '#^/api/loja$#', fn () => (new LojaController())->update()],
+
+    ['GET', '#^/api/relatorios/resumo$#', fn () => (new RelatorioController())->resumo()],
+    ['GET', '#^/api/relatorios/vendas-por-dia$#', fn () => (new RelatorioController())->vendasPorDia()],
+    ['GET', '#^/api/relatorios/pagamentos$#', fn () => (new RelatorioController())->pagamentos()],
+    ['GET', '#^/api/relatorios/horarios$#', fn () => (new RelatorioController())->horarios()],
+    ['GET', '#^/api/relatorios/produtos$#', fn () => (new RelatorioController())->produtos()],
+    ['GET', '#^/api/relatorios/estoque$#', fn () => (new RelatorioController())->estoque()],
+    ['GET', '#^/api/relatorios/cancelamentos$#', fn () => (new RelatorioController())->cancelamentos()],
+    ['GET', '#^/api/relatorios/operadores$#', fn () => (new RelatorioController())->operadores()],
+
+    ['GET', '#^/api/alertas/preferencias$#', fn () => (new AlertaController())->preferencias()],
+    ['PUT', '#^/api/alertas/preferencias$#', fn () => (new AlertaController())->salvarPreferencias()],
+    ['POST', '#^/api/alertas/destinatarios$#', fn () => (new AlertaController())->adicionarDestinatario()],
+    ['DELETE', '#^/api/alertas/destinatarios/(\d+)$#', fn ($id) => (new AlertaController())->removerDestinatario((int) $id)],
+    ['POST', '#^/api/alertas/teste$#', fn () => (new AlertaController())->teste()],
+    ['POST', '#^/api/interno/alertas/disparar$#', fn () => (new AlertaController())->disparar()],
+    ['GET', '#^/api/whatsapp/webhook$#', fn () => (new AlertaController())->verificarWebhook()],
+    ['POST', '#^/api/whatsapp/webhook$#', fn () => (new AlertaController())->webhook()],
+
+    ['GET', '#^/api/pix/mercadopago/conta$#', fn () => (new PixController())->conta()],
+    ['POST', '#^/api/pix/mercadopago/conectar$#', fn () => (new PixController())->conectar()],
+    ['GET', '#^/api/pix/mercadopago/callback$#', fn () => (new PixController())->callback()],
+    ['DELETE', '#^/api/pix/mercadopago/conta$#', fn () => (new PixController())->desconectar()],
+    ['POST', '#^/api/pix/pagamentos$#', fn () => (new PixController())->criarPagamento()],
+    ['GET', '#^/api/pix/pagamentos/pendente$#', fn () => (new PixController())->pendenteAtual()],
+    ['GET', '#^/api/pix/pagamentos/([a-f0-9-]{36})$#i', fn ($id) => (new PixController())->status($id)],
 
     // "minhas" e "trocar" antes de "/api/filiais/(\d+)" só por clareza:
     // o padrão numérico não as capturaria de qualquer forma.
@@ -142,11 +198,15 @@ $routes = [
     ['POST', '#^/api/filiais$#', fn () => (new FilialController())->store()],
     ['PUT', '#^/api/filiais/(\d+)$#', fn ($id) => (new FilialController())->update((int) $id)],
 
+    ['GET', '#^/api/catalogo-hortifruti$#', fn () => (new CatalogoHortifrutiController())->index()],
+    ['POST', '#^/api/catalogo-hortifruti/importar$#', fn () => (new CatalogoHortifrutiController())->importar()],
+
     ['GET', '#^/api/cargos$#', fn () => (new CargoController())->index()],
     ['POST', '#^/api/cargos$#', fn () => (new CargoController())->store()],
     ['PUT', '#^/api/cargos/(\d+)$#', fn ($id) => (new CargoController())->update((int) $id)],
     ['DELETE', '#^/api/cargos/(\d+)$#', fn ($id) => (new CargoController())->destroy((int) $id)],
 
+    ['GET', '#^/api/produtos/codigo-barras/(\d{8,14})$#', fn ($codigo) => (new ProdutoController())->buscarPorCodigoBarras($codigo)],
     ['GET', '#^/api/produtos$#', fn () => (new ProdutoController())->index()],
     ['POST', '#^/api/produtos$#', fn () => (new ProdutoController())->store()],
     ['PUT', '#^/api/produtos/(\d+)$#', fn ($id) => (new ProdutoController())->update((int) $id)],
