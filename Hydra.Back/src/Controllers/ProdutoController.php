@@ -54,6 +54,28 @@ final class ProdutoController
         Response::json(['produtos' => $produtos]);
     }
 
+    /** GET /api/produtos/codigo-barras/{codigo} */
+    public function buscarPorCodigoBarras(string $codigoBarras): void
+    {
+        $user = Auth::requirePermissionNaFilial('estoque.consultar');
+        if (!preg_match('/^\d{8,14}$/', $codigoBarras)) {
+            Response::json(['erro' => 'Código de barras inválido. Informe de 8 a 14 dígitos numéricos.'], 422);
+            return;
+        }
+
+        $produto = $this->produtos->findByBarcodeInFilial($codigoBarras, $user['id_filial']);
+        if ($produto === null) {
+            Response::json(['erro' => 'Produto não encontrado nesta filial.'], 404);
+            return;
+        }
+
+        $vigentes = (new PromocaoRepository())->vigentesPorProduto($user['id_filial']);
+        $promocao = $vigentes[(int) $produto['id_produto']] ?? null;
+        $produto['preco_promocional'] = $promocao['preco_promocional'] ?? null;
+        $produto['promocao_ate'] = $promocao['data_fim'] ?? null;
+        Response::json(['produto' => $produto]);
+    }
+
     /**
      * POST /api/produtos
      * Corresponde à tela "Cadastro de Produto" (Figura 25): registra o
@@ -89,8 +111,18 @@ final class ProdutoController
                 );
             }
             $pdo->commit();
+        } catch (\PDOException $e) {
+            $pdo->rollBack();
+            if ($e->getCode() === '23000' && (int) ($e->errorInfo[1] ?? 0) === 1062) {
+                Response::json(['erro' => 'Este código de produto ou código de barras já está cadastrado nesta filial.'], 409);
+                return;
+            }
+            error_log('[Hydra] Falha ao cadastrar produto: ' . $e->getMessage());
+            Response::json(['erro' => 'Não foi possível cadastrar o produto'], 500);
+            return;
         } catch (\Throwable $e) {
             $pdo->rollBack();
+            error_log('[Hydra] Falha ao cadastrar produto: ' . $e->getMessage());
             Response::json(['erro' => 'Não foi possível cadastrar o produto'], 500);
             return;
         }
@@ -136,7 +168,10 @@ final class ProdutoController
         // produtos. Quem não tem pode editar os demais campos normalmente,
         // desde que reenvie os preços atuais sem modificá-los.
         $precoCustoAtual = $produto['preco_custo'] !== null ? (float) $produto['preco_custo'] : null;
-        $precoVendaMudou = abs($campos['preco_venda'] - (float) $produto['preco_venda']) > 0.001;
+        $precoVendaAtual = $produto['preco_venda'] !== null ? (float) $produto['preco_venda'] : null;
+        $precoVendaMudou = ($campos['preco_venda'] === null) !== ($precoVendaAtual === null)
+            || ($campos['preco_venda'] !== null && $precoVendaAtual !== null
+                && abs($campos['preco_venda'] - $precoVendaAtual) > 0.001);
         $precoCustoMudou = $campos['preco_custo'] !== $precoCustoAtual
             && abs(($campos['preco_custo'] ?? 0) - ($precoCustoAtual ?? 0)) > 0.001;
         if (!Auth::can('produtos.editar_preco') && ($precoVendaMudou || $precoCustoMudou)) {
@@ -181,6 +216,15 @@ final class ProdutoController
                 );
             }
             $pdo->commit();
+        } catch (\PDOException $e) {
+            $pdo->rollBack();
+            if ($e->getCode() === '23000' && (int) ($e->errorInfo[1] ?? 0) === 1062) {
+                Response::json(['erro' => 'Este código de produto ou código de barras já está cadastrado nesta filial.'], 409);
+                return;
+            }
+            error_log('[Hydra] Falha ao atualizar produto ' . $id . ': ' . $e->getMessage());
+            Response::json(['erro' => 'Não foi possível salvar o produto. Nada foi alterado.'], 500);
+            return;
         } catch (\Throwable $e) {
             $pdo->rollBack();
             error_log('[Hydra] Falha ao atualizar produto ' . $id . ': ' . $e->getMessage());
@@ -254,7 +298,17 @@ final class ProdutoController
         $descricao = trim((string) ($dados['descricao'] ?? ''));
 
         $precoCusto = $dados['preco_custo'] ?? null;
-        $precoVenda = $dados['preco_venda'] ?? null;
+        $precoVenda = array_key_exists('preco_venda', $dados)
+            ? $dados['preco_venda']
+            : ($produtoAtual['preco_venda'] ?? null);
+        $codigoRecebido = $dados['codigo'] ?? null;
+        $codigo = $codigoRecebido !== null && $codigoRecebido !== ''
+            ? $codigoRecebido
+            : ($produtoAtual['codigo'] ?? null);
+        $codigoBarrasRecebido = array_key_exists('codigo_barras', $dados)
+            ? trim((string) $dados['codigo_barras'])
+            : ($produtoAtual['codigo_barras'] ?? null);
+        $codigoBarras = $codigoBarrasRecebido === '' ? null : $codigoBarrasRecebido;
         $quantidade = $dados['quantidade'] ?? null;
         $estoqueMinimo = $dados['estoque_minimo'] ?? null;
 
@@ -266,7 +320,24 @@ final class ProdutoController
         if (mb_strlen($categoria) > 60) {
             return ['erro' => 'Categoria muito longa (máximo 60 caracteres)', 'campo' => 'categoria', 'campos' => []];
         }
-        if (!is_numeric($precoVenda) || (float) $precoVenda <= 0) {
+        if ($codigoRecebido !== null && $codigoRecebido !== ''
+            && (!is_numeric($codigoRecebido) || (int) $codigoRecebido != $codigoRecebido
+                || (int) $codigoRecebido < 500 || (int) $codigoRecebido > 599)) {
+            return ['erro' => 'Código próprio de hortifrúti: use um número inteiro de 500 a 599', 'campo' => 'codigo', 'campos' => []];
+        }
+        if ($codigoBarras !== null && !preg_match('/^\d{8,14}$/', $codigoBarras)) {
+            return [
+                'erro' => 'Código de barras opcional: informe de 8 a 14 dígitos numéricos.',
+                'campo' => 'codigo_barras',
+                'campos' => [],
+            ];
+        }
+        $precoVendaVazio = $precoVenda === null || $precoVenda === '';
+        $precoVendaPodeFicarVazio = $produtoAtual !== null && $produtoAtual['preco_venda'] === null;
+        if ($precoVendaVazio && !$precoVendaPodeFicarVazio) {
+            return ['erro' => 'Preço de venda: informe um valor maior que zero', 'campo' => 'preco_venda', 'campos' => []];
+        }
+        if (!$precoVendaVazio && (!is_numeric($precoVenda) || (float) $precoVenda <= 0)) {
             return ['erro' => 'Preço de venda: informe um valor maior que zero', 'campo' => 'preco_venda', 'campos' => []];
         }
         // Na edição a quantidade é opcional: ausente, vale o saldo atual. O
@@ -322,7 +393,10 @@ final class ProdutoController
                 'descricao' => $descricao !== '' ? $descricao : null,
                 'categoria' => $categoria,
                 'preco_custo' => ($precoCusto !== null && $precoCusto !== '' && is_numeric($precoCusto)) ? (float) $precoCusto : null,
-                'preco_venda' => (float) $precoVenda,
+                'preco_venda' => $precoVendaVazio ? null : (float) $precoVenda,
+                'codigo' => $codigo !== null ? (int) $codigo : null,
+                'codigo_barras' => $codigoBarras,
+                'plu' => $produtoAtual['plu'] ?? null,
                 'quantidade' => (float) $quantidade,
                 'estoque_minimo' => ($estoqueMinimo !== null && $estoqueMinimo !== '') ? (float) $estoqueMinimo : 0,
                 'unidade' => $unidade,
