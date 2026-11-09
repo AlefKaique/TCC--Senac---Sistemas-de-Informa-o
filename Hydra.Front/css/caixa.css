@@ -363,6 +363,227 @@
     color: var(--ink);
 }
 
+/* ============ Catálogo rápido de códigos pesáveis ============ */
+.hydro-weighted-catalog-open {
+    overflow: hidden;
+}
+
+.hydro-weighted-catalog {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.hydro-weighted-catalog[hidden] {
+    display: none;
+}
+
+.hydro-weighted-catalog-backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: rgba(13, 26, 61, .62);
+}
+
+.hydro-weighted-catalog-dialog {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 760px);
+    max-height: min(82vh, 760px);
+    padding: 24px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: var(--shadow-pop);
+}
+
+.hydro-weighted-catalog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 18px;
+}
+
+.hydro-weighted-catalog-header h2 {
+    margin: 3px 0 5px;
+    color: var(--navy-900);
+    font-size: 21px;
+    font-weight: 800;
+}
+
+.hydro-weighted-catalog-header > div > p:last-child {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.hydro-weighted-catalog-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.hydro-weighted-catalog-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 46px;
+    padding: 0 13px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--muted-soft);
+}
+
+.hydro-weighted-catalog-search .hydro-ic {
+    width: 18px;
+    height: 18px;
+}
+
+.hydro-weighted-catalog-search input {
+    width: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+}
+
+.hydro-weighted-catalog-search input::placeholder {
+    color: var(--muted-soft);
+}
+
+.hydro-weighted-catalog-count {
+    margin: 14px 0 9px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.hydro-weighted-catalog-list {
+    display: grid;
+    gap: 8px;
+    overflow-y: auto;
+    padding: 2px 3px 2px 0;
+}
+
+.hydro-weighted-catalog-item {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    min-height: 66px;
+    padding: 10px 13px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card);
+    color: var(--ink);
+    text-align: left;
+    transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+
+.hydro-weighted-catalog-item:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: var(--navy-active);
+    background: var(--blue-bg);
+}
+
+.hydro-weighted-catalog-item:disabled {
+    cursor: not-allowed;
+    opacity: .58;
+}
+
+.hydro-weighted-catalog-code {
+    color: var(--navy-800);
+    font-size: 20px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.hydro-weighted-catalog-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 3px;
+}
+
+.hydro-weighted-catalog-info strong {
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hydro-weighted-catalog-info > span,
+.hydro-weighted-catalog-stock {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.hydro-weighted-catalog-stock {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.hydro-weighted-catalog-dialog .hydro-catalog-empty {
+    padding: 28px 12px;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (max-width: 600px) {
+    .hydro-weighted-catalog {
+        align-items: flex-end;
+        padding: 10px;
+    }
+
+    .hydro-weighted-catalog-dialog {
+        max-height: 88vh;
+        padding: 18px;
+        border-radius: 16px;
+    }
+
+    .hydro-weighted-catalog-header {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .hydro-weighted-catalog-actions {
+        justify-content: space-between;
+    }
+
+    .hydro-weighted-catalog-item {
+        grid-template-columns: 55px minmax(0, 1fr);
+        gap: 10px;
+    }
+
+    .hydro-weighted-catalog-stock {
+        grid-column: 2;
+        text-align: left;
+    }
+}
+
 .hydro-search input::placeholder {
     color: var(--muted-soft);
 }
@@ -735,6 +956,11 @@
     font-size: 14px;
     color: var(--ink);
     margin-top: 4px;
+}
+
+.hydro-catalog-price-missing {
+    color: var(--orange-dark, #b45b15);
+    font-size: 12px;
 }
 
 .hydro-catalog-stock {

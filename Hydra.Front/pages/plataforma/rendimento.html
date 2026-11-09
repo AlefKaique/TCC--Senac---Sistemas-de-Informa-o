@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hydra · Rendimento dos mercados</title>
+  <link rel="icon" type="image/png" href="../../img/logo-hydra.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/dashboard.css">
+  <link rel="stylesheet" href="../../css/menu-submenu.css">
+  <link rel="stylesheet" href="../../css/plataforma.css">
+</head>
+
+<body data-niveis="proprietario,gestor,analista">
+  <div class="hydro-dash plataforma-shell" data-page="rendimento">
+    <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+    <div class="hydro-app">
+      <aside class="hydro-sidebar" id="hydroSidebar">
+        <a class="hydro-brand" href="visao-geral.html" aria-label="Hydra Plataforma">
+          <img src="../../img/logo-hydra.png" alt="Hydra"><span class="plataforma-brand-label">Plataforma</span>
+        </a>
+        <nav class="hydro-menu">
+          <p class="hydro-menu-label">Painel</p>
+          <ul>
+            <li><a href="visao-geral.html"><i class="hydro-ic hydro-ic-home"></i><span>Visão geral</span></a></li>
+            <li><a href="mercados.html"><i class="hydro-ic hydro-ic-inventory"></i><span>Mercados</span></a></li>
+            <li><a class="hydro-active" href="rendimento.html"><i class="hydro-ic hydro-ic-chart"></i><span>Rendimento</span></a></li>
+            <li><a href="cadastros-pendentes.html"><i class="hydro-ic hydro-ic-users"></i><span>Cadastros pendentes</span></a></li>
+            <li data-niveis="proprietario,gestor"><a href="auditoria.html"><i class="hydro-ic hydro-ic-lock"></i><span>Auditoria</span></a></li>
+            <li data-niveis="proprietario"><a href="equipe.html"><i class="hydro-ic hydro-ic-users"></i><span>Equipe Hydra</span></a></li>
+          </ul>
+        </nav>
+      </aside>
+      <main class="hydro-main">
+        <header class="hydro-topbar">
+          <h1>Rendimento dos mercados</h1>
+          <div class="hydro-topbar-actions">
+            <div class="plataforma-user"><div class="plataforma-user-meta"><span class="plataforma-user-name" id="plataforma-admin-nome">Carregando…</span><span class="plataforma-level" id="plataforma-admin-nivel"></span></div></div>
+            <button type="button" class="plataforma-btn" id="plataforma-sair">Sair</button>
+          </div>
+        </header>
+        <div class="plataforma-content">
+          <div class="plataforma-page-heading">
+            <div><h2>Desempenho comercial</h2><p>Compare o faturamento e o volume de vendas dos mercados no período selecionado.</p></div>
+          </div>
+          <div id="plataforma-erro" role="alert"></div>
+          <form class="plataforma-toolbar" id="filtro-rendimento">
+            <label class="plataforma-field" for="rendimento-dias">Período</label>
+            <select id="rendimento-dias" name="dias">
+              <option value="7">Últimos 7 dias</option>
+              <option value="30" selected>Últimos 30 dias</option>
+              <option value="90">Últimos 90 dias</option>
+              <option value="365">Últimos 12 meses</option>
+            </select>
+            <button type="submit" class="plataforma-btn plataforma-btn-primary">Atualizar</button>
+            <span class="plataforma-period-hint" id="rendimento-periodo"></span>
+          </form>
+          <section class="plataforma-cards plataforma-performance-cards" id="rendimento-cards" aria-label="Indicadores de rendimento">
+            <p class="plataforma-loading">Carregando indicadores…</p>
+          </section>
+          <section class="plataforma-panel">
+            <div class="plataforma-panel-heading"><h2>Evolução do faturamento</h2><span>Vendas concluídas</span></div>
+            <div class="plataforma-chart plataforma-revenue-chart" id="rendimento-chart" aria-label="Gráfico de faturamento do período"></div>
+          </section>
+          <section class="plataforma-panel">
+            <div class="plataforma-panel-heading"><div><h2>Mercados em destaque</h2><p>Ordenados pelo faturamento no período selecionado.</p></div></div>
+            <div class="plataforma-table-wrap">
+              <table class="plataforma-table plataforma-revenue-table">
+                <thead><tr><th>#</th><th>Mercado</th><th>Cidade/UF</th><th>Vendas</th><th>Ticket médio</th><th>Faturamento</th></tr></thead>
+                <tbody id="rendimento-mercados-body"><tr><td colspan="6" class="plataforma-loading">Carregando mercados…</td></tr></tbody>
+              </table>
+            </div>
+            <div id="rendimento-mercados-vazio" class="plataforma-empty" hidden>Nenhuma venda concluída no período selecionado.</div>
+          </section>
+          <p class="plataforma-note">Considera somente vendas concluídas, pelo valor final registrado. Não desconta custos nem despesas e, por isso, não representa o lucro líquido.</p>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../../js/api.js"></script>
+  <script src="../../js/plataforma-guard.js"></script>
+  <script src="../../js/plataforma-app.js"></script>
+</body>
+
+</html>

@@ -115,8 +115,9 @@
             category: p.categoria,
             quantity: Number(p.quantidade),
             minStock: Number(p.estoque_minimo),
-            price: Number(p.preco_venda),
+            price: p.preco_venda !== null ? Number(p.preco_venda) : null,
             costPrice: p.preco_custo !== null ? Number(p.preco_custo) : 0,
+            barcode: p.codigo_barras || '',
             unit: p.unidade,
             lote: p.lote || null,
             validade: p.validade,
@@ -234,6 +235,7 @@
     }
 
     function formatCurrency(value) {
+        if (value === null || value === undefined) return '—';
         return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
@@ -409,6 +411,60 @@
     const modalTitle = document.getElementById('hydroModalTitle');
     const modalBody = document.getElementById('hydroModalBody');
     const modalFooter = document.getElementById('hydroModalFooter');
+    const inventoryCameraModal = document.getElementById('hydroInventoryCameraModal');
+    const inventoryCameraVideo = document.getElementById('hydroInventoryCameraVideo');
+    const inventoryCameraStatus = document.getElementById('hydroInventoryCameraStatus');
+    let activeInventoryScanner = null;
+    let inventoryCameraRequest = 0;
+
+    function closeInventoryCamera() {
+        inventoryCameraRequest++;
+        if (activeInventoryScanner) activeInventoryScanner.stop();
+        activeInventoryScanner = null;
+        inventoryCameraModal.hidden = true;
+    }
+
+    inventoryCameraModal.addEventListener('click', (event) => {
+        if (event.target.closest('[data-inventory-camera-close]')) closeInventoryCamera();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !inventoryCameraModal.hidden) closeInventoryCamera();
+    });
+
+    function startInventoryCamera(input) {
+        const request = ++inventoryCameraRequest;
+        inventoryCameraModal.hidden = false;
+        inventoryCameraStatus.textContent = 'Solicitando acesso à câmera…';
+        window.HydraBarcodeScanner.start(
+            inventoryCameraVideo,
+            (value) => {
+                const digits = String(value || '').trim();
+                if (!/^\d{8,14}$/.test(digits)) {
+                    inventoryCameraStatus.textContent = 'Código lido fora do limite de 8 a 14 dígitos. Tente novamente.';
+                    return;
+                }
+                input.value = digits;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                closeInventoryCamera();
+                input.focus();
+            },
+            (error) => {
+                inventoryCameraStatus.textContent = error.message || 'Não foi possível ler o código.';
+            }
+        ).then((scanner) => {
+            if (request !== inventoryCameraRequest || inventoryCameraModal.hidden) {
+                scanner.stop();
+                return;
+            }
+            activeInventoryScanner = scanner;
+            inventoryCameraStatus.textContent = 'Aponte a câmera para o código de barras.';
+        }).catch((error) => {
+            if (request === inventoryCameraRequest && !inventoryCameraModal.hidden) {
+                inventoryCameraStatus.textContent = error.message || 'Não foi possível iniciar a câmera.';
+            }
+        });
+    }
 
     function openModal({ title, bodyHtml, footerHtml, onMount }) {
         modalTitle.textContent = title;
@@ -419,6 +475,7 @@
     }
 
     function closeModal() {
+        closeInventoryCamera();
         modalOverlay.classList.remove('hydro-show');
     }
 
@@ -449,8 +506,8 @@
         <div class="hydro-detail-row"><span>Quantidade</span><span>${formatQuantity(p.quantity, p.unit)}</span></div>
         <div class="hydro-detail-row"><span>Estoque mínimo</span><span>${formatQuantity(p.minStock, p.unit)}</span></div>
         <div class="hydro-detail-row"><span>Validade</span><span>${validadeValue}</span></div>
-        <div class="hydro-detail-row"><span>Preço unitário</span><span>${formatCurrency(p.price)}</span></div>
-        <div class="hydro-detail-row"><span>Valor em estoque</span><span>${formatCurrency(p.price * p.quantity)}</span></div>
+        <div class="hydro-detail-row"><span>Preço unitário</span><span>${p.price === null ? 'Defina o preço deste item' : formatCurrency(p.price)}</span></div>
+        <div class="hydro-detail-row"><span>Valor em estoque</span><span>${p.price === null ? '—' : formatCurrency(p.price * p.quantity)}</span></div>
         <div class="hydro-detail-row"><span>Status</span><span><span class="hydro-badge ${statusBadgeClass(status)}">${status}</span></span></div>
       `,
             footerHtml: `<button class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroModalOkBtn">Fechar</button>`,
@@ -480,7 +537,7 @@
         </div>
         <div class="hydro-form-group">
           <label for="hydroEditSalePrice">Preço de venda (R$)</label>
-          <input type="number" id="hydroEditSalePrice" min="0" step="0.01" value="${p.price}">
+          <input type="number" id="hydroEditSalePrice" min="0" step="0.01" value="${p.price === null ? '' : p.price}">
         </div>`
             : '';
 
@@ -517,6 +574,18 @@
           </datalist>
         </div>${priceFieldsHtml}${quantityFieldHtml}
         <div class="hydro-form-group">
+          <label for="hydroEditBarcode">Código de barras (opcional)</label>
+          <div class="hydro-barcode-input-row">
+            <input type="text" id="hydroEditBarcode" inputmode="numeric" minlength="8" maxlength="14"
+                   pattern="[0-9]{8,14}" autocomplete="off" placeholder="8 a 14 dígitos"
+                   value="${escapeHtml(p.barcode || '')}">
+            <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroEditBarcodeCamera">
+              <i class="hydro-ic hydro-ic-camera" aria-hidden="true"></i> Ler com câmera
+            </button>
+          </div>
+          <span class="hydro-field-hint">O campo pode ficar vazio. Se informado, use de 8 a 14 números.</span>
+        </div>
+        <div class="hydro-form-group">
           <label for="hydroEditMin">Estoque mínimo</label>
           <input type="number" id="hydroEditMin" min="0" value="${p.minStock}">
         </div>
@@ -533,6 +602,13 @@
         });
 
         document.getElementById('hydroModalCancelBtn').addEventListener('click', closeModal);
+        const editBarcodeInput = document.getElementById('hydroEditBarcode');
+        editBarcodeInput.addEventListener('input', () => {
+            editBarcodeInput.value = editBarcodeInput.value.replace(/\D/g, '').slice(0, 14);
+        });
+        document.getElementById('hydroEditBarcodeCamera').addEventListener('click', () => {
+            startInventoryCamera(editBarcodeInput);
+        });
         document.getElementById('hydroModalSaveBtn').addEventListener('click', async () => {
             const name = document.getElementById('hydroEditName').value.trim();
             const desc = document.getElementById('hydroEditDesc').value.trim();
@@ -547,11 +623,14 @@
             const minStockRaw = document.getElementById('hydroEditMin').value.trim();
             const minStock = Math.max(0, Number(minStockRaw) || 0);
             const validade = document.getElementById('hydroEditValidade').value || null;
+            const barcode = editBarcodeInput.value.trim();
             // Só existem no formulário para quem tem produtos.editar_preco (RN04).
             const costPriceInput = document.getElementById('hydroEditCostPrice');
             const salePriceInput = document.getElementById('hydroEditSalePrice');
             const costPrice = costPriceInput ? Number(costPriceInput.value) || 0 : p.costPrice || 0;
-            const salePrice = salePriceInput ? Number(salePriceInput.value) || 0 : p.price;
+            const salePrice = salePriceInput
+                ? (salePriceInput.value.trim() === '' ? null : Number(salePriceInput.value))
+                : p.price;
 
             if (!name) {
                 showToast('Informe o nome do produto');
@@ -564,13 +643,22 @@
                 showToast('Informe a categoria do produto');
                 return;
             }
+            if (barcode !== '' && !/^\d{8,14}$/.test(barcode)) {
+                showToast('Código de barras: informe de 8 a 14 dígitos numéricos ou deixe vazio');
+                editBarcodeInput.focus();
+                return;
+            }
             // RN02: apagar o campo não pode virar 0 em silêncio.
             if (minStockRaw === '' || Number(minStockRaw) < 0) {
                 limparErrosDeCampo();
                 marcarErroDeCampo('estoque_minimo', 'Informe o estoque mínimo (use 0 se não precisar de alerta)');
                 return;
             }
-            if (salePriceInput && salePrice <= 0) {
+            if (salePriceInput && salePrice !== null && (!Number.isFinite(salePrice) || salePrice <= 0)) {
+                showToast('Informe um preço de venda válido');
+                return;
+            }
+            if (salePriceInput && salePrice === null && p.price !== null) {
                 showToast('Informe um preço de venda válido');
                 return;
             }
@@ -595,6 +683,7 @@
                         nome: name,
                         descricao: desc,
                         categoria: category,
+                        codigo_barras: barcode || null,
                         preco_custo: costPrice || null,
                         preco_venda: salePrice,
                         estoque_minimo: minStock,
@@ -629,6 +718,7 @@
             p.name = name;
             p.desc = desc;
             p.category = category;
+            p.barcode = barcode;
             p.quantity = quantity;
             p.minStock = minStock;
             p.validade = validade;

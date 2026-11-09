@@ -3,6 +3,8 @@
 namespace Hydra\Controllers;
 
 use Hydra\Repositories\FilialRepository;
+use Hydra\Repositories\CatalogoHortifrutiRepository;
+use Hydra\Repositories\ProdutoRepository;
 use Hydra\Repositories\UsuarioRepository;
 use Hydra\Repositories\VendaRepository;
 use Hydra\Support\Auth;
@@ -126,15 +128,45 @@ final class FilialController
     public function store(): void
     {
         $admin = Auth::requirePermission('loja.configurar');
-        $validado = $this->validar(Request::json(), $admin['id_loja'], null);
+        $dados = Request::json();
+        $importarHortifruti = ($dados['importar_hortifruti'] ?? false) === true;
+        if ($importarHortifruti && !Auth::can('produtos.importar_catalogo')) {
+            Response::json(['erro' => 'Seu cargo não tem permissão para importar o catálogo padrão.'], 403);
+            return;
+        }
+        $validado = $this->validar($dados, $admin['id_loja'], null);
         if (isset($validado['erro'])) {
             Response::json(['erro' => $validado['erro']], $validado['status']);
             return;
         }
         $campos = $validado['campos'];
 
-        $id = $this->filiais->create($admin['id_loja'], $campos);
-        Response::json(['filial' => self::publica($this->filiais->findInLoja($id, $admin['id_loja']))], 201);
+        $catalogo = $importarHortifruti ? new CatalogoHortifrutiRepository() : null;
+        if ($importarHortifruti) {
+            new ProdutoRepository();
+        }
+
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $id = $this->filiais->create($admin['id_loja'], $campos);
+            $importados = $catalogo !== null ? $catalogo->importar($admin['id_loja'], $id) : 0;
+            $pdo->commit();
+        } catch (\RuntimeException $e) {
+            $pdo->rollBack();
+            Response::json(['erro' => $e->getMessage()], 422);
+            return;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            error_log('[Hydra] Falha ao criar filial/importar catálogo: ' . $e->getMessage());
+            Response::json(['erro' => 'Não foi possível criar a filial e importar o catálogo. Nada foi alterado.'], 500);
+            return;
+        }
+
+        Response::json([
+            'filial' => self::publica($this->filiais->findInLoja($id, $admin['id_loja'])),
+            'hortifruti_importados' => $importados,
+        ], 201);
     }
 
     /** PUT /api/filiais/{id} */

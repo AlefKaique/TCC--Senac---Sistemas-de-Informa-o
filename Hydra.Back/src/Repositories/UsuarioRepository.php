@@ -63,6 +63,7 @@ final class UsuarioRepository
     {
         $stmt = db()->prepare(
             "SELECT u.id_usuario, u.id_loja, u.nome, u.email, u.perfil, u.id_cargo, u.status,
+                    l.status AS status_loja,
                     (SELECT GROUP_CONCAT(p.codigo ORDER BY p.codigo)
                        FROM cargo_permissoes cp
                        JOIN permissoes p ON p.id_permissao = cp.id_permissao
@@ -74,6 +75,7 @@ final class UsuarioRepository
                              WHERE uf.id_usuario = u.id_usuario
                                AND uf.id_filial = :id_filial_vinculo) AS filial_vinculada
                FROM usuarios u
+               JOIN lojas l ON l.id_loja = u.id_loja
               WHERE u.id_usuario = :id_usuario"
         );
         $stmt->execute([

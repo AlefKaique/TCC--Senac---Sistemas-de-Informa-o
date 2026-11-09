@@ -4,6 +4,7 @@ namespace Hydra\Support;
 
 use Hydra\Repositories\CargoRepository;
 use Hydra\Repositories\FilialRepository;
+use Hydra\Repositories\AdminPlataformaRepository;
 use Hydra\Repositories\UsuarioRepository;
 
 /**
@@ -85,6 +86,7 @@ final class Auth
             session_regenerate_id(true);
         }
 
+        unset($_SESSION['admin_plataforma'], $_SESSION['login_pendente_plataforma']);
         $_SESSION['id_usuario'] = (int) $usuario['id_usuario'];
         $_SESSION['id_loja'] = (int) $usuario['id_loja'];
         $_SESSION['perfil'] = $usuario['perfil'];
@@ -97,6 +99,125 @@ final class Auth
         // Sem isto, logar com outra conta no mesmo navegador (sem passar
         // pelo "Sair") herdaria a filial escolhida pela conta anterior.
         unset($_SESSION['id_filial']);
+    }
+
+    /** Inicia uma sessão exclusiva da plataforma, sem contexto de loja ou filial. */
+    public static function loginPlataforma(array $admin): void
+    {
+        self::reabrirSessao();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
+
+        unset(
+            $_SESSION['id_usuario'],
+            $_SESSION['id_loja'],
+            $_SESSION['id_filial'],
+            $_SESSION['perfil'],
+            $_SESSION['nome'],
+            $_SESSION['email'],
+            $_SESSION['id_cargo'],
+            $_SESSION['permissoes'],
+            $_SESSION['login_pendente'],
+            $_SESSION['login_pendente_plataforma']
+        );
+        $_SESSION['admin_plataforma'] = [
+            'id_admin' => (int) $admin['id_admin'],
+            'nome' => (string) $admin['nome'],
+            'email' => (string) $admin['email'],
+            'ultima_atividade' => time(),
+        ];
+    }
+
+    /** Encerra somente o contexto da plataforma e da verificação pendente. */
+    public static function logoutPlataforma(): void
+    {
+        self::reabrirSessao();
+        unset($_SESSION['admin_plataforma'], $_SESSION['login_pendente_plataforma']);
+        self::liberarSessao();
+    }
+
+    /**
+     * Revalida o administrador da plataforma e encerra sessões inativas após
+     * 30 minutos, sem aceitar uma sessão de usuário de loja como equivalente.
+     *
+     * @return array{id:int,nome:string,email:string,nivel:string}
+     */
+    public static function requirePlataforma(): array
+    {
+        self::reabrirSessao();
+        if (isset($_SESSION['id_usuario']) || isset($_SESSION['id_loja'])) {
+            self::logout();
+            Response::json([
+                'erro' => 'Sessão da plataforma expirada',
+                'codigo' => 'plataforma_nao_autenticado',
+            ], 401);
+            exit;
+        }
+        $sessao = $_SESSION['admin_plataforma'] ?? null;
+        if (!is_array($sessao) || empty($sessao['id_admin'])) {
+            self::liberarSessao();
+            Response::json([
+                'erro' => 'Sessão da plataforma expirada',
+                'codigo' => 'plataforma_nao_autenticado',
+            ], 401);
+            exit;
+        }
+
+        $ultimaAtividade = (int) ($sessao['ultima_atividade'] ?? 0);
+        if ($ultimaAtividade <= 0 || time() - $ultimaAtividade > 30 * 60) {
+            unset($_SESSION['admin_plataforma']);
+            self::liberarSessao();
+            Response::json([
+                'erro' => 'Sessão da plataforma expirada',
+                'codigo' => 'plataforma_nao_autenticado',
+            ], 401);
+            exit;
+        }
+
+        $admin = (new AdminPlataformaRepository())->findAtivoById((int) $sessao['id_admin']);
+        if ($admin === null) {
+            unset($_SESSION['admin_plataforma']);
+            self::liberarSessao();
+            Response::json([
+                'erro' => 'Sessão da plataforma expirada',
+                'codigo' => 'plataforma_nao_autenticado',
+            ], 401);
+            exit;
+        }
+
+        $_SESSION['admin_plataforma'] = [
+            'id_admin' => (int) $admin['id_admin'],
+            'nome' => (string) $admin['nome'],
+            'email' => (string) $admin['email'],
+            'nivel' => (string) $admin['nivel'],
+            'ultima_atividade' => time(),
+        ];
+
+        self::liberarSessao();
+
+        return [
+            'id' => (int) $admin['id_admin'],
+            'nome' => (string) $admin['nome'],
+            'email' => (string) $admin['email'],
+            'nivel' => (string) $admin['nivel'],
+        ];
+    }
+
+    /**
+     * Confere o papel em cada requisição protegida, nunca apenas no menu.
+     *
+     * @param string[] $niveisPermitidos
+     * @return array{id:int,nome:string,email:string,nivel:string}
+     */
+    public static function requirePlataformaNivel(array $niveisPermitidos): array
+    {
+        $admin = self::requirePlataforma();
+        if (!in_array($admin['nivel'], $niveisPermitidos, true)) {
+            Response::json(['erro' => 'Seu nível de acesso não permite esta ação.'], 403);
+            exit;
+        }
+        return $admin;
     }
 
     public static function logout(): void
@@ -223,6 +344,11 @@ final class Auth
      */
     public static function requireLogin(): array
     {
+        if (isset($_SESSION['admin_plataforma'])) {
+            self::logout();
+            Response::json(['erro' => 'Não autenticado'], 401);
+            exit;
+        }
         $user = self::user();
         if ($user === null) {
             Response::json(['erro' => 'Não autenticado'], 401);
@@ -236,6 +362,14 @@ final class Auth
         if ($atual === null || $atual['status'] !== 'ativo') {
             self::logout();
             Response::json(['erro' => 'Sua conta foi desativada ou removida. Faça login novamente.'], 401);
+            exit;
+        }
+        if ($atual['status_loja'] === 'suspensa') {
+            self::logout();
+            Response::json([
+                'erro' => 'O acesso deste mercado está suspenso. Entre em contato com o suporte Hydra.',
+                'codigo' => 'loja_suspensa',
+            ], 403);
             exit;
         }
 

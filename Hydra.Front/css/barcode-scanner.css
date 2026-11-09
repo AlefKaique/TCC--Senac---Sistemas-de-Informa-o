@@ -1,0 +1,226 @@
+.hydro-camera-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+}
+
+.hydro-camera-modal[hidden] {
+    display: none;
+}
+
+.hydro-camera-backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: rgba(13, 26, 61, .68);
+}
+
+.hydro-camera-dialog {
+    position: relative;
+    width: min(100%, 560px);
+    padding: 22px;
+    border: 1px solid var(--border, #e7e9f2);
+    border-radius: 16px;
+    background: var(--card, #fff);
+    color: var(--ink, #16213e);
+    box-shadow: 0 20px 50px rgba(13, 26, 61, .28);
+}
+
+.hydro-camera-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.hydro-camera-header h2 {
+    margin: 0 0 5px;
+    font-size: 19px;
+}
+
+.hydro-camera-header p,
+.hydro-camera-status {
+    margin: 0;
+    color: var(--muted, #697184);
+    font-size: 13px;
+}
+
+.hydro-camera-video {
+    display: block;
+    width: 100%;
+    max-height: 55vh;
+    min-height: 200px;
+    border-radius: 10px;
+    background: #10131a;
+    object-fit: cover;
+}
+
+.hydro-camera-status {
+    min-height: 20px;
+    margin-top: 12px;
+}
+
+.hydro-barcode-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.hydro-barcode-input-row input {
+    flex: 1;
+    min-width: 0;
+}
+
+.hydro-barcode-input-row .hydro-btn {
+    flex-shrink: 0;
+}
+
+.hydro-scan-bar {
+    min-width: 0;
+}
+
+.hydro-scan-bar input {
+    min-width: 0;
+}
+
+.hydro-scan-bar .hydro-btn {
+    flex-shrink: 0;
+}
+
+.hydro-pix-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 310;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+}
+
+.hydro-pix-modal[hidden] {
+    display: none;
+}
+
+.hydro-pix-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(13, 26, 61, .72);
+}
+
+.hydro-pix-dialog {
+    position: relative;
+    width: min(100%, 460px);
+    max-height: 95vh;
+    overflow-y: auto;
+    padding: 22px;
+    border: 1px solid var(--border, #e7e9f2);
+    border-radius: 16px;
+    background: var(--card, #fff);
+    color: var(--ink, #16213e);
+    box-shadow: 0 20px 50px rgba(13, 26, 61, .28);
+}
+
+.hydro-pix-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.hydro-pix-header h2 {
+    margin: 0;
+    font-size: 19px;
+}
+
+.hydro-pix-header strong {
+    white-space: nowrap;
+}
+
+.hydro-pix-eyebrow {
+    margin: 0 0 4px;
+    color: var(--muted, #697184);
+    font-size: 12px;
+}
+
+.hydro-pix-qr {
+    display: block;
+    width: min(100%, 260px);
+    aspect-ratio: 1;
+    margin: 10px auto;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.hydro-pix-status {
+    min-height: 22px;
+    text-align: center;
+    color: var(--muted, #697184);
+}
+
+.hydro-pix-dialog label {
+    display: block;
+    margin: 14px 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.hydro-pix-copy-code {
+    width: 100%;
+    resize: vertical;
+    padding: 9px;
+    border: 1px solid var(--border, #e7e9f2);
+    border-radius: 8px;
+    background: var(--card, #fff);
+    color: var(--ink, #16213e);
+    font: 12px/1.45 monospace;
+}
+
+.hydro-pix-actions {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.hydro-pix-actions button {
+    justify-content: center;
+}
+
+@media (max-width: 520px) {
+    .hydro-camera-modal {
+        padding: 12px;
+    }
+
+    .hydro-camera-dialog {
+        padding: 17px;
+    }
+
+    .hydro-pix-dialog {
+        padding: 17px;
+    }
+
+    .hydro-barcode-input-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .hydro-barcode-input-row .hydro-btn {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 380px) {
+    .hydro-scan-bar .hydro-btn span {
+        display: none;
+    }
+
+    .hydro-scan-bar .hydro-btn {
+        padding-inline: 10px;
+    }
+}

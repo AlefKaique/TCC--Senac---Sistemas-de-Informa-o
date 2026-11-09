@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="../css/menu-submenu.css">
     <link rel="stylesheet" href="../css/public-demo.css">
     <link rel="stylesheet" href="../css/font-size.css">
+    <link rel="stylesheet" href="../css/barcode-scanner.css">
     <link rel="stylesheet" href="../css/avatar.css">
 </head>
 
@@ -193,6 +194,23 @@
 
         <div class="hydro-toast" id="hydroToast"></div>
 
+        <div class="hydro-camera-modal" id="hydroInventoryCameraModal" hidden>
+            <button type="button" class="hydro-camera-backdrop" data-inventory-camera-close aria-label="Fechar câmera"></button>
+            <section class="hydro-camera-dialog" role="dialog" aria-modal="true" aria-labelledby="hydroInventoryCameraTitle">
+                <header class="hydro-camera-header">
+                    <div>
+                        <h2 id="hydroInventoryCameraTitle">Ler código de barras</h2>
+                        <p>Aponte a câmera para o código do produto.</p>
+                    </div>
+                    <button type="button" class="hydro-icon-btn" data-inventory-camera-close aria-label="Fechar">
+                        <i class="hydro-ic hydro-ic-close"></i>
+                    </button>
+                </header>
+                <video class="hydro-camera-video" id="hydroInventoryCameraVideo" autoplay muted playsinline></video>
+                <p class="hydro-camera-status" id="hydroInventoryCameraStatus" role="status">Solicitando acesso à câmera…</p>
+            </section>
+        </div>
+
     </div>
 
     <div class="accessibility-widget">
@@ -204,6 +222,7 @@
     <script src="../js/trocar-filial.js"></script>
     <script src="../js/public-demo.js"></script>
     <script src="../js/font-size.js"></script>
+    <script src="../js/barcode-scanner.js"></script>
     <script src="../js/controle-estoque.js"></script>
 </body>
 

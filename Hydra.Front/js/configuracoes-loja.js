@@ -17,6 +17,270 @@
         toastTimer = setTimeout(() => toast.classList.remove('hydro-show'), 2600);
     }
 
+    const mercadoPagoStatus = document.getElementById('hydroMercadoPagoStatus');
+    const mercadoPagoConnect = document.getElementById('hydroMercadoPagoConnect');
+    const mercadoPagoDisconnect = document.getElementById('hydroMercadoPagoDisconnect');
+
+    async function carregarContaMercadoPago() {
+        const conta = await window.hydraApi('/pix/mercadopago/conta');
+        if (!conta.configurado) {
+            mercadoPagoStatus.textContent = 'Integração indisponível: o administrador do servidor precisa configurar as credenciais Mercado Pago e a chave de criptografia.';
+            mercadoPagoConnect.disabled = true;
+            mercadoPagoDisconnect.hidden = true;
+            return;
+        }
+        mercadoPagoStatus.textContent = conta.conectada
+            ? `Conta Mercado Pago conectada (ID ${conta.mp_user_id}).`
+            : 'Nenhuma conta Mercado Pago conectada para esta loja.';
+        mercadoPagoConnect.textContent = conta.conectada ? 'Reconectar Mercado Pago' : 'Conectar Mercado Pago';
+        mercadoPagoConnect.disabled = false;
+        mercadoPagoDisconnect.hidden = !conta.conectada;
+    }
+
+    mercadoPagoConnect.addEventListener('click', async () => {
+        mercadoPagoConnect.disabled = true;
+        try {
+            const { authorization_url: authorizationUrl } = await window.hydraApi('/pix/mercadopago/conectar', {
+                method: 'POST',
+                body: {},
+            });
+            window.location.assign(authorizationUrl);
+        } catch (error) {
+            showToast(error.message);
+            mercadoPagoConnect.disabled = false;
+        }
+    });
+
+    mercadoPagoDisconnect.addEventListener('click', async () => {
+        if (!confirm('Desconectar a conta Mercado Pago desta loja? Cobranças Pix pendentes deixarão de ser consultadas.')) return;
+        mercadoPagoDisconnect.disabled = true;
+        try {
+            await window.hydraApi('/pix/mercadopago/conta', { method: 'DELETE' });
+            await carregarContaMercadoPago();
+            showToast('Conta Mercado Pago desconectada.');
+        } catch (error) {
+            showToast(error.message);
+        } finally {
+            mercadoPagoDisconnect.disabled = false;
+        }
+    });
+
+    /* ================= Alertas de estoque e validade ================= */
+    const alertasCard = document.getElementById('alertas');
+    const alertasPreview = document.getElementById('hydroAlertasPreview');
+    const alertasTelefoneNovo = document.getElementById('hydroAlertasTelefoneNovo');
+    const alertasConsentimentoNovo = document.getElementById('hydroAlertasConsentimentoNovo');
+    const alertasAdicionar = document.getElementById('hydroAlertasAdicionar');
+    const alertasDestinatarios = document.getElementById('hydroAlertasDestinatarios');
+    const alertasSemDestinatarios = document.getElementById('hydroAlertasSemDestinatarios');
+    const alertasCanal = document.getElementById('hydroAlertasCanal');
+    const alertaEstoque = document.getElementById('hydroAlertaEstoque');
+    const alertaValidade = document.getElementById('hydroAlertaValidade');
+    const diasValidade = document.getElementById('hydroDiasValidade');
+    const alertasSalvar = document.getElementById('hydroAlertasSalvar');
+    const alertasTeste = document.getElementById('hydroAlertasTeste');
+    const alertasStatus = document.getElementById('hydroAlertasStatus');
+    const alertasEnvios = document.getElementById('hydroAlertasEnvios');
+    const alertasSemEnvios = document.getElementById('hydroAlertasSemEnvios');
+    let preferenciasAlertasSalvas = null;
+
+    function formatarTelefoneAlertas(valor) {
+        let digitos = valor.replace(/\D/g, '');
+        if (digitos.length === 13 && digitos.startsWith('55')) digitos = digitos.slice(2);
+        digitos = digitos.slice(0, 11);
+        if (digitos.length <= 2) return digitos ? `(${digitos}` : '';
+        if (digitos.length <= 7) return `(${digitos.slice(0, 2)}) ${digitos.slice(2)}`;
+        return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}`;
+    }
+
+    function atualizarStatusAlertas(preferencias) {
+        const canaisEmail = ['email', 'ambos'].includes(preferencias.canal);
+        const canaisWhatsapp = ['whatsapp', 'ambos'].includes(preferencias.canal);
+        const temDestinatarios = (preferencias.destinatarios || []).length > 0;
+        const ativo = (Boolean(Number(preferencias.alerta_estoque)) || Boolean(Number(preferencias.alerta_validade)))
+            && (canaisEmail || (canaisWhatsapp && temDestinatarios));
+        alertasStatus.textContent = ativo
+            ? 'Alertas ativos – próximo resumo amanhã às 7h.'
+            : 'Alertas desligados.';
+    }
+
+    function renderizarDestinatarios(destinatarios) {
+        alertasDestinatarios.replaceChildren();
+        alertasSemDestinatarios.hidden = destinatarios.length > 0;
+        destinatarios.forEach((destinatario) => {
+            const item = document.createElement('li');
+            item.className = 'hydro-alerta-destinatario';
+            const contato = document.createElement('div');
+            contato.className = 'hydro-alerta-destinatario-info';
+            const telefone = document.createElement('strong');
+            telefone.textContent = formatarTelefoneAlertas(destinatario.telefone_whatsapp);
+            const consentimento = document.createElement('small');
+            const data = destinatario.consentimento_em
+                ? new Date(String(destinatario.consentimento_em).replace(' ', 'T')).toLocaleString('pt-BR')
+                : 'Autorização registrada';
+            consentimento.textContent = `Autorizado em ${data}`;
+            contato.append(telefone, consentimento);
+
+            const remover = document.createElement('button');
+            remover.type = 'button';
+            remover.className = 'hydro-btn hydro-btn-outline hydro-btn-sm';
+            remover.textContent = 'Remover';
+            remover.setAttribute('aria-label', `Remover telefone ${formatarTelefoneAlertas(destinatario.telefone_whatsapp)}`);
+            remover.addEventListener('click', async () => {
+                remover.disabled = true;
+                try {
+                    await window.hydraApi(`/alertas/destinatarios/${destinatario.id_destinatario}`, {
+                        method: 'DELETE',
+                    });
+                    await carregarPreferenciasAlertas();
+                    showToast('Telefone removido dos alertas.');
+                } catch (error) {
+                    showToast(error.message);
+                    remover.disabled = false;
+                }
+            });
+            item.append(contato, remover);
+            alertasDestinatarios.appendChild(item);
+        });
+    }
+
+    function renderizarEnviosAlertas(envios) {
+        alertasEnvios.replaceChildren();
+        alertasSemEnvios.hidden = envios.length > 0;
+        envios.forEach((envio) => {
+            const item = document.createElement('li');
+            item.className = 'hydro-alerta-envio';
+            const resumo = document.createElement('span');
+            const data = String(envio.data_referencia || '').slice(0, 10);
+            const canal = envio.canal === 'whatsapp' ? 'WhatsApp' : 'E-mail';
+            resumo.textContent = `${data} · ${envio.nome_filial} · ${canal}`;
+            const status = document.createElement('span');
+            status.className = `hydro-alerta-envio-status hydro-alerta-envio-status--${envio.status}`;
+            const nomesStatus = {
+                enviado: 'Enviado',
+                entregue: 'Entregue',
+                lido: 'Lido',
+                falhou: 'Falhou',
+            };
+            status.textContent = nomesStatus[envio.status] || 'Enviado';
+            item.append(resumo, status);
+            alertasEnvios.appendChild(item);
+        });
+    }
+
+    function atualizarBotaoTesteAlertas() {
+        if (!preferenciasAlertasSalvas) {
+            alertasTeste.disabled = true;
+            return;
+        }
+        const formularioSalvo = alertasCanal.value === preferenciasAlertasSalvas.canal
+            && alertaEstoque.checked === Boolean(Number(preferenciasAlertasSalvas.alerta_estoque))
+            && alertaValidade.checked === Boolean(Number(preferenciasAlertasSalvas.alerta_validade))
+            && Number(diasValidade.value) === Number(preferenciasAlertasSalvas.dias_validade);
+        const precisaDestinatarioWhatsapp = ['whatsapp', 'ambos'].includes(preferenciasAlertasSalvas.canal);
+        alertasTeste.disabled = !formularioSalvo
+            || (precisaDestinatarioWhatsapp
+                && (!preferenciasAlertasSalvas.destinatarios
+                    || preferenciasAlertasSalvas.destinatarios.length === 0));
+    }
+
+    async function carregarPreferenciasAlertas() {
+        const resposta = await window.hydraApi('/alertas/preferencias');
+        const preferencias = resposta.preferencias;
+        preferencias.destinatarios = resposta.destinatarios || [];
+        preferenciasAlertasSalvas = preferencias;
+        alertasCanal.value = preferencias.canal || 'whatsapp';
+        alertaEstoque.checked = Boolean(Number(preferencias.alerta_estoque));
+        alertaValidade.checked = Boolean(Number(preferencias.alerta_validade));
+        diasValidade.value = String(preferencias.dias_validade || 7);
+        atualizarBotaoTesteAlertas();
+        atualizarStatusAlertas(preferencias);
+        renderizarDestinatarios(preferencias.destinatarios);
+        renderizarEnviosAlertas(resposta.ultimos_envios || []);
+    }
+
+    alertasTelefoneNovo.addEventListener('input', () => {
+        alertasTelefoneNovo.value = formatarTelefoneAlertas(alertasTelefoneNovo.value);
+    });
+    alertasTelefoneNovo.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            alertasAdicionar.click();
+        }
+    });
+    alertasAdicionar.addEventListener('click', async () => {
+        if (!alertasConsentimentoNovo.checked) {
+            showToast('Confirme que a pessoa autorizou receber mensagens antes de adicionar o número.');
+            alertasConsentimentoNovo.focus();
+            return;
+        }
+        alertasAdicionar.disabled = true;
+        try {
+            await window.hydraApi('/alertas/destinatarios', {
+                method: 'POST',
+                body: {
+                    telefone: alertasTelefoneNovo.value,
+                    consentimento: alertasConsentimentoNovo.checked,
+                },
+            });
+            alertasTelefoneNovo.value = '';
+            alertasConsentimentoNovo.checked = false;
+            await carregarPreferenciasAlertas();
+            showToast('Telefone autorizado adicionado.');
+        } catch (error) {
+            showToast(error.message);
+        } finally {
+            alertasAdicionar.disabled = false;
+        }
+    });
+    [alertasCanal, alertaEstoque, alertaValidade, diasValidade]
+        .forEach((campo) => campo.addEventListener('change', atualizarBotaoTesteAlertas));
+
+    alertasSalvar.addEventListener('click', async () => {
+        alertasSalvar.disabled = true;
+        try {
+            await window.hydraApi('/alertas/preferencias', {
+                method: 'PUT',
+                body: {
+                    canal: alertasCanal.value,
+                    alerta_estoque: alertaEstoque.checked,
+                    alerta_validade: alertaValidade.checked,
+                    dias_validade: Number(diasValidade.value),
+                },
+            });
+            await carregarPreferenciasAlertas();
+            showToast('Preferências de alertas salvas.');
+        } catch (error) {
+            showToast(error.message);
+        } finally {
+            alertasSalvar.disabled = false;
+        }
+    });
+
+    alertasTeste.addEventListener('click', async () => {
+        alertasTeste.disabled = true;
+        try {
+            const resposta = await window.hydraApi('/alertas/teste', { method: 'POST', body: {} });
+            showToast(resposta.mensagem || 'Mensagem de teste enviada.');
+            await carregarPreferenciasAlertas();
+        } catch (error) {
+            showToast(error.message);
+        } finally {
+            atualizarBotaoTesteAlertas();
+        }
+    });
+
+    const retornoMercadoPago = new URLSearchParams(window.location.search).get('mercadopago');
+    if (retornoMercadoPago) {
+        const mensagens = {
+            conectada: 'Conta Mercado Pago conectada com sucesso.',
+            cancelada: 'Conexão Mercado Pago cancelada.',
+            erro: 'Não foi possível conectar a conta Mercado Pago.',
+        };
+        showToast(mensagens[retornoMercadoPago] || 'Retorno da conexão Mercado Pago recebido.');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     /* ================= Logo da loja =================
        Antes era só pré-visualização local e sumia ao recarregar (QA 006).
        Agora a imagem é reduzida aqui (até 256 px, para não pesar no banco)
@@ -87,8 +351,10 @@
        Mesmas regras de Hydra\Support\Validacao no back-end, que é quem
        decide; aqui é para o usuário ver o erro no campo antes de enviar. */
     const cnpjInput = document.getElementById('hydroCnpj');
+    const cnpjBrasilApiStatus = document.getElementById('hydroCnpjBrasilApiStatus');
     const telefoneInput = document.getElementById('hydroTelefone');
     const cepInput = document.getElementById('hydroCep');
+    let cnpjBrasilApiVerificado = null;
 
     // CNPJ alfanumérico (2026): 12 posições 0-9/A-Z + 2 dígitos verificadores.
     function mascaraCnpj(v) {
@@ -111,16 +377,34 @@
         return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
     }
 
-    function cnpjValido(v) {
-        const c = String(v).toUpperCase().replace(/[^0-9A-Z]/g, '');
-        if (!/^[0-9A-Z]{12}[0-9]{2}$/.test(c) || /^(\d)\1{13}$/.test(c)) return false;
-        const val = [...c].map((ch) => ch.charCodeAt(0) - 48);
-        const dv = (n) => {
-            const pesos = n === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-            const resto = pesos.reduce((soma, p, i) => soma + val[i] * p, 0) % 11;
-            return resto < 2 ? 0 : 11 - resto;
-        };
-        return dv(12) === val[12] && dv(13) === val[13];
+    function atualizarStatusCnpj(texto, estado = '') {
+        cnpjBrasilApiStatus.textContent = texto;
+        if (estado) cnpjBrasilApiStatus.dataset.status = estado;
+        else delete cnpjBrasilApiStatus.dataset.status;
+    }
+
+    async function verificarCnpjBrasilApi() {
+        const cnpj = window.hydraCnpj.normalizar(cnpjInput.value);
+        if (!cnpj) {
+            cnpjBrasilApiVerificado = null;
+            atualizarStatusCnpj('');
+            return;
+        }
+        if (!window.hydraCnpj.validoLocal(cnpj)) {
+            throw new Error('CNPJ inválido. Confira os 14 caracteres e os dígitos verificadores.');
+        }
+        if (cnpjBrasilApiVerificado === cnpj) return;
+
+        atualizarStatusCnpj('Consultando CNPJ na BrasilAPI…');
+        const consulta = await window.hydraCnpj.consultarBrasilApi(cnpj);
+        cnpjBrasilApiVerificado = cnpj;
+        const situacao = consulta.situacao ? ` Situação cadastral: ${consulta.situacao}.` : '';
+        atualizarStatusCnpj(
+            consulta.consultado
+                ? `CNPJ encontrado na BrasilAPI.${situacao}`
+                : consulta.mensagem,
+            'sucesso'
+        );
     }
     const telefoneValido = (v) => /^[1-9][1-9](?:[2-8]\d{7}|9\d{8})$/.test(String(v).replace(/\D/g, ''));
     const cepValido = (v) => String(v).replace(/\D/g, '').length === 8;
@@ -129,6 +413,17 @@
         input.addEventListener('input', () => {
             input.value = mascara(input.value);
             limparErroCampo(input);
+            if (input === cnpjInput) {
+                cnpjBrasilApiVerificado = null;
+                atualizarStatusCnpj('');
+            }
+        });
+    });
+
+    cnpjInput.addEventListener('blur', () => {
+        verificarCnpjBrasilApi().catch((erro) => {
+            cnpjBrasilApiVerificado = null;
+            atualizarStatusCnpj(erro.message, 'erro');
         });
     });
 
@@ -137,6 +432,7 @@
         input.style.borderColor = '';
         const msg = document.getElementById(input.id + 'Erro');
         if (msg) msg.remove();
+        if (input === cnpjInput) input.setAttribute('aria-describedby', cnpjBrasilApiStatus.id);
     }
     function marcarErroCampo(input, mensagem) {
         limparErroCampo(input);
@@ -183,7 +479,7 @@
         const nome_loja = nomeInput.value.trim();
         const erros = [];
         if (!nome_loja) erros.push([nomeInput, 'Informe o nome da loja']);
-        if (cnpjInput.value.trim() && !cnpjValido(cnpjInput.value)) {
+        if (cnpjInput.value.trim() && !window.hydraCnpj.validoLocal(cnpjInput.value)) {
             erros.push([cnpjInput, 'CNPJ inválido. Confira os 14 caracteres e os dígitos verificadores.']);
         }
         if (telefoneInput.value.trim() && !telefoneValido(telefoneInput.value)) {
@@ -197,6 +493,15 @@
             erros.forEach(([input, msg]) => marcarErroCampo(input, msg));
             erros[0][0].focus();
             showToast(erros[0][1]);
+            return;
+        }
+
+        try {
+            await verificarCnpjBrasilApi();
+        } catch (erro) {
+            marcarErroCampo(cnpjInput, erro.message);
+            atualizarStatusCnpj(erro.message, 'erro');
+            cnpjInput.focus();
             return;
         }
 
@@ -282,10 +587,30 @@
             const nameEl = document.getElementById('hydroUserName');
             if (nameEl) nameEl.textContent = (usuario.nome || '').split(' ')[0];
             window.hydraAplicarMenuPorPermissao(usuario);
-            // Mesma permissao que a API exige em GET /api/loja.
-            if (!window.hydraGuardaDeTela(usuario, ['loja.configurar'])) return;
+            const podeConfigurarLoja = window.hydraPode(usuario, ['loja.configurar']);
+            if (!window.hydraGuardaDeTela(usuario, ['loja.configurar', 'relatorios.visualizar'])) return;
+            form.style.display = '';
+            form.querySelectorAll('[data-hydro-config-admin]').forEach((element) => {
+                element.hidden = !podeConfigurarLoja;
+            });
+            const badgeAdmin = document.getElementById('hydroConfigAdminBadge');
+            if (badgeAdmin) badgeAdmin.hidden = !podeConfigurarLoja;
+            alertasCard.hidden = !podeConfigurarLoja;
+            if (podeConfigurarLoja && window.location.hash === '#alertas') {
+                alertasCard.scrollIntoView({ block: 'start' });
+            }
+
+            if (podeConfigurarLoja) {
+                try {
+                    await carregarPreferenciasAlertas();
+                } catch (error) {
+                    showToast(error.message);
+                }
+            }
+            if (!podeConfigurarLoja) return;
         } catch (err) {
-            // Visitante não autenticado (demo pública): mantém a tela estática, sem carregar dados reais.
+            alertasPreview.hidden = false;
+            // A prévia pública exibe apenas campos vazios e desativados.
             return;
         }
 
@@ -293,6 +618,7 @@
             const { loja } = await window.hydraApi('/loja');
             lojaAtual = loja;
             fillForm(loja);
+            await carregarContaMercadoPago();
         } catch (err) {
             showToast(err.message);
         }

@@ -83,6 +83,8 @@
                 <header class="hydro-topbar">
                     <h1>Relatório</h1>
                     <div class="hydro-topbar-actions">
+                        <a class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroAlertasSettingsLink"
+                            href="configuracoes-loja.html#alertas" hidden>Configurar alertas</a>
                         <button class="hydro-icon-btn" aria-label="Notificações">
                             <i class="hydro-ic hydro-ic-bell"></i>
                             <span class="hydro-notif-dot"></span>
@@ -118,7 +120,72 @@
                     </div>
                 </section>
 
-                <!-- KPIs -->
+                <section class="hydro-card report-today" id="reportToday" data-report-section="today">
+                    <h2>Hoje</h2><p>Vendas de hoje e comparação com o mesmo dia da semana passada.</p>
+                    <div id="reportTodayContent"></div><p class="report-state" data-report-state>Carregando…</p>
+                </section>
+                <section class="report-kpis" id="reportKpis" data-report-section="summary">
+                    <p class="report-state" data-report-state>Carregando…</p>
+                    <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm report-export-summary" data-export="summary">Exportar resumo CSV</button>
+                    <div id="reportKpiContent"></div><div id="reportWarnings"></div>
+                </section>
+                <section class="hydro-card report-section" id="reportDaily" data-report-section="daily">
+                    <div class="report-section-heading"><div><h2>Como as vendas andaram?</h2><p>Faturamento diário e comparação com o período anterior.</p></div>
+                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="daily">Exportar CSV</button></div>
+                    <div class="report-chart" id="reportDailyChart"></div><p class="report-state" data-report-state>Carregando…</p>
+                </section>
+                <section class="report-two-columns">
+                    <section class="hydro-card report-section" id="reportPayments" data-report-section="payments">
+                        <div class="report-section-heading"><h2>Como meus clientes pagam?</h2>
+                            <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="payments">Exportar CSV</button></div>
+                        <div id="reportPaymentsContent"></div><p class="report-state" data-report-state>Carregando…</p>
+                    </section>
+                    <section class="hydro-card report-section" id="reportHours" data-report-section="hours">
+                        <div class="report-section-heading"><h2>Quando a loja enche?</h2>
+                            <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="hours">Exportar CSV</button></div>
+                        <p id="reportPeak"></p><div class="report-heatmap" id="reportHeatmap"></div>
+                        <p class="report-state" data-report-state>Carregando…</p>
+                    </section>
+                </section>
+                <section class="hydro-card report-section" id="reportProducts" data-report-section="products">
+                    <div class="report-section-heading"><div><h2>O que mais vende e o que dá lucro?</h2><p id="reportAbcSummary"></p></div>
+                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="products">Exportar CSV</button></div>
+                    <div class="report-tabs" role="tablist">
+                        <button type="button" class="hydro-period-preset hydro-active" data-product-tab="top_faturamento">Mais vendidos</button>
+                        <button type="button" class="hydro-period-preset" data-product-tab="top_lucro">Mais lucrativos</button>
+                        <button type="button" class="hydro-period-preset" data-product-tab="menor_margem">Margem baixa</button>
+                    </div><div id="reportProductsContent"></div><p class="report-state" data-report-state>Carregando…</p>
+                </section>
+                <section class="hydro-card report-section" id="reportRupture" data-report-section="rupture">
+                    <div class="report-section-heading"><div><h2>O que vai faltar?</h2><p>Estimativa baseada nas vendas dos últimos 30 dias.</p></div>
+                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="rupture">Exportar CSV</button>
+                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="reportPrintPurchase">Imprimir lista de compras</button></div>
+                    <div id="reportRuptureContent"></div><p class="report-state" data-report-state>Carregando…</p>
+                </section>
+                <section class="hydro-card report-section" id="reportStock" data-report-section="stock">
+                    <h2>Dinheiro parado no estoque</h2><div id="reportStockTotals"></div>
+                    <div class="report-section-heading"><h3>Sem venda nos últimos 30 dias</h3>
+                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="stagnant">Exportar CSV</button></div>
+                    <div id="reportStagnantContent"></div><p class="report-state" data-report-state>Carregando…</p>
+                </section>
+                <section class="hydro-card report-section" id="reportInventoryAlerts" data-report-section="inventory">
+                    <h2>Alertas atuais de estoque mínimo e validade</h2>
+                    <div id="reportInventoryContent"></div><p class="report-state" data-report-state>Carregando…</p>
+                    <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="reportPrintExpiry">Imprimir relatório de validade</button>
+                </section>
+                <section class="hydro-card report-section" id="reportCancellations" data-report-section="cancellations">
+                    <div class="report-section-heading"><div><h2>Cancelamentos</h2><div id="reportCancellationSummary"></div></div>
+                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="cancellations">Exportar CSV</button></div>
+                    <div class="report-two-columns"><div id="reportCancelByOperator"></div><div id="reportCancelByAuthorizer"></div></div>
+                    <h3>Últimos cancelamentos</h3><div id="reportCancellationTable"></div><p class="report-state" data-report-state>Carregando…</p>
+                </section>
+                <section class="hydro-card report-section" id="reportOperators" data-report-section="operators">
+                    <div class="report-section-heading"><h2>Desempenho da equipe</h2>
+                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="operators">Exportar CSV</button></div>
+                    <div id="reportOperatorsContent"></div><p class="report-state" data-report-state>Carregando…</p>
+                </section>
+
+                <!-- Relatórios antigos preservados apenas para compatibilidade visual; ocultos na página atual. -->
                 <section class="hydro-kpi-grid" id="hydroKpiGrid"></section>
 
                 <!-- Gráficos -->
@@ -234,7 +301,7 @@
     <script src="../js/trocar-filial.js"></script>
     <script src="../js/public-demo.js"></script>
     <script src="../js/font-size.js"></script>
-    <script src="../js/dashboard.js"></script>
+    <script src="../js/relatorios-dashboard.js"></script>
 </body>
 
 </html>

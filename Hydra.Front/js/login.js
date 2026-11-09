@@ -112,7 +112,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       btn.disabled = false;
       btn.textContent = originalText;
-      showError(form, err.message);
+      showError(form, err.data && err.data.codigo === 'loja_suspensa'
+        ? 'O acesso deste mercado está suspenso. Entre em contato com o suporte Hydra.'
+        : err.message);
     }
   });
 
@@ -152,7 +154,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showError(form, err.message);
         return;
       }
-      showError(codigoForm, err.message);
+      showError(codigoForm, err.data && err.data.codigo === 'loja_suspensa'
+        ? 'O acesso deste mercado está suspenso. Entre em contato com o suporte Hydra.'
+        : err.message);
     }
   });
 

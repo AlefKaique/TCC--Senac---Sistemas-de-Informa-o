@@ -85,7 +85,7 @@
                 <header class="hydro-topbar">
                     <div class="hydro-topbar-title">
                         <h1>Dados da Loja</h1>
-                        <span class="hydro-restricted-badge"><i class="hydro-ic hydro-ic-lock"></i> Apenas Administrador</span>
+                        <span class="hydro-restricted-badge" id="hydroConfigAdminBadge"><i class="hydro-ic hydro-ic-lock"></i> Apenas Administrador</span>
                     </div>
                     <div class="hydro-topbar-actions">
                         <button class="hydro-icon-btn" aria-label="Notificações">
@@ -99,11 +99,11 @@
                     </div>
                 </header>
 
-                <p class="hydro-settings-intro">Mantenha aqui os dados da loja atualizados. Filiais sem dados próprios usam estes.</p>
+                <p class="hydro-settings-intro" id="hydroSettingsIntro" data-hydro-config-admin>Mantenha aqui os dados da loja atualizados. Filiais sem dados próprios usam estes.</p>
 
                 <form id="hydroSettingsForm" novalidate>
 
-                    <section class="hydro-card">
+                    <section class="hydro-card" data-hydro-config-admin>
                         <div class="hydro-card-header">
                             <h2>Identidade da loja</h2>
                             <p>Nome e logo exibidos no sistema.</p>
@@ -128,7 +128,7 @@
                         </div>
                     </section>
 
-                    <section class="hydro-card">
+                    <section class="hydro-card" data-hydro-config-admin>
                         <div class="hydro-card-header">
                             <h2>Dados cadastrais</h2>
                             <p>CNPJ e telefone de contato da loja.</p>
@@ -136,7 +136,9 @@
                         <div class="hydro-card-body hydro-settings-grid">
                             <div class="hydro-form-group">
                                 <label for="hydroCnpj"><i class="hydro-ic hydro-ic-building"></i> CNPJ</label>
-                                <input type="text" id="hydroCnpj" placeholder="00.000.000/0000-00">
+                                <input type="text" id="hydroCnpj" placeholder="00.000.000/0000-00"
+                                    aria-describedby="hydroCnpjBrasilApiStatus">
+                                <small class="hydro-cnpj-status" id="hydroCnpjBrasilApiStatus" role="status" aria-live="polite"></small>
                             </div>
                             <div class="hydro-form-group">
                                 <label for="hydroTelefone"><i class="hydro-ic hydro-ic-phone"></i> Telefone</label>
@@ -145,7 +147,7 @@
                         </div>
                     </section>
 
-                    <section class="hydro-card">
+                    <section class="hydro-card" data-hydro-config-admin>
                         <div class="hydro-card-header">
                             <h2>Endereço</h2>
                             <p>Endereço físico do estabelecimento.</p>
@@ -199,7 +201,145 @@
                         </div>
                     </section>
 
-                    <div class="hydro-settings-footer">
+                    <section class="hydro-card" id="hydroMercadoPagoCard" data-hydro-config-admin>
+                        <div class="hydro-card-header">
+                            <h2>Recebimento Pix com QR Code</h2>
+                            <p>Conecte a conta Mercado Pago da loja para gerar cobranças dinâmicas no Caixa.</p>
+                        </div>
+                        <div class="hydro-card-body">
+                            <p id="hydroMercadoPagoStatus" role="status" aria-live="polite">
+                                Verificando conexão com o Mercado Pago…
+                            </p>
+                            <div class="hydro-mp-actions">
+                                <button type="button" class="hydro-btn hydro-btn-primary" id="hydroMercadoPagoConnect">
+                                    Conectar Mercado Pago
+                                </button>
+                                <button type="button" class="hydro-btn hydro-btn-outline" id="hydroMercadoPagoDisconnect" hidden>
+                                    Desconectar conta
+                                </button>
+                            </div>
+                            <p class="hydro-field-hint">
+                                O dinheiro é recebido diretamente na conta Mercado Pago conectada. Tokens são armazenados criptografados no servidor.
+                            </p>
+                        </div>
+                    </section>
+
+                    <section class="hydro-card hydro-alertas-card hydro-alertas-preview" id="hydroAlertasPreview" hidden>
+                        <div class="hydro-card-header">
+                            <h2>Telefones para alertas de estoque e validade</h2>
+                            <p>Prévia da área de cadastro. Esta demonstração não salva nem exibe telefones.</p>
+                        </div>
+                        <div class="hydro-card-body">
+                            <div class="hydro-settings-grid">
+                                <div class="hydro-form-group">
+                                    <label for="hydroAlertasPreviewTelefone">Seu número pessoal de WhatsApp</label>
+                                    <input type="tel" id="hydroAlertasPreviewTelefone" placeholder="Celular com DDD"
+                                        autocomplete="off" readonly aria-describedby="hydroAlertasPreviewAjuda">
+                                    <small class="hydro-alertas-hint" id="hydroAlertasPreviewAjuda">
+                                        Prévia visual: nenhum número será cadastrado.
+                                    </small>
+                                </div>
+                                <div class="hydro-form-group hydro-alertas-consentimento-grupo">
+                                    <label class="hydro-alertas-consentimento" for="hydroAlertasPreviewConsentimento">
+                                        <input type="checkbox" id="hydroAlertasPreviewConsentimento" disabled>
+                                        <span>Confirmação de autorização para receber alertas pelo WhatsApp.</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="hydro-alertas-acoes">
+                                <button type="button" class="hydro-btn hydro-btn-outline" disabled>
+                                    Adicionar telefone
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="hydro-card hydro-alertas-card" id="alertas" hidden>
+                    <div class="hydro-card-header">
+                        <h2>Telefones para alertas de estoque e validade</h2>
+                        <p>Cadastre seu número pessoal para receber os avisos diários. Cada número adicional precisa de autorização própria.</p>
+                    </div>
+                    <div class="hydro-card-body">
+                        <p class="hydro-alertas-hint">
+                            O número que envia as mensagens é configurado na Meta pelo responsável técnico. Os números abaixo são os que receberão os alertas; no modo de teste, autorize cada um também no painel da Meta.
+                        </p>
+                        <div class="hydro-settings-grid">
+                            <div class="hydro-form-group">
+                                <label for="hydroAlertasTelefoneNovo">Seu número pessoal de WhatsApp</label>
+                                <input type="tel" id="hydroAlertasTelefoneNovo" inputmode="tel"
+                                    autocomplete="tel-national" placeholder="(11) 99999-8888"
+                                    aria-describedby="hydroAlertasTelefoneAjuda">
+                                <small class="hydro-alertas-hint" id="hydroAlertasTelefoneAjuda">
+                                    Use um celular brasileiro com DDD.
+                                </small>
+                            </div>
+                            <div class="hydro-form-group hydro-alertas-consentimento-grupo">
+                                <label class="hydro-alertas-consentimento" for="hydroAlertasConsentimentoNovo">
+                                    <input type="checkbox" id="hydroAlertasConsentimentoNovo">
+                                    <span>Confirmo que sou titular deste número ou que a pessoa autorizou receber alertas do Hydra pelo WhatsApp.
+                                        Ela pode cancelar respondendo SAIR.</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="hydro-alertas-acoes">
+                            <button type="button" class="hydro-btn hydro-btn-outline" id="hydroAlertasAdicionar">
+                                Adicionar telefone
+                            </button>
+                        </div>
+                        <ul class="hydro-alertas-destinatarios" id="hydroAlertasDestinatarios"
+                            aria-label="Telefones que recebem alertas"></ul>
+                        <p class="hydro-alertas-sem-destinatarios" id="hydroAlertasSemDestinatarios">
+                            Nenhum telefone autorizado cadastrado.
+                        </p>
+
+                        <div class="hydro-settings-grid">
+                            <div class="hydro-form-group">
+                                <label for="hydroAlertasCanal">Como prefere receber</label>
+                                <select id="hydroAlertasCanal">
+                                    <option value="whatsapp">WhatsApp</option>
+                                    <option value="email">E-mail</option>
+                                    <option value="ambos">WhatsApp e e-mail</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <fieldset class="hydro-alertas-opcoes">
+                            <legend>O que deseja acompanhar</legend>
+                            <label><input type="checkbox" id="hydroAlertaEstoque">
+                                Produtos abaixo do estoque mínimo</label>
+                            <label><input type="checkbox" id="hydroAlertaValidade">
+                                Produtos perto do vencimento</label>
+                            <div class="hydro-form-group hydro-alertas-dias">
+                                <label for="hydroDiasValidade">Avisar com quantos dias de antecedência?</label>
+                                <select id="hydroDiasValidade">
+                                    <option value="3">3 dias</option>
+                                    <option value="7">7 dias</option>
+                                    <option value="15">15 dias</option>
+                                </select>
+                            </div>
+                        </fieldset>
+
+                        <div class="hydro-alertas-acoes">
+                            <button type="button" class="hydro-btn hydro-btn-primary" id="hydroAlertasSalvar">
+                                Salvar alertas
+                            </button>
+                            <button type="button" class="hydro-btn hydro-btn-outline" id="hydroAlertasTeste" disabled>
+                                Enviar mensagem de teste
+                            </button>
+                        </div>
+                        <p class="hydro-alertas-status" id="hydroAlertasStatus" role="status" aria-live="polite">
+                            Alertas desligados.
+                        </p>
+
+                        <div class="hydro-alertas-historico">
+                            <h3>Últimos envios</h3>
+                            <p id="hydroAlertasSemEnvios">Nenhum resumo enviado ainda.</p>
+                            <ul id="hydroAlertasEnvios" aria-label="Últimos envios de alertas"></ul>
+                        </div>
+                    </div>
+                    </section>
+
+                    <div class="hydro-settings-footer" data-hydro-config-admin>
                         <button type="button" class="hydro-btn hydro-btn-outline" id="hydroBtnCancelar">Cancelar</button>
                         <button type="submit" class="hydro-btn hydro-btn-primary" id="hydroBtnSalvar">Salvar alterações</button>
                     </div>
@@ -221,6 +361,7 @@
     <script src="../js/trocar-filial.js"></script>
     <script src="../js/public-demo.js"></script>
     <script src="../js/font-size.js"></script>
+    <script src="../js/cnpj-brasilapi.js"></script>
     <script src="../js/configuracoes-loja.js"></script>
 </body>
 
