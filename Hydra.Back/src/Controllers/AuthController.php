@@ -3,9 +3,11 @@
 namespace Hydra\Controllers;
 
 use Hydra\Repositories\CadastroPendenteRepository;
+use Hydra\Repositories\CatalogoHortifrutiRepository;
 use Hydra\Repositories\CargoRepository;
 use Hydra\Repositories\FilialRepository;
 use Hydra\Repositories\LojaRepository;
+use Hydra\Repositories\ProdutoRepository;
 use Hydra\Repositories\UsuarioRepository;
 use Hydra\Support\Auth;
 use Hydra\Support\Env;
@@ -52,6 +54,7 @@ final class AuthController
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
         $senha = (string) ($dados['senha'] ?? '');
         $nomeLoja = trim((string) ($dados['nome_loja'] ?? ''));
+        $importarHortifruti = ($dados['importar_hortifruti'] ?? false) === true;
 
         // Um erro por campo, com "campo" na resposta, para a tela marcar o
         // input certo em vez de um alerta genérico (QA 002).
@@ -77,6 +80,12 @@ final class AuthController
             Response::json(['erro' => $erroSenha, 'campo' => 'senha'], 422);
             return;
         }
+        if ($importarHortifruti && !(new CatalogoHortifrutiRepository())->estaCompleto()) {
+            Response::json([
+                'erro' => 'O catálogo padrão não tem os 120 itens. Desmarque a opção para continuar sem importar.',
+            ], 503);
+            return;
+        }
 
         $existente = $this->usuarios->findByEmail($email);
         if ($existente !== null && !$this->removerContaAbandonada($existente)) {
@@ -94,7 +103,15 @@ final class AuthController
         $pendentes->limparExpirados();
 
         $codigo = $this->novoCodigo();
-        $pendentes->salvar($email, $nome, $nomeLoja, password_hash($senha, PASSWORD_BCRYPT), $codigo, $this->expiracaoCodigo());
+        $pendentes->salvar(
+            $email,
+            $nome,
+            $nomeLoja,
+            password_hash($senha, PASSWORD_BCRYPT),
+            $codigo,
+            $this->expiracaoCodigo(),
+            $importarHortifruti
+        );
 
         $extra = $this->despacharEmailCodigo(
             $email,
@@ -135,11 +152,20 @@ final class AuthController
      * transação. Chamado só depois do código de confirmação conferido.
      * Devolve null se o e-mail tiver sido cadastrado no meio do caminho.
      */
-    private function criarConta(string $nome, string $email, string $senhaHash, string $nomeLoja): ?int
-    {
+    private function criarConta(
+        string $nome,
+        string $email,
+        string $senhaHash,
+        string $nomeLoja,
+        bool $importarHortifruti = false
+    ): ?int {
         // Fora da transação: dentro dela a migração do catálogo não pode ser
         // registrada (DDL faz commit implícito) e rodaria em todo cadastro.
         $this->cargos->garantirCatalogoGlobal();
+        $catalogo = $importarHortifruti ? new CatalogoHortifrutiRepository() : null;
+        if ($importarHortifruti) {
+            new ProdutoRepository();
+        }
 
         $pdo = db();
         $pdo->beginTransaction();
@@ -148,6 +174,9 @@ final class AuthController
             // Toda loja nasce com uma filial; as demais são criadas depois
             // em Configurações da Loja > Filiais.
             $idFilial = $this->filiais->create($idLoja, ['nome' => 'Matriz']);
+            if ($catalogo !== null) {
+                $catalogo->importar($idLoja, $idFilial);
+            }
             // Cria os 3 cargos de sistema da loja (Administrador, Operador
             // de Caixa, Estoquista) antes do primeiro usuário, para já
             // vinculá-lo ao cargo Administrador.
@@ -209,9 +238,23 @@ final class AuthController
                 return;
             }
 
+            $importarHortifruti = (bool) ($pendente['importar_hortifruti'] ?? false);
+            if ($importarHortifruti && !(new CatalogoHortifrutiRepository())->estaCompleto()) {
+                Response::json([
+                    'erro' => 'O catálogo padrão não está disponível. Tente novamente mais tarde ou conclua o cadastro sem importar.',
+                ], 503);
+                return;
+            }
+
             $idUsuario = $this->usuarios->emailExists($email)
                 ? null
-                : $this->criarConta((string) $pendente['nome'], $email, (string) $pendente['senha_hash'], (string) $pendente['nome_loja']);
+                : $this->criarConta(
+                    (string) $pendente['nome'],
+                    $email,
+                    (string) $pendente['senha_hash'],
+                    (string) $pendente['nome_loja'],
+                    $importarHortifruti
+                );
             $pendentes->remover($email);
             RateLimit::limpar($chaveLimite, 'envio:' . $email);
 
@@ -296,6 +339,9 @@ final class AuthController
     public function login(): void
     {
         $dados = Request::json();
+        // A sessão compartilhada pelo navegador nunca pode manter ao mesmo
+        // tempo uma conta da loja e uma conta da equipe Hydra.
+        unset($_SESSION['admin_plataforma'], $_SESSION['login_pendente_plataforma']);
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
         $senha = (string) ($dados['senha'] ?? '');
 
@@ -316,6 +362,13 @@ final class AuthController
             // enumeração e deixaria o funcionário desativado sem saber o
             // motivo. O limite de tentativas acima é que impede varredura.
             Response::json(['erro' => 'Este usuário está inativo. Fale com o administrador da loja.'], 403);
+            return;
+        }
+        if ($this->lojaEstaSuspensa((int) $usuario['id_loja'])) {
+            Response::json([
+                'erro' => 'O acesso deste mercado está suspenso. Entre em contato com o suporte Hydra.',
+                'codigo' => 'loja_suspensa',
+            ], 403);
             return;
         }
 
@@ -422,6 +475,14 @@ final class AuthController
             Response::json(['erro' => 'Este usuário está inativo. Fale com o administrador da loja.'], 403);
             return;
         }
+        if ($this->lojaEstaSuspensa((int) $usuario['id_loja'])) {
+            unset($_SESSION['login_pendente']);
+            Response::json([
+                'erro' => 'O acesso deste mercado está suspenso. Entre em contato com o suporte Hydra.',
+                'codigo' => 'loja_suspensa',
+            ], 403);
+            return;
+        }
         // Os vínculos podem ter sido retirados enquanto o código era digitado.
         $semFilial = $this->bloqueioSemFilial($usuario);
         if ($semFilial !== null) {
@@ -457,6 +518,13 @@ final class AuthController
         return $administrador
             ? 'A loja não tem nenhuma filial ativa. Verifique a instalação do sistema.'
             : 'Usuário sem filial vinculada. Procure o administrador.';
+    }
+
+    private function lojaEstaSuspensa(int $idLoja): bool
+    {
+        $stmt = db()->prepare("SELECT status = 'suspensa' FROM lojas WHERE id_loja = :id_loja");
+        $stmt->execute(['id_loja' => $idLoja]);
+        return (int) $stmt->fetchColumn() === 1;
     }
 
     /** @param array<string,mixed> $usuario linha de "usuarios" */
