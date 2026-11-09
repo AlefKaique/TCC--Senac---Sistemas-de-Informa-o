@@ -651,10 +651,10 @@ INSERT INTO permissoes (codigo, nome, descricao, categoria, ordem) VALUES
     ('estoque.consultar',     'Consultar Estoque',            'Ver a lista de produtos, quantidades, lotes e validades — é a base das duas permissões abaixo', 'Operação',   10),
     ('estoque.lancar',        'Entradas e Saídas de Estoque', 'Lançar entrada e saída de mercadoria — marque também "Consultar Estoque"',                   'Operação',      11),
     ('produtos.gerenciar',    'Cadastro de Produtos',         'Cadastrar, editar e excluir produtos — marque também "Consultar Estoque"',                   'Operação',      12),
-    ('produtos.editar_preco', 'Alterar Preços e Promoções',   'Criar promoções e, junto com "Cadastro de Produtos", alterar preço de custo e de venda (RN04)', 'Operação',      13),
+    ('produtos.editar_preco', 'Alterar Preços e Promoções',   'Criar promoções e, junto com "Cadastro de Produtos", alterar preço de custo e de venda', 'Operação',      13),
     ('vendas.operar',         'Vendas no Caixa',              'Operar o Caixa (PDV) e finalizar vendas',                                                   'Operação',      20),
     ('vendas.historico',      'Histórico de Vendas',          'Consultar as vendas já finalizadas e os detalhes de cada uma',                              'Operação',      21),
-    ('relatorios.visualizar', 'Relatórios',                   'Abrir o Dashboard com o faturamento e os indicadores da loja (RN16, RN17)',                 'Operação',      22),
+    ('relatorios.visualizar', 'Relatórios',                   'Abrir o Relatório com o faturamento e os indicadores da loja',                 'Operação',      22),
     ('equipe.gerenciar',      'Equipe e Cargos',              'Gerenciar os usuários da loja e os cargos e suas permissões',                               'Administração', 30),
     ('loja.configurar',       'Configuração da Loja',         'Ver e alterar os dados cadastrais da loja',                                                 'Administração', 31)
 ON DUPLICATE KEY UPDATE

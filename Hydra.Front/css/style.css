@@ -633,17 +633,16 @@ img{ max-width:100%; display:block; }
   overflow: visible; /* garante que o círculo apareça mesmo saindo da borda */
 }
 
-.terms__box::after{
-  content: "";
-  position: absolute;
-  bottom: -30px;          /* metade do círculo pra fora do container */
-  left: 50%;
-  transform: translateX(-50%);
-  width: 90px;
-  height: 60px;
-  background: var(--bg);   /* mesma cor do fundo da página, "recorta" visualmente */
-  border-radius: 80%;
+.terms__link{
+  display:inline-block;
+  margin-top: 14px;
+  color: var(--white);
+  font-weight:600;
+  font-size: 0.88rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
+.terms__link:hover{ color: var(--orange); }
 
 /* ============ FOOTER ============ */
 .footer{

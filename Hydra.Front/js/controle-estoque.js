@@ -140,30 +140,20 @@
         status: '',
         validade: '',
         page: 1,
-        pageSize: 5,
+        pageSize: 15,
     };
 
     /* ================= Helpers ================= */
     /* Faixa, em relação ao estoque mínimo, em que o produto ainda está
        acima do mínimo mas perto o suficiente para merecer aviso. */
-    const ATTENTION_MARGIN = 1.2;
 
     function getStatus(product) {
         // RN03: produto com vendas é inativado em vez de excluído. Ele segue
         // na lista (o histórico continua apontando para ele), mas não pode
         // aparecer como "Em estoque": não está à venda.
         if (product.status === 'inativo') return 'Inativo';
-        const { quantity, minStock } = product;
-        // Prateleira vazia tem nome próprio: antes caía em "Crítico" junto
-        // com o que ainda tem alguma unidade, e o estoquista não distinguia
-        // "acabou" de "está acabando" sem ler a coluna de quantidade.
-        if (quantity <= 0) return 'Esgotado';
-        if (quantity <= minStock * 0.4) return 'Crítico';
-        // "Baixo" vale só abaixo do mínimo; atingir o mínimo exato já
-        // conta como "Atenção", não como falta.
-        if (quantity < minStock) return 'Baixo';
-        if (quantity <= minStock * ATTENTION_MARGIN) return 'Atenção';
-        return 'Em estoque';
+        // Regra única do sistema (api.js), a mesma do Relatório.
+        return window.HYDRA_SITUACAO_ROTULOS[window.hydraSituacaoEstoque(product.quantity, product.minStock)];
     }
 
     /* "Esgotado" divide o vermelho com "Crítico": são os dois estados que
@@ -240,8 +230,7 @@
     function formatQuantity(value, unit) {
         const n = Number(value);
         if (!Number.isFinite(n)) return String(value);
-        const text = n.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
-        return unit ? `${text} ${unit}` : text;
+        return window.hydraFormatarQuantidade(n, unit);
     }
 
     function formatCurrency(value) {
@@ -254,6 +243,10 @@
         return div.innerHTML;
     }
 
+    /* Esgotado e Crítico no topo: a tela abre mostrando o que precisa de
+       reposição, em vez da ordem alfabética. */
+    const URGENCIA = { 'Esgotado': 0, 'Crítico': 1, 'Baixo': 2, 'Atenção': 3, 'Em estoque': 4, 'Inativo': 5 };
+
     function getFilteredProducts() {
         return products.filter((p) => {
             const status = getStatus(p);
@@ -264,7 +257,9 @@
             const statusValidade = getExpiryStatus(p) || 'Não vence';
             const matchesValidade = !state.validade || statusValidade === state.validade;
             return matchesSearch && matchesCategory && matchesStatus && matchesValidade;
-        });
+        }).sort((a, b) =>
+            (URGENCIA[getStatus(a)] ?? 9) - (URGENCIA[getStatus(b)] ?? 9)
+            || a.name.localeCompare(b.name, 'pt-BR'));
     }
 
     /* ================= Rendering: filters (category options) ================= */
@@ -315,7 +310,6 @@
           <tr data-id="${p.id}">
             <td class="hydro-product-cell-wrap" data-label="Produto">
               <div class="hydro-product-cell">
-                <div class="hydro-product-thumb"><i class="hydro-ic hydro-ic-package"></i></div>
                 <div>
                   <div class="hydro-product-name">${escapeHtml(p.name)}</div>
                   <div class="hydro-product-desc">${escapeHtml(p.desc)}</div>
@@ -324,16 +318,16 @@
             </td>
             <td data-label="Lote">${p.lote ? escapeHtml(p.lote) : '<span class="hydro-text-muted">—</span>'}</td>
             <td data-label="Categoria">${escapeHtml(p.category)}</td>
-            <td class="hydro-qty" data-label="Quantidade">${p.quantity}</td>
-            <td data-label="Estoque mínimo">${p.minStock}</td>
+            <td class="hydro-qty" data-label="Quantidade">${formatQuantity(p.quantity, p.unit)}</td>
+            <td data-label="Estoque mínimo">${formatQuantity(p.minStock, p.unit)}</td>
             <td data-label="Validade">${expiryCell}</td>
             <td data-label="Status"><span class="hydro-badge ${statusBadgeClass(status)}">${status}</span></td>
             <td class="hydro-col-actions" data-label="Ações">
               <div class="hydro-row-actions">
-                <button class="hydro-action-btn hydro-action-view" title="Ver detalhes" data-id="${p.id}"><i class="hydro-ic hydro-ic-eye"></i></button>
-                ${podeGerenciarProdutos() ? `<button class="hydro-action-btn hydro-action-edit" title="Editar produto" data-id="${p.id}"><i class="hydro-ic hydro-ic-pencil"></i></button>` : ''}
-                <button class="hydro-action-btn hydro-action-history" title="Histórico de movimentações" data-id="${p.id}"><i class="hydro-ic hydro-ic-history"></i></button>
-                ${podeGerenciarProdutos() ? `<button class="hydro-action-btn hydro-action-delete" title="Excluir produto" data-id="${p.id}"><i class="hydro-ic hydro-ic-trash"></i></button>` : ''}
+                <button class="hydro-action-btn hydro-action-view" title="Ver detalhes" aria-label="Ver detalhes de ${escapeHtml(p.name)}" data-id="${p.id}"><i class="hydro-ic hydro-ic-eye"></i></button>
+                ${podeGerenciarProdutos() ? `<button class="hydro-action-btn hydro-action-edit" title="Editar produto" aria-label="Editar ${escapeHtml(p.name)}" data-id="${p.id}"><i class="hydro-ic hydro-ic-pencil"></i></button>` : ''}
+                <button class="hydro-action-btn hydro-action-history" title="Histórico de movimentações" aria-label="Histórico de movimentações de ${escapeHtml(p.name)}" data-id="${p.id}"><i class="hydro-ic hydro-ic-history"></i></button>
+                ${podeGerenciarProdutos() ? `<button class="hydro-action-btn hydro-action-delete" title="Excluir produto" aria-label="Excluir ${escapeHtml(p.name)}" data-id="${p.id}"><i class="hydro-ic hydro-ic-trash"></i></button>` : ''}
               </div>
             </td>
           </tr>`;
@@ -452,8 +446,8 @@
         <div class="hydro-detail-row"><span>Descrição</span><span>${escapeHtml(p.desc)}</span></div>
         <div class="hydro-detail-row"><span>Lote</span><span>${p.lote ? escapeHtml(p.lote) : '—'}</span></div>
         <div class="hydro-detail-row"><span>Categoria</span><span>${escapeHtml(p.category)}</span></div>
-        <div class="hydro-detail-row"><span>Quantidade</span><span>${p.quantity} un.</span></div>
-        <div class="hydro-detail-row"><span>Estoque mínimo</span><span>${p.minStock} un.</span></div>
+        <div class="hydro-detail-row"><span>Quantidade</span><span>${formatQuantity(p.quantity, p.unit)}</span></div>
+        <div class="hydro-detail-row"><span>Estoque mínimo</span><span>${formatQuantity(p.minStock, p.unit)}</span></div>
         <div class="hydro-detail-row"><span>Validade</span><span>${validadeValue}</span></div>
         <div class="hydro-detail-row"><span>Preço unitário</span><span>${formatCurrency(p.price)}</span></div>
         <div class="hydro-detail-row"><span>Valor em estoque</span><span>${formatCurrency(p.price * p.quantity)}</span></div>
@@ -743,7 +737,7 @@
         const isEntrada = type === 'entrada';
         const options = products
             .filter((p) => p.status !== 'inativo')
-            .map((p) => `<option value="${p.id}">${escapeHtml(p.name)} (${p.quantity} un.)</option>`)
+            .map((p) => `<option value="${p.id}">${escapeHtml(p.name)} (${formatQuantity(p.quantity, p.unit)})</option>`)
             .join('');
 
         openModal({

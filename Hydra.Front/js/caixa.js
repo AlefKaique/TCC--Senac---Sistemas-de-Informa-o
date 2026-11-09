@@ -29,8 +29,8 @@
         vale: 'Vale',
     };
 
-    // Uma forma de pagamento por venda (sem split). Crédito e débito são
-    // botões separados (RF13/RN10). Antes havia um único "Cartão", sempre
+    // Uma forma de pagamento, ou duas com "Dividir pagamento". Crédito e
+    // débito são botões separados (RF13/RN10). Antes havia um único "Cartão", sempre
     // enviado como cartao_credito: nenhuma venda em débito era registrada.
     const PAYMENT_METHOD_TO_API = {
         dinheiro: 'dinheiro',
@@ -89,6 +89,10 @@
 
     function mapApiVenda(v) {
         const primeiroPagamento = (v.pagamentos || [])[0];
+        const pagamentos = (v.pagamentos || []).map((pg) => ({
+            method: PAYMENT_METHOD_FROM_API[pg.forma_pagamento] || pg.forma_pagamento,
+            value: Number(pg.valor),
+        }));
         return {
             id: String(v.id_venda),
             // O número exibido é o sequencial DA LOJA, não a chave primária
@@ -105,6 +109,7 @@
             subtotal: Number(v.subtotal),
             total: Number(v.valor_total),
             payment: primeiroPagamento ? (PAYMENT_METHOD_FROM_API[primeiroPagamento.forma_pagamento] || primeiroPagamento.forma_pagamento) : null,
+            payments: pagamentos,
             cashReceived: null,
             change: null,
             // Banco anterior ao cancelamento não manda "status": é concluída.
@@ -154,7 +159,17 @@
     let proximoNumero = 1;
 
     function createOrder() {
-        return { id: proximoNumero, items: {}, payment: null, cashReceived: '' };
+        return { id: proximoNumero, items: {}, payment: null, cashReceived: '', split: false, splitValue: '', splitMethod: '' };
+    }
+
+    /* "PIX", ou "PIX R$ 30,00 + Dinheiro R$ 13,48" quando a venda foi paga
+       em duas formas. */
+    function descreverPagamento(sale) {
+        const lista = sale.payments || [];
+        if (lista.length > 1) {
+            return lista.map((pg) => `${PAYMENT_LABELS[pg.method] || pg.method} ${money(pg.value)}`).join(' + ');
+        }
+        return PAYMENT_LABELS[sale.payment] || sale.payment || '—';
     }
 
     let order = createOrder();
@@ -496,11 +511,16 @@
     const orderTitleEl = document.getElementById('hydroOrderTitle');
     const orderClientEl = document.getElementById('hydroOrderClient');
     const orderItemsEl = document.getElementById('hydroOrderItems');
-    const orderItemsWrapEl = orderItemsEl.closest('.hydro-items-table-wrap');
-    const orderSubtotalEl = document.getElementById('hydroOrderSubtotal');
+    const orderItemsWrapEl = document.getElementById('hydroCartWrap');
+    const cartCountEl = document.getElementById('hydroCartCount');
     const orderTotalEl = document.getElementById('hydroOrderTotal');
-    const footerCountEl = document.getElementById('hydroFooterCount');
-    const footerTotalEl = document.getElementById('hydroFooterTotal');
+    const splitToggleEl = document.getElementById('hydroSplitToggle');
+    const splitBoxEl = document.getElementById('hydroSplitBox');
+    const splitValueEl = document.getElementById('hydroSplitValue');
+    const splitSecondEl = document.getElementById('hydroSplitSecond');
+    const splitFirstLabelEl = document.getElementById('hydroSplitFirstLabel');
+    const splitRestEl = document.getElementById('hydroSplitRest');
+    const splitRestRowEl = document.getElementById('hydroSplitRestRow');
     const paymentButtons = document.querySelectorAll('.hydro-payment-btn');
     const cashBoxEl = document.getElementById('hydroCashBox');
     const cashInputEl = document.getElementById('hydroCashReceived');
@@ -520,7 +540,8 @@
 
     /* ================= Dinheiro recebido / troco ================= */
     function updateCashUI(order, total, opts) {
-        const isCash = order.payment === 'dinheiro';
+        // No pagamento dividido cada parte é um valor exato: não há troco.
+        const isCash = order.payment === 'dinheiro' && !order.split;
         cashBoxEl.hidden = !isCash;
         if (!isCash) return;
 
@@ -555,10 +576,11 @@
         // Quem está operando o caixa — é esse nome que fica gravado na venda.
         orderClientEl.textContent = `Operador: ${(usuarioAtual && usuarioAtual.nome) || 'Demonstração'}`;
 
-        const { entries, subtotal, total } = computeTotals(order);
-        const itemCount = entries.reduce((sum, [, qty]) => sum + qty, 0);
+        const { entries, total } = computeTotals(order);
 
         orderItemsWrapEl.classList.toggle('hydro-empty', entries.length === 0);
+        // Conta linhas do pedido (produtos), não soma quilos com unidades.
+        cartCountEl.textContent = entries.length ? `(${entries.length} ${entries.length === 1 ? 'produto' : 'produtos'})` : '';
 
         orderItemsEl.innerHTML = entries
             .map(([productId, qty]) => {
@@ -585,35 +607,84 @@
                        </div>`;
 
                 return `
-                <tr>
-                    <td data-label="Item"><div class="hydro-item-thumb"><i class="hydro-ic hydro-ic-package"></i></div></td>
-                    <td data-label="Descrição">
+                <li class="hydro-cart-item">
+                    <div class="hydro-cart-info">
                         <p class="hydro-item-name">${escapeHtml(product.name)}</p>
-                        <p class="hydro-item-desc">${escapeHtml(product.desc || product.category)}</p>
-                    </td>
-                    <td data-label="Qtd">${qtyCell}</td>
-                    <td data-label="Unitário" class="hydro-item-unit">${weighty ? `${money(product.price)}/kg` : money(product.price)}${product.regularPrice != null ? '<span class="hydro-item-promo">Promoção</span>' : ''}</td>
-                    <td data-label="Total" class="hydro-item-total">${money(lineTotal)}</td>
-                    <td data-label="Ações">
-                        <button type="button" class="hydro-item-remove" data-remove-id="${productId}" aria-label="Remover item">
-                            <i class="hydro-ic hydro-ic-trash"></i>
-                        </button>
-                    </td>
-                </tr>`;
+                        <p class="hydro-cart-unit">${weighty ? `${money(product.price)}/kg` : `${money(product.price)} cada`}${product.regularPrice != null ? ' <span class="hydro-item-promo">Promoção</span>' : ''}</p>
+                    </div>
+                    <div class="hydro-cart-qty">${qtyCell}</div>
+                    <span class="hydro-cart-total">${money(lineTotal)}</span>
+                    <button type="button" class="hydro-item-remove" data-remove-id="${productId}" aria-label="Remover ${escapeHtml(product.name)}">
+                        <i class="hydro-ic hydro-ic-trash"></i>
+                    </button>
+                </li>`;
             })
             .join('');
 
-        orderSubtotalEl.textContent = money(subtotal);
         orderTotalEl.textContent = money(total);
-        footerCountEl.textContent = String(itemCount);
-        footerTotalEl.textContent = money(total);
 
         paymentButtons.forEach((btn) => {
             btn.classList.toggle('hydro-selected', btn.dataset.method === order.payment);
         });
 
         updateCashUI(order, total);
+        updateSplitUI(order, total);
     }
+
+    /* ================= Pagamento dividido em duas formas =================
+       A primeira forma é a escolhida nos botões; o operador digita quanto
+       vai nela, e o resto vai na segunda forma. A soma fecha com o total,
+       como o back-end exige (RN09). */
+    function updateSplitUI(order, total, opts) {
+        splitToggleEl.setAttribute('aria-expanded', String(order.split));
+        splitToggleEl.textContent = order.split ? 'Usar só uma forma de pagamento' : 'Dividir em duas formas de pagamento';
+        splitBoxEl.hidden = !order.split;
+        if (!order.split) return;
+
+        splitFirstLabelEl.textContent = order.payment ? PAYMENT_LABELS[order.payment] : 'escolha a forma acima';
+
+        const atual = order.splitMethod;
+        splitSecondEl.innerHTML = '<option value="">Escolha a segunda forma</option>' + Object.keys(PAYMENT_METHOD_TO_API)
+            .filter((m) => m !== order.payment)
+            .map((m) => `<option value="${m}">${PAYMENT_LABELS[m]}</option>`)
+            .join('');
+        if (atual && atual !== order.payment) splitSecondEl.value = atual;
+        else order.splitMethod = '';
+
+        if (!opts || !opts.skipInputValue) splitValueEl.value = order.splitValue || '';
+
+        const primeira = parseMoney(order.splitValue);
+        const temValor = !isNaN(primeira);
+        const resto = temValor ? Math.round((total - primeira) * 100) / 100 : total;
+        const invalido = (temValor && (primeira <= 0 || resto <= 0))
+            || (!temValor && String(order.splitValue || '').trim() !== '');
+        splitRestEl.textContent = money(Math.max(resto, 0));
+        splitRestRowEl.classList.toggle('hydro-cash-change-warning', invalido);
+        splitValueEl.closest('.hydro-cash-input-wrap').classList.toggle('hydro-cash-invalid', invalido);
+    }
+
+    splitToggleEl.addEventListener('click', () => {
+        const order = getActiveOrder();
+        order.split = !order.split;
+        if (!order.split) {
+            order.splitValue = '';
+            order.splitMethod = '';
+        }
+        renderOrderPanel();
+        if (order.split) splitValueEl.focus();
+    });
+
+    splitValueEl.addEventListener('input', () => {
+        const limpo = sanitizarDinheiro(splitValueEl.value);
+        if (limpo !== splitValueEl.value) splitValueEl.value = limpo;
+        const order = getActiveOrder();
+        order.splitValue = splitValueEl.value;
+        updateSplitUI(order, computeTotals(order).total, { skipInputValue: true });
+    });
+
+    splitSecondEl.addEventListener('change', () => {
+        getActiveOrder().splitMethod = splitSecondEl.value;
+    });
 
     orderItemsEl.addEventListener('click', (e) => {
         const order = getActiveOrder();
@@ -679,9 +750,35 @@
             return;
         }
 
+        // Pagamentos que vão para o back-end: um só, ou dois no modo dividido.
+        let pagamentos = [{ method: order.payment, value: Math.round(total * 100) / 100 }];
+        if (order.split) {
+            const primeira = parseMoney(order.splitValue);
+            if (isNaN(primeira) || primeira <= 0) {
+                showToast(`Informe quanto vai em ${PAYMENT_LABELS[order.payment]}. Use só números, ex.: 20,00`, true);
+                splitValueEl.focus();
+                return;
+            }
+            const resto = Math.round((total - primeira) * 100) / 100;
+            if (resto <= 0) {
+                showToast('O valor da primeira forma precisa ser menor que o total. Para pagar tudo numa forma só, desligue a divisão.', true);
+                splitValueEl.focus();
+                return;
+            }
+            if (!order.splitMethod || order.splitMethod === order.payment) {
+                showToast('Escolha a segunda forma de pagamento', true);
+                splitSecondEl.focus();
+                return;
+            }
+            pagamentos = [
+                { method: order.payment, value: Math.round(primeira * 100) / 100 },
+                { method: order.splitMethod, value: resto },
+            ];
+        }
+
         let cashReceived = null;
         let change = null;
-        if (order.payment === 'dinheiro') {
+        if (order.payment === 'dinheiro' && !order.split) {
             cashReceived = parseMoney(order.cashReceived);
             if (isNaN(cashReceived)) {
                 showToast('Valor recebido inválido. Use só números, ex.: 50,00', true);
@@ -709,7 +806,7 @@
                     method: 'POST',
                     body: {
                         itens: entries.map(([productId, qty]) => ({ id_produto: Number(productId), quantidade: qty })),
-                        pagamentos: [{ forma_pagamento: PAYMENT_METHOD_TO_API[order.payment], valor: Math.round(total * 100) / 100 }],
+                        pagamentos: pagamentos.map((pg) => ({ forma_pagamento: PAYMENT_METHOD_TO_API[pg.method], valor: pg.value })),
                     },
                 });
                 // Baixa local do estoque exibido — o back-end já deu a baixa real (RN11).
@@ -738,6 +835,7 @@
                 subtotal: Math.round(subtotal * 100) / 100,
                 total: Math.round(total * 100) / 100,
                 payment: order.payment,
+                payments: pagamentos,
                 cashReceived: cashReceived === null ? null : Math.round(cashReceived * 100) / 100,
                 change,
             });
@@ -750,7 +848,10 @@
 
         const changeMsg = change !== null ? ` — troco: ${money(change)}` : '';
         // Aqui o número já é sempre conhecido: a resposta do POST o traz.
-        showToast(`${rotuloPedido(order.id)} finalizado — pagamento em ${PAYMENT_LABELS[order.payment]}${changeMsg}`);
+        const formaMsg = pagamentos.length > 1
+            ? descreverPagamento({ payments: pagamentos })
+            : PAYMENT_LABELS[order.payment];
+        showToast(`${rotuloPedido(order.id)} finalizado — pagamento em ${formaMsg}${changeMsg}`);
         order = createOrder();
         renderAll();
     });
@@ -800,7 +901,8 @@
 
         historyBodyEl.innerHTML = sales
             .map((sale) => {
-                const itemCount = (sale.items || []).reduce((sum, it) => sum + it.qty, 0);
+                // Quantos produtos diferentes: somar quilos com unidades dava "7.25 itens".
+                const itemCount = (sale.items || []).length;
                 const when = new Date(sale.date).toLocaleString('pt-BR');
                 const cancelada = sale.cancelled
                     ? ' <span class="hydro-tag-cancelled">Cancelada</span>'
@@ -811,7 +913,7 @@
                     <td data-label="Pedido">#${sale.orderId}${cancelada}</td>
                     <td data-label="Usuário">${escapeHtml(sale.usuario || 'Demonstração')}</td>
                     <td data-label="Itens">${itemCount} ${itemCount === 1 ? 'item' : 'itens'}</td>
-                    <td data-label="Pagamento">${escapeHtml(PAYMENT_LABELS[sale.payment] || sale.payment || '—')}</td>
+                    <td data-label="Pagamento">${escapeHtml(descreverPagamento(sale))}</td>
                     <td data-label="Total" class="hydro-item-total">${money(sale.total)}</td>
                     <td data-label="Ações">
                         <button type="button" class="hydro-item-remove" data-view-sale="${sale.id}" aria-label="Ver detalhes da venda">
@@ -885,7 +987,7 @@
         saleDetailWhenEl.textContent = new Date(sale.date).toLocaleString('pt-BR');
         saleDetailTitleEl.textContent = `Pedido #${sale.orderId}`;
         saleDetailUserEl.textContent = sale.usuario || 'Demonstração';
-        saleDetailPaymentEl.textContent = PAYMENT_LABELS[sale.payment] || sale.payment || '—';
+        saleDetailPaymentEl.textContent = descreverPagamento(sale);
 
         saleDetailCancelledEl.hidden = !sale.cancelled;
         if (sale.cancelled) {
@@ -1085,14 +1187,15 @@
         cancelWrapEl.classList.toggle('hydro-empty', sales.length === 0);
         cancelBodyEl.innerHTML = sales
             .map((sale) => {
-                const itemCount = (sale.items || []).reduce((sum, it) => sum + it.qty, 0);
+                // Quantos produtos diferentes: somar quilos com unidades dava "7.25 itens".
+                const itemCount = (sale.items || []).length;
                 return `
                 <tr>
                     <td data-label="Data/Hora">${new Date(sale.date).toLocaleString('pt-BR')}</td>
                     <td data-label="Pedido">#${sale.orderId}</td>
                     <td data-label="Usuário">${escapeHtml(sale.usuario || '—')}</td>
                     <td data-label="Itens">${itemCount} ${itemCount === 1 ? 'item' : 'itens'}</td>
-                    <td data-label="Pagamento">${escapeHtml(PAYMENT_LABELS[sale.payment] || sale.payment || '—')}</td>
+                    <td data-label="Pagamento">${escapeHtml(descreverPagamento(sale))}</td>
                     <td data-label="Total" class="hydro-item-total">${money(sale.total)}</td>
                     <td data-label="Ação">
                         <button type="button" class="hydro-cancel-row-btn" data-cancel-sale="${sale.id}">Cancelar</button>

@@ -43,6 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const emailInput = document.getElementById('email');
   const nomeLojaInput = document.getElementById('nome-loja');
 
+  // E-mail digitado no "Criar conta grátis" da página inicial.
+  try {
+    const emailDaHome = new URLSearchParams(window.location.search).get('email');
+    if (emailDaHome && emailInput && !emailInput.value) emailInput.value = emailDaHome.trim();
+  } catch (e) { /* sem parâmetro: segue o formulário vazio */ }
+
   [senha, confirmarSenha, nomeInput, emailInput, nomeLojaInput].forEach(input => {
     if (input) input.addEventListener('input', () => clearError(input));
   });

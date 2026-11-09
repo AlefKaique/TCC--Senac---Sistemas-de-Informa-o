@@ -161,6 +161,13 @@
     overflow-wrap: anywhere;
 }
 
+/* Filial sem dados próprios mostrando os da loja. */
+.hydro-stock .hydro-filial-herdado {
+    margin: -4px 0 0;
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
 .hydro-stock .hydro-filial-acoes {
     display: flex;
     justify-content: flex-end;

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hydra · Gerenciar Usuários</title>
+    <title>Hydra · Equipe</title>
   <link rel="icon" type="image/png" href="../img/logo-hydra.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -56,11 +56,10 @@
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
                         <li id="hydroLiConfig">
                             <details class="hydro-submenu">
-                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configuração Loja</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
+                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configurações</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
                                 <ul class="hydro-submenu-itens">
                                     <li><a href="configuracoes-loja.html">Dados da loja</a></li>
                                     <li><a href="filiais.html">Filiais</a></li>
-                                    <li><a href="cadastro-filial.html">Cadastrar nova Filial</a></li>
                                 </ul>
                             </details>
                         </li>
@@ -84,12 +83,10 @@
             <main class="hydro-main">
                 <header class="hydro-topbar">
                     <div class="hydro-topbar-title">
-                        <h1>Gerenciar Usuários</h1>
+                        <h1>Equipe</h1>
                         <span class="hydro-restricted-badge"><i class="hydro-ic hydro-ic-lock"></i> Apenas Administrador</span>
                     </div>
                     <div class="hydro-topbar-actions">
-                        <a class="hydro-icon-btn" href="configuracoes-loja.html" aria-label="Configuração Loja"><i
-                            class="hydro-ic hydro-ic-gear"></i></a>
                         <button class="hydro-icon-btn" aria-label="Notificações">
                             <i class="hydro-ic hydro-ic-bell"></i>
                             <span class="hydro-notif-dot"></span>
@@ -112,15 +109,15 @@
                     <div class="hydro-stat-card">
                         <div class="hydro-stat-icon hydro-icon-green"><i class="hydro-ic hydro-ic-drawer"></i></div>
                         <div class="hydro-stat-copy">
-                            <p class="hydro-stat-label">Operadores de Caixa</p>
-                            <p class="hydro-stat-value" id="hydroStatCaixa">0</p>
+                            <p class="hydro-stat-label">Usuários ativos</p>
+                            <p class="hydro-stat-value" id="hydroStatAtivos">0</p>
                         </div>
                     </div>
                     <div class="hydro-stat-card">
                         <div class="hydro-stat-icon hydro-icon-amber"><i class="hydro-ic hydro-ic-inventory"></i></div>
                         <div class="hydro-stat-copy">
-                            <p class="hydro-stat-label">Estoquistas</p>
-                            <p class="hydro-stat-value" id="hydroStatEstoquista">0</p>
+                            <p class="hydro-stat-label">Usuários inativos</p>
+                            <p class="hydro-stat-value" id="hydroStatInativos">0</p>
                         </div>
                     </div>
                 </section>

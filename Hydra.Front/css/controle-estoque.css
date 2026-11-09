@@ -687,6 +687,8 @@
     border-radius: 999px;
     font-size: 12.5px;
     font-weight: 700;
+    /* "Não vence" e "Em estoque" quebravam em duas linhas na tabela. */
+    white-space: nowrap;
 }
 
 .hydro-badge-ok {
@@ -1122,7 +1124,7 @@
         font-size: 22px;
     }
 
-    .hydro-search {
+    .hydro-topbar .hydro-search {
         display: none;
     }
 
@@ -1146,6 +1148,21 @@
 
     .hydro-select-field {
         flex: 1;
+    }
+
+    /* Celular: busca na largura toda e os filtros em duas colunas, em vez de
+       quatro campos espremidos mostrando só "Tod". */
+    .hydro-filters {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .hydro-filters > .hydro-select-field:first-child {
+        grid-column: 1 / -1;
+    }
+
+    .hydro-filters .hydro-search {
+        width: 100%;
     }
 }
 

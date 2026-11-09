@@ -158,6 +158,40 @@ window.hydraHomePorPermissao = function hydraHomePorPermissao(usuario) {
 };
 
 /**
+ * Situacao do estoque de um produto — regra UNICA do sistema, usada pelo
+ * Controle de Estoque e pelo Relatorio. Antes cada tela tinha a sua, e o
+ * mesmo produto aparecia como "Baixo" numa e "Atencao" na outra.
+ *   empty    Esgotado    quantidade zero
+ *   critical Critico     ate 40% do estoque minimo
+ *   low      Baixo       abaixo do estoque minimo
+ *   warning  Atencao     no minimo ou ate 20% acima dele
+ *   ok       Em estoque  acima disso (ou sem estoque minimo definido)
+ */
+window.HYDRA_SITUACAO_ROTULOS = {
+  empty: 'Esgotado', critical: 'Crítico', low: 'Baixo', warning: 'Atenção', ok: 'Em estoque',
+};
+window.hydraSituacaoEstoque = function hydraSituacaoEstoque(quantidade, estoqueMinimo) {
+  const qtd = Number(quantidade) || 0;
+  const minimo = Number(estoqueMinimo) || 0;
+  if (qtd <= 0) return 'empty';
+  if (minimo <= 0) return 'ok';
+  if (qtd <= minimo * 0.4) return 'critical';
+  if (qtd < minimo) return 'low';
+  if (qtd <= minimo * 1.2) return 'warning';
+  return 'ok';
+};
+
+/**
+ * Quantidade como o usuario le: virgula decimal e unidade ("17,25 kg",
+ * "22 un"). Antes aparecia "17.25", sem dizer se era quilo ou unidade.
+ */
+window.hydraFormatarQuantidade = function hydraFormatarQuantidade(quantidade, unidade) {
+  const qtd = Number(quantidade) || 0;
+  const texto = qtd.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+  return `${texto} ${unidade || 'un'}`;
+};
+
+/**
  * Guarda de tela: manda o usuario para a casa dele se faltar a permissao.
  * Devolve true quando o acesso e permitido, para a tela poder interromper
  * o carregamento (`if (!hydraGuardaDeTela(...)) return;`).

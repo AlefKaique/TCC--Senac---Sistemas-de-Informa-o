@@ -59,20 +59,16 @@ accordionItems.forEach(item => {
 });
 
 // ===== Hero email form =====
+// Leva ao cadastro com o e-mail já preenchido. Antes só mostrava um aviso
+// "Cadastro recebido!" sem enviar nada a lugar nenhum.
 const heroForm = document.getElementById('hero-form');
-const toast = document.getElementById('toast');
-let toastTimer;
 
 heroForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const input = heroForm.querySelector('.hero__input');
-  if (!input.value.trim()) return;
-
-  toast.classList.add('is-visible');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 3500);
-
-  input.value = '';
+  const email = input.value.trim();
+  if (!email) return;
+  window.location.href = `cadastro.html?email=${encodeURIComponent(email)}`;
 });
 
 // ===== Scroll Spy: keeps the matching nav item highlighted while scrolling =====

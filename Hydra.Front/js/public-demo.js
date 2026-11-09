@@ -99,6 +99,10 @@
     var demoLocked = false;
 
     function lockForVisitors() {
+        // A trava é para quem espia as telas internas sem conta (elas têm a
+        // barra lateral). Na página inicial ela travava o "Criar conta grátis",
+        // as perguntas frequentes e o menu do celular.
+        if (!document.querySelector('.hydro-sidebar')) return;
         demoLocked = true;
         window.HYDRA_PUBLIC_DEMO = true;
     }

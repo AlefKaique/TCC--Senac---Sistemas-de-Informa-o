@@ -475,6 +475,7 @@
 /* ============ Abas de pedidos ============ */
 .hydro-order-tabs {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     background: #fff;
@@ -482,7 +483,6 @@
     border-radius: var(--radius-md);
     padding: 6px;
     margin-bottom: 20px;
-    overflow-x: auto;
 }
 
 .hydro-order-tab {
@@ -667,7 +667,8 @@
     grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
     gap: 12px;
     padding: 14px;
-    max-height: 340px;
+    /* Os itens do pedido saíram desta coluna: a vitrine usa a altura da tela. */
+    max-height: max(340px, calc(100vh - 300px));
     overflow-y: auto;
 }
 
@@ -884,6 +885,127 @@
 
 .hydro-items-table-wrap.hydro-empty .hydro-items-empty {
     display: flex;
+}
+
+/* ============ Itens do pedido no painel da direita ============ */
+.hydro-cart {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.hydro-cart .hydro-order-section-label {
+    margin: 0;
+}
+
+.hydro-cart-count {
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--muted);
+}
+
+.hydro-cart-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 290px;
+    overflow-y: auto;
+}
+
+.hydro-cart.hydro-empty .hydro-cart-list {
+    display: none;
+}
+
+.hydro-cart.hydro-empty .hydro-items-empty {
+    display: flex;
+    padding: 18px 10px;
+}
+
+.hydro-cart .hydro-items-empty .hydro-ic {
+    width: 30px;
+    height: 30px;
+}
+
+.hydro-cart .hydro-items-empty-title {
+    font-size: 14px;
+}
+
+.hydro-cart-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "info  remove"
+        "qty   total";
+    align-items: center;
+    gap: 6px 10px;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+}
+
+.hydro-cart-item:first-child {
+    border-top: 0;
+}
+
+.hydro-cart-info { grid-area: info; min-width: 0; }
+.hydro-cart-qty { grid-area: qty; }
+.hydro-cart-total { grid-area: total; justify-self: end; font-weight: 800; color: var(--navy-900); font-variant-numeric: tabular-nums; }
+.hydro-cart-item .hydro-item-remove { grid-area: remove; justify-self: end; }
+
+.hydro-cart-info .hydro-item-name {
+    margin: 0;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.hydro-cart-unit {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+/* ============ Pagamento dividido ============ */
+.hydro-split-toggle {
+    align-self: flex-start;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--navy-900);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.hydro-split-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+}
+
+.hydro-split-box label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.hydro-split-box select {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--ink);
 }
 
 .hydro-items-empty .hydro-ic {

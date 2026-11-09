@@ -42,13 +42,8 @@
         document.getElementById('hydroFilialIntro').textContent =
             'Altere os dados da filial. O estoque, as vendas e as promoções dela continuam como estão.';
         btnSalvar.textContent = 'Salvar alterações';
-        // No menu, quem fica marcado é "Filiais" (veio de lá), não "Cadastrar nova".
-        document.querySelectorAll('.hydro-submenu-itens a').forEach((a) => {
-            const marcar = a.getAttribute('href') === 'filiais.html';
-            a.classList.toggle('hydro-active', marcar);
-            if (marcar) a.setAttribute('aria-current', 'page');
-            else a.removeAttribute('aria-current');
-        });
+        // A situação (ativa/desativada) só existe na edição: filial nova nasce ativa.
+        document.getElementById('hydroFilialSecaoSituacao').hidden = false;
     }
 
     function preencher(filial) {
@@ -81,29 +76,6 @@
         dicaStatus.hidden = !dica;
     }
 
-    /* ================= Logo (pré-visualização local) =================
-       Igual a Configurações da Loja: o arquivo ainda não é enviado ao
-       servidor — não há onde guardá-lo (precisa de uma tabela de mídia). */
-    const logoInput = document.getElementById('hydroLogoInput');
-    const logoPreview = document.getElementById('hydroLogoPreview');
-    logoInput.addEventListener('change', () => {
-        const file = logoInput.files && logoInput.files[0];
-        if (!file) return;
-        if (!file.type.startsWith('image/')) {
-            mostrarErro('Selecione um arquivo de imagem.');
-            return;
-        }
-        if (file.size > 2 * 1024 * 1024) {
-            mostrarErro('A imagem deve ter até 2MB.');
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = () => {
-            logoPreview.innerHTML = `<img src="${reader.result}" alt="Logo da filial">`;
-        };
-        reader.readAsDataURL(file);
-    });
-
     /* ================= Salvar ================= */
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -130,7 +102,7 @@
                     endereco: campos.endereco.value.trim(),
                     cidade: campos.cidade.value.trim(),
                     estado: campos.estado.value,
-                    status: campos.status.value,
+                    status: idEdicao ? campos.status.value : 'ativa',
                 },
             });
             window.location.href = `filiais.html?ok=${idEdicao ? 'editada' : 'criada'}&nome=${encodeURIComponent(nome)}`;
