@@ -9,8 +9,12 @@
 
     let size = parseFloat(localStorage.getItem(storageKey)) || defaultSize;
     const applyVisualSize = () => {
+        const zoom = String(size / defaultSize);
         root.style.fontSize = `${size}px`;
-        document.body.style.zoom = String(size / defaultSize);
+        document.body.style.zoom = zoom;
+        // O zoom também encolhe as alturas em "vh" (barra lateral, fundo da
+        // página); os CSS das telas dividem por esta variável para compensar.
+        root.style.setProperty('--hydra-zoom', zoom);
     };
 
     applyVisualSize();

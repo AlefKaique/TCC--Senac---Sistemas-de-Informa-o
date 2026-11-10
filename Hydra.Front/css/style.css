@@ -868,7 +868,7 @@ img{ max-width:100%; display:block; }
     display:flex;
     flex-direction:column;
 
-    background:#fff;
+    background:var(--card, #fff);
 
     max-height:0;
     overflow:hidden;

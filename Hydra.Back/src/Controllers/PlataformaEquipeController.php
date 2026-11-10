@@ -150,6 +150,8 @@ final class PlataformaEquipeController
 
     public function primeiroAcesso(): void
     {
+        // Rota de autenticação que não usa a sessão: solta o lock já no início.
+        Auth::liberarSessao();
         $dados = Request::json();
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
         $codigo = trim((string) ($dados['codigo'] ?? ''));

@@ -49,6 +49,8 @@ final class AuthController
      */
     public function registro(): void
     {
+        // Esta rota não grava na sessão: solta o lock já no início.
+        Auth::liberarSessao();
         $dados = Request::json();
         $nome = trim((string) ($dados['nome'] ?? ''));
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
@@ -215,6 +217,8 @@ final class AuthController
      */
     public function verificarEmail(): void
     {
+        // Esta rota não grava na sessão: solta o lock já no início.
+        Auth::liberarSessao();
         $dados = Request::json();
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
         $codigo = trim((string) ($dados['codigo'] ?? ''));
@@ -289,6 +293,8 @@ final class AuthController
      */
     public function reenviarVerificacao(): void
     {
+        // Esta rota não grava na sessão: solta o lock já no início.
+        Auth::liberarSessao();
         $dados = Request::json();
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
 
@@ -342,6 +348,11 @@ final class AuthController
         // A sessão compartilhada pelo navegador nunca pode manter ao mesmo
         // tempo uma conta da loja e uma conta da equipe Hydra.
         unset($_SESSION['admin_plataforma'], $_SESSION['login_pendente_plataforma']);
+        // Grava o unset acima e solta o lock: a verificação da senha (bcrypt)
+        // e as consultas abaixo não podem segurar as outras requisições do
+        // navegador. Quem grava na sessão daqui em diante a reabre antes
+        // (Auth::login() e o bloco do login_pendente).
+        Auth::liberarSessao();
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
         $senha = (string) ($dados['senha'] ?? '');
 
@@ -409,6 +420,7 @@ final class AuthController
 
             // A senha já foi conferida; a sessão guarda só QUEM está na
             // metade do login. Auth::login() acontece em loginCodigo().
+            Auth::reabrirSessao();
             if (session_status() === PHP_SESSION_ACTIVE) {
                 session_regenerate_id(true);
             }
@@ -416,6 +428,8 @@ final class AuthController
                 'id_usuario' => (int) $usuario['id_usuario'],
                 'expira' => time() + self::MINUTOS_CODIGO * 60,
             ];
+            // Solta de novo antes do envio do e-mail (síncrono em local).
+            Auth::liberarSessao();
 
             $extra = $emailVerificado
                 ? $this->enviarCodigoAcesso(
@@ -643,6 +657,8 @@ final class AuthController
      */
     public function esqueciSenha(): void
     {
+        // Esta rota não grava na sessão: solta o lock já no início.
+        Auth::liberarSessao();
         $dados = Request::json();
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
         // Conta também os pedidos, não só as tentativas de código: sem isso
@@ -666,16 +682,13 @@ final class AuthController
         $expiraEm = (new \DateTimeImmutable('+15 minutes'))->format('Y-m-d H:i:s');
         $this->usuarios->setResetToken((int) $usuario['id_usuario'], $codigo, $expiraEm);
 
-        $enviado = Mailer::send(
-            $email,
-            'Código de recuperação de senha — Hydra PDV',
-            $this->emailCodigoHtml(
-                (string) $usuario['nome'],
-                $codigo,
-                'Recuperação de senha',
-                'Use o código abaixo para redefinir sua senha no Hydra PDV. Ele expira em 15 minutos.',
-                'Se você não solicitou essa recuperação, pode ignorar este e-mail.'
-            )
+        $assunto = 'Código de recuperação de senha — Hydra PDV';
+        $html = $this->emailCodigoHtml(
+            (string) $usuario['nome'],
+            $codigo,
+            'Recuperação de senha',
+            'Use o código abaixo para redefinir sua senha no Hydra PDV. Ele expira em 15 minutos.',
+            'Se você não solicitou essa recuperação, pode ignorar este e-mail.'
         );
 
         $resposta = ['ok' => true];
@@ -684,8 +697,17 @@ final class AuthController
         // de o envio ter falhado - e como BREVO_API_KEY precisa ser
         // preenchida à mão no provedor, esquecer disso em produção fazia
         // a API entregar o código de qualquer conta a qualquer um.
-        if (!$enviado && Env::get('APP_ENV', 'production') === 'local') {
-            $resposta['codigo_dev'] = $codigo;
+        if (Env::get('APP_ENV', 'production') === 'local') {
+            // Em desenvolvimento a resposta depende do resultado do envio.
+            if (!Mailer::send($email, $assunto, $html)) {
+                $resposta['codigo_dev'] = $codigo;
+            }
+        } else {
+            // Em produção o e-mail sai DEPOIS da resposta, como em
+            // despacharEmailCodigo(): a tela não espera a chamada ao Brevo
+            // (até 10 s), e o tempo de resposta deixa de denunciar se o
+            // e-mail informado tem conta (o caso sem conta responde na hora).
+            Response::depoisDaResposta(static fn () => Mailer::send($email, $assunto, $html));
         }
 
         Response::json($resposta);
@@ -700,6 +722,8 @@ final class AuthController
      */
     public function verificarCodigoRecuperacao(): void
     {
+        // Esta rota não grava na sessão: solta o lock já no início.
+        Auth::liberarSessao();
         $dados = Request::json();
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
         $codigo = trim((string) ($dados['codigo'] ?? ''));
@@ -726,6 +750,8 @@ final class AuthController
     /** POST /api/auth/redefinir-senha */
     public function redefinirSenha(): void
     {
+        // Esta rota não grava na sessão: solta o lock já no início.
+        Auth::liberarSessao();
         $dados = Request::json();
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
         $codigo = trim((string) ($dados['codigo'] ?? ''));

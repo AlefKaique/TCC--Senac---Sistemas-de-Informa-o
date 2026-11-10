@@ -45,6 +45,11 @@ final class LojaController
             Response::json(['erro' => 'Loja não encontrada'], 404);
             return;
         }
+        // ?sem_logo=1: telas que só mostram o nome da loja (Equipe, Filiais)
+        // não precisam baixar a logo, um data URL de até 700 KB.
+        if (($_GET['sem_logo'] ?? '') === '1') {
+            unset($loja['logo']);
+        }
         Response::json(['loja' => $loja]);
     }
 

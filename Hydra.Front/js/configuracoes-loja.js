@@ -459,6 +459,10 @@
     function fillForm(loja) {
         document.getElementById('hydroNomeLoja').value = loja.nome_loja || '';
         cnpjInput.value = mascaraCnpj(loja.cnpj);
+        // O CNPJ que já está gravado foi conferido quando foi salvo: sem
+        // isto, o primeiro "Salvar" consultava a BrasilAPI (até 8 s) mesmo
+        // sem o CNPJ ter mudado. Se o usuário trocar o CNPJ, a consulta volta.
+        cnpjBrasilApiVerificado = loja.cnpj ? window.hydraCnpj.normalizar(loja.cnpj) || null : null;
         telefoneInput.value = mascaraTelefone(loja.telefone);
         cepInput.value = mascaraCep(loja.cep);
         document.getElementById('hydroEndereco').value = loja.endereco || '';
@@ -600,13 +604,6 @@
                 alertasCard.scrollIntoView({ block: 'start' });
             }
 
-            if (podeConfigurarLoja) {
-                try {
-                    await carregarPreferenciasAlertas();
-                } catch (error) {
-                    showToast(error.message);
-                }
-            }
             if (!podeConfigurarLoja) return;
         } catch (err) {
             alertasPreview.hidden = false;
@@ -614,13 +611,24 @@
             return;
         }
 
+        /* As três cargas são independentes e saem juntas. Antes iam uma
+           depois da outra (alertas -> loja -> Mercado Pago), somando o tempo
+           de resposta das três antes de a tela ficar completa. */
+        const alertas = carregarPreferenciasAlertas().catch((error) => showToast(error.message));
+        const dadosLoja = window.hydraApi('/loja')
+            .then(({ loja }) => {
+                lojaAtual = loja;
+                fillForm(loja);
+            });
+        const contaMp = carregarContaMercadoPago();
+        await alertas;
         try {
-            const { loja } = await window.hydraApi('/loja');
-            lojaAtual = loja;
-            fillForm(loja);
-            await carregarContaMercadoPago();
+            await dadosLoja;
+            await contaMp;
         } catch (err) {
             showToast(err.message);
         }
+        // Evita "unhandled rejection" se a loja falhou e a conta também.
+        contaMp.catch(() => {});
     })();
 })();

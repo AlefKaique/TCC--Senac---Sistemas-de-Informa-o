@@ -224,6 +224,14 @@
             return;
         }
 
+        // Os dados saem junto com /auth/me, e não depois dele (como no
+        // Caixa); só são usados se a sessão e a permissão forem confirmadas.
+        // A loja vem junto (mesma permissão): é a origem dos dados das
+        // filiais que não têm os próprios. "sem_logo": a logo não é usada aqui.
+        const filiaisPedido = window.hydraApi('/filiais');
+        filiaisPedido.catch(() => {});
+        const lojaPedido = window.hydraApi('/loja?sem_logo=1').catch(() => null);
+
         try {
             const { usuario } = await window.hydraSessao();
             const nameEl = document.getElementById('hydroUserName');
@@ -239,12 +247,7 @@
         }
 
         try {
-            // A loja vem junto (mesma permissão): é a origem dos dados das
-            // filiais que não têm os próprios.
-            const [resposta, dadosLoja] = await Promise.all([
-                window.hydraApi('/filiais'),
-                window.hydraApi('/loja').catch(() => null),
-            ]);
+            const [resposta, dadosLoja] = await Promise.all([filiaisPedido, lojaPedido]);
             loja = dadosLoja && dadosLoja.loja ? dadosLoja.loja : null;
             filiais = resposta.filiais || [];
             idFilialAtiva = resposta.id_filial_ativa;

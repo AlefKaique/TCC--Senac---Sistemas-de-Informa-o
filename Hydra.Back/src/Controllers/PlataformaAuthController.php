@@ -76,9 +76,14 @@ final class PlataformaAuthController
             'email' => $emailChave,
             'expira' => time() + self::MINUTOS_CODIGO * 60,
         ];
+        // Grava a sessão e solta o lock ANTES de chamar o Brevo (até 10 s):
+        // antes as outras requisições do navegador ficavam esperando o envio.
+        Auth::liberarSessao();
 
         if (!$this->enviarCodigo($admin)) {
+            Auth::reabrirSessao();
             unset($_SESSION['login_pendente_plataforma']);
+            Auth::liberarSessao();
             Response::json(['erro' => 'Não foi possível enviar o código. Tente novamente mais tarde.'], 502);
             return;
         }
@@ -101,6 +106,10 @@ final class PlataformaAuthController
             Response::json(['erro' => 'Sua verificação expirou. Faça login novamente.'], 401);
             return;
         }
+
+        // Daqui em diante só lê a sessão até Auth::loginPlataforma(), que a
+        // reabre para gravar; o lock não fica preso durante as consultas.
+        Auth::liberarSessao();
 
         $idAdmin = (int) $sessaoPendente['id_admin'];
         $email = (string) $sessaoPendente['email'];
@@ -159,13 +168,19 @@ final class PlataformaAuthController
             return;
         }
 
+        // Solta o lock antes das consultas e do envio ao Brevo; a sessão é
+        // reaberta só nos pontos que gravam nela.
+        Auth::liberarSessao();
+
         $email = (string) $sessaoPendente['email'];
         $chaveEnvio = 'plataforma:envio:' . $email;
         RateLimit::requireNaoBloqueado($chaveEnvio);
         RateLimit::registrarFalha($chaveEnvio);
         $admin = $this->admins->findAtivoById((int) $sessaoPendente['id_admin']);
         if ($admin === null) {
+            Auth::reabrirSessao();
             unset($_SESSION['login_pendente_plataforma']);
+            Auth::liberarSessao();
             Response::json(['erro' => 'Sua verificação expirou. Faça login novamente.'], 401);
             return;
         }
@@ -174,7 +189,11 @@ final class PlataformaAuthController
             Response::json(['erro' => 'Não foi possível enviar o código. Tente novamente mais tarde.'], 502);
             return;
         }
-        $_SESSION['login_pendente_plataforma']['expira'] = time() + self::MINUTOS_CODIGO * 60;
+        Auth::reabrirSessao();
+        if (is_array($_SESSION['login_pendente_plataforma'] ?? null)) {
+            $_SESSION['login_pendente_plataforma']['expira'] = time() + self::MINUTOS_CODIGO * 60;
+        }
+        Auth::liberarSessao();
         Response::json(['ok' => true]);
     }
 

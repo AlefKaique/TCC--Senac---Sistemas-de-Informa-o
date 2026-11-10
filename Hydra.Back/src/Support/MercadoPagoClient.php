@@ -152,19 +152,8 @@ final class MercadoPagoClient
                 : json_encode($body, JSON_THROW_ON_ERROR);
         }
 
-        $context = stream_context_create([
-            'http' => [
-                'method' => $method,
-                'header' => implode("\r\n", $headers),
-                'content' => $content,
-                'timeout' => 15,
-                'ignore_errors' => true,
-            ],
-        ]);
-        $response = @file_get_contents($url, false, $context);
-        $statusLine = $http_response_header[0] ?? '';
-        preg_match('/\s(\d{3})\s/', $statusLine, $matches);
-        $status = isset($matches[1]) ? (int) $matches[1] : 0;
+        // Conexão em até 5 s e chamada inteira em até 15 s (ver Http).
+        ['status' => $status, 'body' => $response] = Http::request($method, $url, $headers, $content, 5, 15);
         $data = is_string($response) ? json_decode($response, true) : null;
         if ($status < 200 || $status >= 300 || !is_array($data)) {
             error_log('[Hydra] Mercado Pago request failed with HTTP ' . $status);

@@ -72,19 +72,39 @@ const defaultApiBase = window.location.hostname === 'localhost' || window.locati
 
 window.HYDRA_API_BASE = window.HYDRA_API_BASE || defaultApiBase;
 
-window.hydraApi = async function hydraApi(path, options = {}) {
-  const res = await fetch(window.HYDRA_API_BASE + path, {
-    method: options.method || 'GET',
-    credentials: 'include',
-    headers: options.body ? { 'Content-Type': 'application/json' } : {},
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
+/* Prazo de cada chamada. Sem ele, uma requisição travada (rede instável,
+   servidor sobrecarregado) prendia a tela indefinidamente em "Carregando".
+   O erro de prazo sai sem "status", como uma falha de rede, então quem já
+   trata falha de rede (ex.: a consulta do Pix, que tenta de novo) continua
+   funcionando igual. */
+const HYDRA_API_TIMEOUT_MS = 30000;
 
+window.hydraApi = async function hydraApi(path, options = {}) {
+  const controle = typeof AbortController === 'function' ? new AbortController() : null;
+  const prazo = controle ? setTimeout(() => controle.abort(), HYDRA_API_TIMEOUT_MS) : null;
+  let res;
   let data = {};
   try {
-    data = await res.json();
+    res = await fetch(window.HYDRA_API_BASE + path, {
+      method: options.method || 'GET',
+      credentials: 'include',
+      headers: options.body ? { 'Content-Type': 'application/json' } : {},
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      signal: controle ? controle.signal : undefined,
+    });
+    try {
+      data = await res.json();
+    } catch (e) {
+      if (e && e.name === 'AbortError') throw e;
+      data = {};
+    }
   } catch (e) {
-    data = {};
+    if (e && e.name === 'AbortError') {
+      throw new Error('O servidor demorou demais para responder. Verifique a conexão e tente novamente.');
+    }
+    throw e;
+  } finally {
+    if (prazo) clearTimeout(prazo);
   }
 
   if (!res.ok) {

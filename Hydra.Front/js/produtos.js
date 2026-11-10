@@ -14,10 +14,12 @@
             window.hydraGuardaDeTela(usuario, ['produtos.gerenciar']);
         } catch (err) {
             // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
+            // O histórico fictício da demonstração só interessa a ele; para
+            // quem está logado, gerar ~30 dias de vendas no localStorage era
+            // trabalho jogado fora na primeira abertura da tela.
+            HydroStore.seedHistoryIfNeeded();
         }
     })();
-
-    HydroStore.seedHistoryIfNeeded();
 
     /* ================= Categorias já usadas na loja =================
        Não existe lista fixa nem tabela de categorias: o usuário digita a

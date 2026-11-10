@@ -42,6 +42,13 @@ final class MercadoPagoRepository
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
             );
         });
+        // Cobrança ativa do operador (consultada ao abrir o Caixa e ao criar
+        // um Pix): o único índice começava por id_filial.
+        Migracoes::garantir('indices_pix_v1', static fn () => Migracoes::criarIndiceSeFaltar(
+            'pagamentos_pix_pendentes',
+            'idx_pix_loja_status_expira',
+            'id_loja, status, expira_em'
+        ));
     }
 
     /** @return array<string,mixed>|null */

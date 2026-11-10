@@ -29,7 +29,7 @@
     line-height: 1;
     text-transform: uppercase;
     user-select: none;
-    box-shadow: 0 0 0 2px #fff, 0 0 0 3px #e7e9f2;
+    box-shadow: 0 0 0 2px var(--card, #fff), 0 0 0 3px var(--border, #e7e9f2);
 }
 
 /* Sem sessão (carregando ou visitante da demonstração): ícone de pessoa. */

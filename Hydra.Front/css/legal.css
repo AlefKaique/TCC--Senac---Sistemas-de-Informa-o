@@ -48,7 +48,7 @@
   margin-top: 6px;
   padding: 6px 12px;
   border-radius: var(--radius-sm);
-  background: #f1f3f9;
+  background: var(--soft, #f1f3f9);
   font-family: var(--font-body);
   font-weight: 600;
   user-select: all;

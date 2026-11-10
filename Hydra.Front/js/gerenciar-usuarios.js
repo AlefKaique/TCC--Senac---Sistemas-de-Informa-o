@@ -652,6 +652,17 @@
     /* ================= Init ================= */
     (async function init() {
         if (!window.hydraApi) return;
+        // As duas chamadas são independentes: GET /api/loja exige
+        // "loja.configurar", que nem todo cargo com acesso à Equipe tem.
+        // Com Promise.all, um 403 ali derrubava também a lista de usuários
+        // e a de cargos, e o seletor de cargo abria vazio.
+        // Saem junto com /auth/me (não depois dele), como no Caixa; o
+        // resultado só é usado se a sessão e a permissão forem confirmadas.
+        // "sem_logo": esta tela só usa o nome da loja, não a logo (até 700 KB).
+        const carga = Promise.allSettled([
+            window.hydraApi('/loja?sem_logo=1'),
+            window.hydraApi('/usuarios'),
+        ]);
         try {
             const { usuario } = await window.hydraSessao();
             const nameEl = document.getElementById('hydroUserName');
@@ -664,14 +675,6 @@
             return;
         }
 
-        // As duas chamadas são independentes: GET /api/loja exige
-        // "loja.configurar", que nem todo cargo com acesso à Equipe tem.
-        // Com Promise.all, um 403 ali derrubava também a lista de usuários
-        // e a de cargos, e o seletor de cargo abria vazio.
-        const carga = Promise.allSettled([
-            window.hydraApi('/loja'),
-            window.hydraApi('/usuarios'),
-        ]);
         cargaPronta = carga;
         const [lojaRes, usersRes] = await carga;
 

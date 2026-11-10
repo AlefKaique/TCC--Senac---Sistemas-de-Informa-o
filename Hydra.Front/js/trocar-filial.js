@@ -342,8 +342,10 @@
 
         estado.carregando = true;
         try {
-            // Sempre busca de novo: os vínculos podem ter mudado desde que a tela abriu.
-            await carregarFiliais();
+            // Busca de novo (os vínculos podem ter mudado desde que a tela
+            // abriu), exceto quando quem chamou acabou de buscar a lista -
+            // caso de iniciar(), que antes fazia a mesma chamada duas vezes.
+            if (!opcoes.listaRecemCarregada) await carregarFiliais();
         } catch (err) {
             estado.carregando = false;
             el.carregando.hidden = true;
@@ -452,7 +454,7 @@
         } catch (err) {
             return;
         }
-        if (!estado.ativa) abrir({ obrigatorio: true });
+        if (!estado.ativa) abrir({ obrigatorio: true, listaRecemCarregada: true });
     }
 
     if (document.readyState === 'loading') {

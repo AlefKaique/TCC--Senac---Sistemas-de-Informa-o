@@ -60,16 +60,26 @@ final class RelatorioRepository
                            MAX(iv.custo_estimado) AS venda_custo_estimado
                       FROM itens_venda iv
                       JOIN vendas v ON v.id_venda = iv.id_venda
+                     WHERE v.id_filial = :id_filial2
+                       AND v.data_venda >= :de2 AND v.data_venda < :fim2
+                       AND v.status = 'concluida'
                      GROUP BY iv.id_venda
                ) c ON c.id_venda = v.id_venda
               WHERE v.id_filial = :id_filial
                 AND v.data_venda >= :de AND v.data_venda < :fim
                 AND v.status = 'concluida'"
         );
+        // A derivada "c" repete o filtro da consulta externa. Sem ele, o
+        // MySQL somava os itens de TODAS as vendas do banco (todas as lojas,
+        // todo o histórico) antes de filtrar - e resumo() faz isso 4 vezes.
+        // Mesmo padrão de VendaRepository::resumoPorFilial().
         $stmt->execute([
             'id_filial' => $idFilial,
             'de' => $de->format('Y-m-d 00:00:00'),
             'fim' => $fim->format('Y-m-d 00:00:00'),
+            'id_filial2' => $idFilial,
+            'de2' => $de->format('Y-m-d 00:00:00'),
+            'fim2' => $fim->format('Y-m-d 00:00:00'),
         ]);
         $row = $stmt->fetch() ?: [];
         $stmt = db()->prepare(
@@ -126,16 +136,24 @@ final class RelatorioRepository
                FROM vendas v
                LEFT JOIN (
                     SELECT iv.id_venda, SUM(iv.quantidade * COALESCE(iv.custo_unitario, 0)) AS custo
-                      FROM itens_venda iv GROUP BY iv.id_venda
+                      FROM itens_venda iv
+                      JOIN vendas v2 ON v2.id_venda = iv.id_venda
+                     WHERE v2.id_filial = :id_filial2 AND v2.status = 'concluida'
+                       AND v2.data_venda >= :de2 AND v2.data_venda < :fim2
+                     GROUP BY iv.id_venda
                ) c ON c.id_venda = v.id_venda
               WHERE v.id_filial = :id_filial AND v.status = 'concluida'
                 AND v.data_venda >= :de AND v.data_venda < :fim
               GROUP BY DATE(v.data_venda)"
         );
+        // Derivada filtrada pelo mesmo período/filial (ver resumoPeriodo()).
         $stmt->execute([
             'id_filial' => $idFilial,
             'de' => $de->format('Y-m-d 00:00:00'),
             'fim' => $fim->format('Y-m-d 00:00:00'),
+            'id_filial2' => $idFilial,
+            'de2' => $de->format('Y-m-d 00:00:00'),
+            'fim2' => $fim->format('Y-m-d 00:00:00'),
         ]);
         $porDia = [];
         foreach ($stmt->fetchAll() as $row) {
@@ -341,21 +359,28 @@ final class RelatorioRepository
         $stmt = db()->prepare(
             "SELECT p.id_produto, p.nome, p.unidade, p.quantidade,
                     p.quantidade * p.preco_custo AS valor_parado_custo,
-                    (SELECT MAX(v2.data_venda)
-                       FROM itens_venda iv2 JOIN vendas v2 ON v2.id_venda = iv2.id_venda
-                      WHERE iv2.id_produto = p.id_produto AND v2.status = 'concluida') AS ultima_venda
+                    uv.ultima_venda
                FROM produtos p
+               LEFT JOIN (
+                    SELECT iv.id_produto,
+                           MAX(v.data_venda) AS ultima_venda,
+                           MAX(CASE WHEN v.data_venda >= :inicio AND v.data_venda < :fim
+                                    THEN 1 ELSE 0 END) AS vendeu_no_periodo
+                      FROM itens_venda iv
+                      JOIN vendas v ON v.id_venda = iv.id_venda
+                     WHERE v.id_filial = :id_filial2 AND v.status = 'concluida'
+                     GROUP BY iv.id_produto
+               ) uv ON uv.id_produto = p.id_produto
               WHERE p.id_filial = :id_filial AND p.status = 'ativo' AND p.quantidade > 0
-                AND NOT EXISTS (
-                    SELECT 1 FROM itens_venda iv
-                    JOIN vendas v ON v.id_venda = iv.id_venda
-                    WHERE iv.id_produto = p.id_produto AND v.status = 'concluida'
-                      AND v.data_venda >= :inicio AND v.data_venda < :fim
-                )
+                AND COALESCE(uv.vendeu_no_periodo, 0) = 0
               ORDER BY valor_parado_custo DESC, p.nome ASC"
         );
+        // Uma passada pelas vendas da filial, agrupada por produto, no lugar
+        // de duas subconsultas correlacionadas (MAX e NOT EXISTS) que
+        // percorriam o histórico inteiro de cada produto, um por um.
         $stmt->execute([
             'id_filial' => $idFilial,
+            'id_filial2' => $idFilial,
             'inicio' => $inicio->format('Y-m-d 00:00:00'),
             'fim' => $hoje->modify('+1 day')->format('Y-m-d 00:00:00'),
         ]);

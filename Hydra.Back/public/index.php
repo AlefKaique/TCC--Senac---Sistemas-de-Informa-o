@@ -111,8 +111,19 @@ if ($path === '') {
     $path = '/';
 }
 
-// Webhook e agendador usam autenticação própria e não precisam iniciar sessão.
-if (!in_array($path, ['/api/whatsapp/webhook', '/api/interno/alertas/disparar'], true)) {
+// A sessão só é aberta quando pode existir: o navegador já mandou o cookie
+// dela, ou a rota é de autenticação (que cria a sessão). Antes ela abria em
+// toda chamada - o healthcheck do Render (/api/health, sem cookie) criava
+// um arquivo de sessão novo a cada verificação, e rotas públicas como
+// /api/catalogo-hortifruti travavam o arquivo à toa. Sem cookie,
+// requireLogin() continua respondendo 401, porque não há usuário na sessão.
+// Webhook e agendador usam autenticação própria e nunca abrem sessão.
+$rotaSemSessao = in_array($path, ['/api/health', '/api/whatsapp/webhook', '/api/interno/alertas/disparar'], true);
+// ".../auth/me" só LÊ a sessão: sem cookie não há o que ler, e a página
+// inicial chama /api/auth/me em toda visita anônima.
+$rotaDeAutenticacao = (str_starts_with($path, '/api/auth/') || str_starts_with($path, '/api/plataforma/auth/'))
+    && !str_ends_with($path, '/auth/me');
+if (!$rotaSemSessao && ($rotaDeAutenticacao || isset($_COOKIE[session_name()]))) {
     Auth::start();
 }
 

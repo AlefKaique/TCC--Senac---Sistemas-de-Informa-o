@@ -6,6 +6,17 @@
    componente. NÃO existem seletores soltos em html, body, *, .btn, etc.
    =================================================================== */
 
+/* A margem padrão do navegador (8 px) aparecia como uma faixa sem fundo em
+   cima e à esquerda da tela, bem visível no tema escuro. */
+body {
+    margin: 0;
+}
+
+/* --hydra-zoom vem de js/font-size.js, que aplica "zoom" no body para o
+   ajuste de fonte (A-/A+). O zoom também encolhe 100vh: com a fonte menor, a
+   barra lateral e o fundo da página terminavam antes do fim da janela. As
+   alturas de tela abaixo dividem pelo zoom para ocupar a janela inteira. */
+
 .hydro-stock {
     --navy-900: #152e6d;
     --navy-800: #1d3a86;
@@ -25,6 +36,14 @@
     --red-bg: #fff2f3;
     --blue: #5e81f4;
     --blue-bg: #eff2fe;
+    /* Tons de apoio (hover, linha de tabela, miniaturas, campos). O tema
+       escuro (css/tema-escuro.css) redefine só estas variáveis. */
+    --surface-hover: #f6f7fb;
+    --row-hover: #fafbfd;
+    --soft: #f1f3f9;
+    --input-bg: #fff;
+    --red-border: #f6c9ce;
+    --amber-border: #f3dcae;
     --accent-leaf: #8dce0c;
     --shadow-card: 0 1px 2px rgba(13, 26, 61, .04), 0 10px 26px -16px rgba(13, 26, 61, .16);
     --shadow-pop: 0 20px 50px -20px rgba(13, 26, 61, .35);
@@ -206,8 +225,8 @@
 /* ============ Layout ============ */
 .hydro-app {
     display: flex;
-    min-height: 100vh;
-    min-height: 100dvh;
+    min-height: calc(100vh / var(--hydra-zoom, 1));
+    min-height: calc(100dvh / var(--hydra-zoom, 1));
 }
 
 .hydro-sidebar {
@@ -221,8 +240,8 @@
     padding: 26px 18px;
     position: sticky;
     top: 0;
-    height: 100vh;
-    height: 100dvh;
+    height: calc(100vh / var(--hydra-zoom, 1));
+    height: calc(100dvh / var(--hydra-zoom, 1));
     overflow-y: auto;
     z-index: 40;
 }
@@ -325,7 +344,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background: #fff;
+    background: var(--input-bg, #fff);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 9px 14px;
@@ -355,7 +374,7 @@
     width: 40px;
     height: 40px;
     border-radius: 10px;
-    background: #fff;
+    background: var(--card, #fff);
     border: 1px solid var(--border);
     display: flex;
     align-items: center;
@@ -365,7 +384,7 @@
 }
 
 .hydro-icon-btn:hover {
-    background: #f6f7fb;
+    background: var(--surface-hover, #f6f7fb);
 }
 
 .hydro-notif-dot {
@@ -376,7 +395,7 @@
     height: 7px;
     border-radius: 50%;
     background: var(--red);
-    border: 2px solid #fff;
+    border: 2px solid var(--card, #fff);
 }
 
 .hydro-user {
@@ -503,7 +522,7 @@
 .hydro-select-field select {
     appearance: none;
     -webkit-appearance: none;
-    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23697184' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+    background: var(--input-bg, #fff) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23697184' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
     background-size: 15px;
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -557,13 +576,13 @@
 }
 
 .hydro-btn-outline {
-    background: #fff;
+    background: var(--card, #fff);
     color: var(--navy-900);
     border-color: var(--border);
 }
 
 .hydro-btn-outline:hover {
-    background: #f6f7fb;
+    background: var(--surface-hover, #f6f7fb);
 }
 
 .hydro-btn-danger {
@@ -628,7 +647,7 @@
 }
 
 .hydro-stock tbody tr:hover {
-    background: #fafbfd;
+    background: var(--row-hover, #fafbfd);
 }
 
 .hydro-product-cell {
@@ -642,7 +661,7 @@
     height: 42px;
     border-radius: 9px;
     flex-shrink: 0;
-    background: #f1f3f9;
+    background: var(--soft, #f1f3f9);
     border: 1px solid var(--border);
     display: flex;
     align-items: center;
@@ -823,7 +842,7 @@
     padding: 0 8px;
     border-radius: 9px;
     border: 1px solid var(--border);
-    background: #fff;
+    background: var(--card, #fff);
     color: var(--ink);
     font-size: 13.5px;
     font-weight: 600;
@@ -833,7 +852,7 @@
 }
 
 .hydro-page-btn:hover:not(:disabled):not(.hydro-active) {
-    background: #f6f7fb;
+    background: var(--surface-hover, #f6f7fb);
 }
 
 .hydro-page-btn.hydro-active {
@@ -903,7 +922,7 @@
 }
 
 .hydro-modal {
-    background: #fff;
+    background: var(--card, #fff);
     border-radius: 16px;
     width: 100%;
     max-width: 440px;
@@ -1083,8 +1102,8 @@
         position: fixed;
         left: 0;
         top: 0;
-        height: 100vh;
-        height: 100dvh;
+        height: calc(100vh / var(--hydra-zoom, 1));
+        height: calc(100dvh / var(--hydra-zoom, 1));
         transform: translateX(-100%);
         transition: transform .25s ease;
     }

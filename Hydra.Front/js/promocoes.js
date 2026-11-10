@@ -143,8 +143,9 @@
         renderPromos();
     }
 
-    async function load() {
-        const data = await window.hydraApi('/promocoes');
+    /** @param {Promise<object>} [pedido] requisição já disparada (carga inicial) */
+    async function load(pedido) {
+        const data = await (pedido || window.hydraApi('/promocoes'));
         hoje = data.hoje || hoje;
         produtosAVencer = data.produtos_a_vencer || [];
         promocoes = data.promocoes || [];
@@ -321,6 +322,10 @@
     /* ================= Init ================= */
     (async function init() {
         if (!window.hydraApi) return;
+        // Sai junto com /auth/me, e não depois dele; só é usado se a sessão
+        // e a permissão forem confirmadas abaixo.
+        const promocoesPedido = window.hydraApi('/promocoes');
+        promocoesPedido.catch(() => {});
         try {
             const { usuario } = await window.hydraSessao();
             const nameEl = document.getElementById('hydroUserName');
@@ -335,7 +340,7 @@
         }
 
         try {
-            await load();
+            await load(promocoesPedido);
             // Vindo do Relatório com ?produto=ID: já abre a promoção daquele produto.
             const idProduto = new URLSearchParams(window.location.search).get('produto');
             if (idProduto) openModal(idProduto);

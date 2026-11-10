@@ -15,6 +15,28 @@ html[data-hydra-theme="dark"] {
   --theme-muted: #a9b5c8;
   --theme-input: #111a27;
   --theme-shadow: 0 14px 36px rgba(0, 0, 0, .28);
+  /* Tokens usados pelos CSS das telas (sempre com a cor clara como
+     fallback). Definidos também aqui, na raiz, para os componentes que
+     ficam fora dos wrappers da tela: janela de troca de filial, modal da
+     demonstração, painel de fonte, diálogos da câmera e do Pix. */
+  --card: var(--theme-surface);
+  --border: var(--theme-border);
+  --ink: var(--theme-text);
+  --muted: var(--theme-muted);
+  --navy-900: #d3ddff;
+  --surface-hover: #29384d;
+  --row-hover: #1f2b3c;
+  --soft: var(--theme-raised);
+  --input-bg: var(--theme-input);
+  --red-bg: #41252e;
+  --amber-bg: #3b3020;
+  --green-bg: #173a30;
+  --blue-bg: #253453;
+  --red-border: #69404a;
+  --amber-border: #62502d;
+  /* O canvas da página nunca aparece em outra cor (antes, áreas fora do
+     conteúdo ficavam sem fundo definido). */
+  background-color: var(--theme-bg);
 }
 
 html[data-hydra-theme="dark"] body {
@@ -37,6 +59,12 @@ html[data-hydra-theme="dark"] .hydro-dash {
   --amber-bg: #3b3020;
   --red-bg: #41252e;
   --blue-bg: #253453;
+  --surface-hover: #29384d;
+  --row-hover: #1f2b3c;
+  --soft: var(--theme-raised);
+  --input-bg: var(--theme-input);
+  --red-border: #69404a;
+  --amber-border: #62502d;
   --shadow-card: var(--theme-shadow);
   --shadow-pop: 0 22px 54px rgba(0, 0, 0, .48);
   background-color: var(--bg);
@@ -60,6 +88,12 @@ html[data-hydra-theme="dark"] .hydro-caixa {
   --amber-bg: #3b3020;
   --red-bg: #41252e;
   --blue-bg: #253453;
+  --surface-hover: #29384d;
+  --row-hover: #1f2b3c;
+  --soft: var(--theme-raised);
+  --input-bg: var(--theme-input);
+  --red-border: #69404a;
+  --amber-border: #62502d;
   --shadow-card: var(--theme-shadow);
   --shadow-pop: 0 22px 54px rgba(0, 0, 0, .48);
   background-color: var(--bg);
@@ -85,8 +119,6 @@ html[data-hydra-theme="dark"] .plataforma-shell {
 
 html[data-hydra-theme="dark"] .header,
 html[data-hydra-theme="dark"] .signup__form-side,
-html[data-hydra-theme="dark"] .hydro-main,
-html[data-hydra-theme="dark"] .hydro-topbar,
 html[data-hydra-theme="dark"] .hydro-card,
 html[data-hydra-theme="dark"] .hydro-stat-card,
 html[data-hydra-theme="dark"] .hydro-table-card,
@@ -116,17 +148,11 @@ html[data-hydra-theme="dark"] .hydro-demo-card {
   box-shadow: var(--theme-shadow);
 }
 
-html[data-hydra-theme="dark"] .hydro-dash section,
-html[data-hydra-theme="dark"] .hydro-dash article,
-html[data-hydra-theme="dark"] .hydro-stock section,
-html[data-hydra-theme="dark"] .hydro-stock article,
-html[data-hydra-theme="dark"] .hydro-products section,
-html[data-hydra-theme="dark"] .hydro-products article,
-html[data-hydra-theme="dark"] .hydro-caixa section,
-html[data-hydra-theme="dark"] .hydro-caixa article {
-  background-color: var(--theme-surface);
-  border-color: var(--theme-border);
-}
+/* Não há regra genérica para <section>/<article>: ela pintava como cartão
+   também os contêineres de layout (barra de filtros do Estoque, grade de
+   indicadores do Relatório, colunas, carrinho do Caixa), criando faixas de
+   outra cor sem margem. Os cartões de verdade usam .hydro-card (lista acima)
+   ou var(--card), que o tema redefine. */
 
 html[data-hydra-theme="dark"] [role="dialog"] {
   background-color: var(--theme-surface) !important;
@@ -545,4 +571,107 @@ html[data-hydra-theme="dark"] button:focus-visible,
 html[data-hydra-theme="dark"] .btn:focus-visible {
   outline: 2px solid #9db4ff;
   outline-offset: 2px;
+}
+
+/* Área principal e topbar não são cartões: antes recebiam fundo de superfície
+   e sombra (com !important), e a topbar aparecia como uma caixa recortada,
+   com bordas, solta no topo da tela. Ficam no fundo da página, com a linha
+   divisória de sempre. */
+html[data-hydra-theme="dark"] .hydro-main {
+  background: transparent;
+}
+
+html[data-hydra-theme="dark"] .hydro-topbar {
+  background: transparent;
+  box-shadow: none;
+  border-bottom-color: var(--theme-border);
+}
+
+/* Linha da tabela em hover/foco: fundo levemente destacado e texto sempre
+   claro. Antes o fundo ia para quase branco com o texto claro do tema. */
+html[data-hydra-theme="dark"] tbody tr:hover td,
+html[data-hydra-theme="dark"] tbody tr:focus-within td {
+  color: var(--theme-text);
+}
+
+/* Preenchimento automático do navegador (Chrome/Edge) pinta o campo de
+   branco/amarelo por cima do tema. */
+html[data-hydra-theme="dark"] input:-webkit-autofill,
+html[data-hydra-theme="dark"] input:-webkit-autofill:hover,
+html[data-hydra-theme="dark"] input:-webkit-autofill:focus,
+html[data-hydra-theme="dark"] textarea:-webkit-autofill,
+html[data-hydra-theme="dark"] select:-webkit-autofill {
+  -webkit-text-fill-color: var(--theme-text);
+  box-shadow: 0 0 0 1000px var(--theme-input) inset;
+  caret-color: var(--theme-text);
+  transition: background-color 9999s ease-out 0s;
+}
+
+/* Seleção de texto legível no fundo escuro. */
+html[data-hydra-theme="dark"] ::selection {
+  background: #3d5596;
+  color: #fff;
+}
+
+/* Área de upload da foto (Novo Produto). */
+html[data-hydra-theme="dark"] .hydro-dropzone:hover {
+  background: #22314b;
+}
+
+html[data-hydra-theme="dark"] .hydro-dropzone.hydro-dragover {
+  background: #2a3d5e;
+}
+
+/* Prefixo "R$" dos campos de preço: o texto dentro do prefixo acompanha o
+   tema (o fundo já vem de --input-bg). */
+html[data-hydra-theme="dark"] .hydro-input-prefix {
+  border-color: var(--theme-border);
+  color: var(--theme-muted);
+}
+
+/* Avisos da plataforma com cores claras fixas. */
+html[data-hydra-theme="dark"] .plataforma-error,
+html[data-hydra-theme="dark"] #plataforma-erro:not(:empty),
+html[data-hydra-theme="dark"] .plataforma-suspenso-aviso {
+  border-color: #69404a;
+  background: #41252e;
+  color: #ffabb4;
+}
+
+html[data-hydra-theme="dark"] .plataforma-banner {
+  background: #32294a;
+  color: #d0baff;
+}
+
+html[data-hydra-theme="dark"] .plataforma-timeline {
+  border-left-color: var(--theme-border);
+}
+
+/* Textos com cor escura fixa que somem no fundo escuro. */
+html[data-hydra-theme="dark"] .hydro-user-autoriza,
+html[data-hydra-theme="dark"] .hydro-cnpj-status[data-status="erro"],
+html[data-hydra-theme="dark"] .hydro-stock .hydro-filial-form-erro,
+html[data-hydra-theme="dark"] .plataforma-card-help.is-negative {
+  color: #ffabb4;
+}
+
+html[data-hydra-theme="dark"] .hydro-cnpj-status[data-status="sucesso"],
+html[data-hydra-theme="dark"] .plataforma-card-help.is-positive {
+  color: #82ddb2;
+}
+
+html[data-hydra-theme="dark"] .hydra-filial-chip-pendente .hydra-filial-chip-nome {
+  color: #f1cc7d;
+}
+
+html[data-hydra-theme="dark"] .hydro-pwd-rules-title,
+html[data-hydra-theme="dark"] .hydro-pwd-toggle:hover {
+  color: var(--theme-text);
+}
+
+/* Avatar sem iniciais (carregando/visitante): círculo escuro. Com iniciais,
+   a cor própria do usuário vem no style do elemento e continua valendo. */
+html[data-hydra-theme="dark"] .hydro-avatar {
+  --avatar-bg: var(--theme-raised);
+  --avatar-fg: var(--theme-muted);
 }

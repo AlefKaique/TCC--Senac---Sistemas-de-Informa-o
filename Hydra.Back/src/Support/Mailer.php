@@ -32,22 +32,15 @@ final class Mailer
             'htmlContent' => $html,
         ]);
 
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => "Content-Type: application/json\r\nAccept: application/json\r\napi-key: $apiKey\r\n",
-                'content' => $payload,
-                'ignore_errors' => true,
-                'timeout' => 10,
-            ],
-        ]);
-
-        $result = @file_get_contents('https://api.brevo.com/v3/smtp/email', false, $context);
-
-        $status = 0;
-        if (isset($http_response_header[0]) && preg_match('/\s(\d{3})\s/', $http_response_header[0], $m)) {
-            $status = (int) $m[1];
-        }
+        // Conexão em até 5 s e chamada inteira em até 10 s (ver Http).
+        ['status' => $status, 'body' => $result] = Http::request(
+            'POST',
+            'https://api.brevo.com/v3/smtp/email',
+            ['Content-Type: application/json', 'Accept: application/json', 'api-key: ' . $apiKey],
+            (string) $payload,
+            5,
+            10
+        );
 
         if ($result === false || $status >= 300) {
             error_log("[Mailer] Falha ao enviar via Brevo (status $status): " . ($result !== false && $result !== '' ? $result : 'sem resposta do servidor'));

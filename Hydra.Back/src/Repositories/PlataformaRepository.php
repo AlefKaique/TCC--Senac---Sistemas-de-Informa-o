@@ -42,24 +42,60 @@ final class PlataformaRepository
     /** @return array<string,mixed> */
     public function resumo(): array
     {
-        $status = db()->query(
-            'SELECT COUNT(*) AS total,
-                    SUM(status_calculado = "ativo") AS ativos,
-                    SUM(status_calculado = "novo") AS novos,
-                    SUM(status_calculado = "ocioso") AS ociosos,
-                    SUM(status_calculado = "inativo") AS inativos,
-                    SUM(status_calculado = "suspenso") AS suspensos,
-                    SUM(data_criacao >= DATE_FORMAT(NOW(), "%Y-%m-01")) AS novos_mes
+        // SQL_MERCADOS (várias subconsultas por loja) é calculado UMA vez; os
+        // totais por status e a lista de ociosos saem dessas linhas em PHP.
+        // Antes a mesma derivada era materializada duas vezes por abertura.
+        $mercados = db()->query(
+            'SELECT id_loja, nome_loja, cidade, estado, ultimo_acesso, ultima_venda,
+                    status_calculado, data_criacao
                FROM (' . self::SQL_MERCADOS . ') mercados'
-        )->fetch() ?: [];
+        )->fetchAll();
+
+        $inicioDoMes = date('Y-m-01 00:00:00');
+        $status = ['total' => count($mercados), 'ativos' => 0, 'novos' => 0, 'ociosos' => 0,
+            'inativos' => 0, 'suspensos' => 0, 'novos_mes' => 0];
+        $chavesStatus = ['ativo' => 'ativos', 'novo' => 'novos', 'ocioso' => 'ociosos',
+            'inativo' => 'inativos', 'suspenso' => 'suspensos'];
+        $ociosos = [];
+        foreach ($mercados as $mercado) {
+            $chave = $chavesStatus[$mercado['status_calculado']] ?? null;
+            if ($chave !== null) {
+                $status[$chave]++;
+            }
+            if ((string) $mercado['data_criacao'] >= $inicioDoMes) {
+                $status['novos_mes']++;
+            }
+            if ($mercado['status_calculado'] === 'ocioso') {
+                $ociosos[] = $mercado;
+            }
+        }
+        // Ordem antiga: o sinal de vida mais recente (acesso ou venda), do
+        // mais antigo para o mais novo. Datas "Y-m-d H:i:s" comparam como texto.
+        $ultimoSinal = static fn (array $m): string => max(
+            (string) ($m['ultimo_acesso'] ?? '1000-01-01'),
+            (string) ($m['ultima_venda'] ?? '1000-01-01')
+        );
+        usort($ociosos, static fn ($a, $b) => strcmp($ultimoSinal($a), $ultimoSinal($b)));
+        $precisamAtencao = array_map(static fn ($m) => [
+            'id_loja' => $m['id_loja'],
+            'nome_loja' => $m['nome_loja'],
+            'cidade' => $m['cidade'],
+            'estado' => $m['estado'],
+            'ultimo_acesso' => $m['ultimo_acesso'],
+            'ultima_venda' => $m['ultima_venda'],
+            'status_calculado' => $m['status_calculado'],
+        ], array_slice($ociosos, 0, 5));
 
         $pendentes = (int) db()->query('SELECT COUNT(*) FROM cadastros_pendentes')->fetchColumn();
         $filiais = (int) db()->query("SELECT COUNT(*) FROM filiais WHERE status = 'ativa'")->fetchColumn();
         $usuarios = (int) db()->query("SELECT COUNT(*) FROM usuarios WHERE status = 'ativo'")->fetchColumn();
-        $iniciados = $pendentes + (int) ($status['total'] ?? 0);
-        $confirmados = (int) ($status['total'] ?? 0);
+        $iniciados = $pendentes + $status['total'];
+        $confirmados = $status['total'];
+        // Por loja, com EXISTS (índice id_loja de vendas), em vez de
+        // COUNT(DISTINCT) sobre a tabela de vendas inteira.
         $primeirasVendas = (int) db()->query(
-            "SELECT COUNT(DISTINCT id_loja) FROM vendas WHERE status <> 'cancelada'"
+            "SELECT COUNT(*) FROM lojas l
+              WHERE EXISTS (SELECT 1 FROM vendas v WHERE v.id_loja = l.id_loja AND v.status <> 'cancelada')"
         )->fetchColumn();
 
         $mensal = db()->query(
@@ -69,25 +105,8 @@ final class PlataformaRepository
               GROUP BY DATE_FORMAT(data_criacao, '%Y-%m') ORDER BY mes"
         )->fetchAll();
 
-        $stmt = db()->query(
-            'SELECT id_loja, nome_loja, cidade, estado, ultimo_acesso, ultima_venda, status_calculado
-               FROM (' . self::SQL_MERCADOS . ') mercados
-              WHERE status_calculado = "ocioso"
-              ORDER BY GREATEST(COALESCE(ultimo_acesso, "1000-01-01"),
-                                COALESCE(ultima_venda, "1000-01-01")) ASC
-              LIMIT 5'
-        );
-
         return [
-            'mercados' => [
-                'total' => (int) ($status['total'] ?? 0),
-                'ativos' => (int) ($status['ativos'] ?? 0),
-                'novos' => (int) ($status['novos'] ?? 0),
-                'ociosos' => (int) ($status['ociosos'] ?? 0),
-                'inativos' => (int) ($status['inativos'] ?? 0),
-                'suspensos' => (int) ($status['suspensos'] ?? 0),
-                'novos_mes' => (int) ($status['novos_mes'] ?? 0),
-            ],
+            'mercados' => $status,
             'cadastros_pendentes' => $pendentes,
             'filiais_ativas' => $filiais,
             'usuarios_ativos' => $usuarios,
@@ -97,7 +116,7 @@ final class PlataformaRepository
                 'confirmados' => $confirmados,
                 'primeira_venda' => $primeirasVendas,
             ],
-            'precisam_atencao' => $stmt->fetchAll(),
+            'precisam_atencao' => $precisamAtencao,
         ];
     }
 
