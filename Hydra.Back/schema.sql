@@ -214,6 +214,7 @@ CREATE TABLE IF NOT EXISTS destinatarios_alerta (
     atualizado_em       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_destinatario_usuario_telefone (id_usuario, telefone_whatsapp),
     INDEX idx_destinatario_loja_ativo (id_loja, ativo, consentimento),
+    INDEX idx_destinatario_telefone (telefone_whatsapp),
     CONSTRAINT fk_destinatario_alerta_usuario
         FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
     CONSTRAINT fk_destinatario_alerta_loja
@@ -347,6 +348,7 @@ CREATE TABLE IF NOT EXISTS produtos (
 CREATE INDEX idx_produtos_id_loja  ON produtos (id_loja);
 CREATE INDEX idx_produtos_categoria ON produtos (categoria);
 CREATE INDEX idx_produtos_validade  ON produtos (validade);
+CREATE INDEX idx_produtos_filial_status ON produtos (id_filial, status);
 
 -- Catálogo modelo global de hortifrúti. Os dados são inseridos pelo script
 -- idempotente sql/seed_catalogo_hortifruti.sql; cada loja importa para sua
@@ -457,6 +459,8 @@ CREATE INDEX idx_vendas_id_cliente ON vendas (id_cliente);
 CREATE INDEX idx_vendas_data_venda ON vendas (data_venda);
 CREATE INDEX idx_vendas_loja_data ON vendas (id_loja, data_venda);
 CREATE INDEX idx_vendas_relatorio_filial_status_data ON vendas (id_filial, status, data_venda);
+CREATE INDEX idx_vendas_filial_data ON vendas (id_filial, data_venda);
+CREATE INDEX idx_vendas_filial_status_cancelamento ON vendas (id_filial, status, data_cancelamento);
 
 
 CREATE TABLE IF NOT EXISTS itens_venda (
@@ -514,6 +518,7 @@ CREATE TABLE IF NOT EXISTS promocoes (
     INDEX idx_promocoes_loja_produto (id_loja, id_produto),
     INDEX idx_promocoes_periodo (data_inicio, data_fim),
     INDEX idx_promocoes_loja_filial (id_loja, id_filial),
+    INDEX idx_promocoes_filial_status_periodo (id_filial, status, data_inicio, data_fim),
     CONSTRAINT fk_promocoes_filial
         FOREIGN KEY (id_loja, id_filial) REFERENCES filiais(id_loja, id_filial)
         ON DELETE CASCADE
@@ -560,6 +565,7 @@ CREATE TABLE IF NOT EXISTS pagamentos_pix_pendentes (
     criado_em           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     atualizado_em       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_pix_filial_status (id_filial, status, criado_em),
+    INDEX idx_pix_loja_status_expira (id_loja, status, expira_em),
     FOREIGN KEY (id_venda) REFERENCES vendas(id_venda) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -608,6 +614,8 @@ CREATE TABLE IF NOT EXISTS movimentacoes_estoque (
 CREATE INDEX idx_movimentacoes_estoque_id_loja    ON movimentacoes_estoque (id_loja);
 CREATE INDEX idx_movimentacoes_estoque_id_produto ON movimentacoes_estoque (id_produto);
 CREATE INDEX idx_movimentacoes_estoque_data        ON movimentacoes_estoque (data_movimentacao);
+CREATE INDEX idx_movimentacoes_filial_data         ON movimentacoes_estoque (id_filial, data_movimentacao);
+CREATE INDEX idx_movimentacoes_produto_data        ON movimentacoes_estoque (id_produto, data_movimentacao);
 
 
 -- ============================================================
@@ -728,7 +736,8 @@ CREATE TABLE IF NOT EXISTS auditoria_plataforma (
     ip           VARCHAR(45) NULL,
     data         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_admin) REFERENCES admins_plataforma(id_admin),
-    INDEX idx_auditoria_data (data)
+    INDEX idx_auditoria_data (data),
+    INDEX idx_auditoria_loja_data (id_loja, data)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 

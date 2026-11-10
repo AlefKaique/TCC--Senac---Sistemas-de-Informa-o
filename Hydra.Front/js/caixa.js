@@ -1129,15 +1129,42 @@
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
+    /* Intervalo entre consultas do Pix. Com a aba oculta a consulta continua
+       (é ela que finaliza a venda quando o pagamento é aprovado), mas bem mais
+       espaçada: cada consulta custa uma chamada ao Mercado Pago no servidor.
+       Ao voltar para a aba, a próxima consulta sai na hora. */
+    function aguardarProximaConsultaPix(ms) {
+        if (!document.hidden) return aguardar(ms);
+        return new Promise((resolve) => {
+            const fim = () => {
+                clearTimeout(timer);
+                document.removeEventListener('visibilitychange', aoMudar);
+                resolve();
+            };
+            const aoMudar = () => { if (!document.hidden) fim(); };
+            const timer = setTimeout(fim, 15000);
+            document.addEventListener('visibilitychange', aoMudar);
+        });
+    }
+
     async function monitorarPagamentoPix(id, qrInicial) {
         pixModal.hidden = false;
         pixReopenButton.hidden = true;
-        if (qrInicial) mostrarQrPix(qrInicial);
-        else pixStatus.textContent = 'Retomando a cobrança Pix pendente…';
+        // Com o QR já na tela, as consultas pedem ?sem_qr=1: a imagem não
+        // precisa vir de novo a cada poucos segundos (nem ser redesenhada).
+        let qrExibido = false;
+        if (qrInicial) {
+            mostrarQrPix(qrInicial);
+            qrExibido = true;
+        } else {
+            pixStatus.textContent = 'Retomando a cobrança Pix pendente…';
+        }
 
         while (true) {
             try {
-                const resposta = await window.hydraApi(`/pix/pagamentos/${encodeURIComponent(id)}`);
+                const resposta = await window.hydraApi(
+                    `/pix/pagamentos/${encodeURIComponent(id)}${qrExibido ? '?sem_qr=1' : ''}`
+                );
                 if (resposta.status === 'approved' && resposta.venda) {
                     limparPixPendente();
                     pixStatus.textContent = 'Pagamento confirmado. Finalizando a venda…';
@@ -1146,12 +1173,17 @@
                     return resposta.venda;
                 }
                 if (resposta.status === 'pending') {
-                    if (resposta.qr_code && resposta.qr_code_base64) {
+                    if (!qrExibido && resposta.qr_code && resposta.qr_code_base64) {
                         mostrarQrPix(resposta);
+                        qrExibido = true;
+                    } else if (qrExibido) {
+                        // Só o texto (sem redesenhar o QR nem reabrir a
+                        // janela): desfaz um aviso de falha temporária.
+                        pixStatus.textContent = 'Aguardando o pagamento do cliente…';
                     } else if (!pixModal.hidden) {
                         pixStatus.textContent = 'Aguardando a confirmação da cobrança no Mercado Pago…';
                     }
-                    await aguardar(2500);
+                    await aguardarProximaConsultaPix(2500);
                     continue;
                 }
                 if (['rejeitado', 'cancelado', 'expired', 'expirado'].includes(resposta.status)) {
@@ -1164,11 +1196,11 @@
                     terminalError.status = 422;
                     throw terminalError;
                 }
-                await aguardar(2500);
+                await aguardarProximaConsultaPix(2500);
             } catch (error) {
                 if (error.data && error.data.codigo === 'pix_aprovado_venda_pendente') {
                     pixStatus.textContent = error.message;
-                    await aguardar(5000);
+                    await aguardarProximaConsultaPix(5000);
                     continue;
                 }
                 if (error.status === 404) {
@@ -1178,7 +1210,7 @@
                 }
                 if (error.status === 502 || error.status === undefined) {
                     pixStatus.textContent = 'Sem resposta temporária do Mercado Pago. Tentando consultar novamente…';
-                    await aguardar(5000);
+                    await aguardarProximaConsultaPix(5000);
                     continue;
                 }
                 throw error;
@@ -1467,6 +1499,48 @@
         });
     }
 
+    /* O Caixa não baixa mais o histórico inteiro ao abrir: pede só os últimos
+       DIAS_HISTORICO_INICIAL dias (GET /vendas?de=...). Quando o filtro pede
+       um período mais antigo (ou "Tudo"), busca de novo, uma vez. */
+    const DIAS_HISTORICO_INICIAL = 30;
+    let historicoCarregadoDesde = null; // 'AAAA-MM-DD' do início já carregado
+    let historicoCompleto = true;       // true = histórico inteiro na memória
+    let historicoRequisicao = 0;
+
+    function inicioHistoricoInicial() {
+        const inicio = new Date();
+        inicio.setDate(inicio.getDate() - (DIAS_HISTORICO_INICIAL - 1));
+        return diaLocal(inicio);
+    }
+
+    function caminhoVendas(desde) {
+        return desde ? `/vendas?de=${encodeURIComponent(desde)}` : '/vendas';
+    }
+
+    function aplicarRespostaVendas(resposta, desde) {
+        salesHistory = resposta.vendas.map(mapApiVenda);
+        proximoNumero = Number(resposta.proximo_numero) || 1;
+        historicoCarregadoDesde = desde;
+        historicoCompleto = !desde;
+    }
+
+    /** Garante na memória as vendas a partir de `desde` (null = todas). */
+    async function garantirHistoricoDesde(desde) {
+        if (!usingRealApi || historicoCompleto) return;
+        if (desde && historicoCarregadoDesde && desde >= historicoCarregadoDesde) return;
+        const minha = ++historicoRequisicao;
+        try {
+            const resposta = await window.hydraApi(caminhoVendas(desde));
+            if (minha !== historicoRequisicao) return; // chegou outra mais nova
+            aplicarRespostaVendas(resposta, desde);
+            syncOrderNumber();
+            renderHistory();
+            if (typeof renderCancelList === 'function' && !cancelViewEl.hidden) renderCancelList();
+        } catch (err) {
+            showToast(err.message || 'Não foi possível carregar o histórico de vendas.', true);
+        }
+    }
+
     historyPresetsEl.addEventListener('click', (e) => {
         const btn = e.target.closest('.hydro-history-preset');
         if (!btn) return;
@@ -1487,6 +1561,7 @@
 
         marcarPresetAtivo(preset);
         renderHistory();
+        garantirHistoricoDesde(historyFromInput.value || null);
     });
 
     [historyFromInput, historyToInput].forEach((input) => {
@@ -1497,6 +1572,7 @@
             const vazio = !historyFromInput.value && !historyToInput.value;
             marcarPresetAtivo(vazio ? '' : null);
             renderHistory();
+            garantirHistoricoDesde(historyFromInput.value || null);
         });
     });
 
@@ -1865,9 +1941,10 @@
 
         /* Os dados saem junto com a sessão, e não depois dela: com o lock de
            sessão liberado no back-end, as três chamadas rodam em paralelo. */
+        const desdeInicial = inicioHistoricoInicial();
         const dadosPromise = Promise.allSettled([
             window.hydraApi('/produtos'),
-            window.hydraApi('/vendas'),
+            window.hydraApi(caminhoVendas(desdeInicial)),
         ]);
 
         let usuario;
@@ -1909,8 +1986,11 @@
             catalog = registeredProducts.filter((p) => p.status === 'ativo');
         }
         if (vendasRes.status === 'fulfilled') {
-            salesHistory = vendasRes.value.vendas.map(mapApiVenda);
-            proximoNumero = Number(vendasRes.value.proximo_numero) || 1;
+            aplicarRespostaVendas(vendasRes.value, desdeInicial);
+            // O histórico abre no período que foi carregado ("30 dias").
+            historyFromInput.value = desdeInicial;
+            historyToInput.value = diaLocal(new Date());
+            marcarPresetAtivo(String(DIAS_HISTORICO_INICIAL));
         } else {
             /* É de /api/vendas que vem o próximo número, e um cargo só de PDV
                (sem "Histórico de Vendas") leva 403 ali. Melhor o cabeçalho

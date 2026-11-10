@@ -1,3 +1,21 @@
 RewriteEngine On
 RewriteRule ^api(?:/.*)?$ api/index.php [L,QSA]
 RewriteRule ^$ /pages/index.html [R=302,L]
+
+# Cache dos arquivos estáticos. Sem isso, cada troca de tela revalidava
+# todos os CSS/JS (uma ida e volta por arquivo, mesmo terminando em 304).
+# As URLs não levam versão (ex.: caixa.js?v=2), então CSS/JS ficam só 1 hora
+# em cache: um deploy novo chega a todos em no máximo uma hora. Imagens e
+# fontes mudam raramente e ficam 7 dias. HTML continua sem cache, para que
+# a tela sempre venha da versão publicada.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "public, max-age=3600"
+    </FilesMatch>
+    <FilesMatch "\.(png|jpe?g|gif|svg|ico|webp|woff2?|ttf)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>

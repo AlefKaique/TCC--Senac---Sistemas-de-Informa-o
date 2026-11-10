@@ -71,5 +71,19 @@
         };
     }
 
-    window.hydraCnpj = { normalizar, validoLocal, consultarBrasilApi };
+    /* Consultas em andamento, por CNPJ. Ao clicar em "Salvar" logo depois
+       de digitar o CNPJ, o blur do campo e o submit do formulário pediam a
+       mesma consulta ao mesmo tempo (até 8 s cada); agora os dois esperam a
+       mesma requisição. A entrada sai do mapa quando a consulta termina. */
+    const emAndamento = new Map();
+
+    function consultarBrasilApiCompartilhado(valor) {
+        const cnpj = normalizar(valor);
+        if (emAndamento.has(cnpj)) return emAndamento.get(cnpj);
+        const consulta = consultarBrasilApi(cnpj).finally(() => emAndamento.delete(cnpj));
+        emAndamento.set(cnpj, consulta);
+        return consulta;
+    }
+
+    window.hydraCnpj = { normalizar, validoLocal, consultarBrasilApi: consultarBrasilApiCompartilhado };
 })();

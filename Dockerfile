@@ -4,8 +4,19 @@ RUN apt-get update \
 	&& apt-get install -y --no-install-recommends libcurl4-openssl-dev \
 	&& docker-php-ext-install pdo pdo_mysql curl \
 	&& rm -rf /var/lib/apt/lists/* \
-	&& a2enmod rewrite \
+	&& a2enmod rewrite deflate headers expires \
 	&& sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
+
+# Compressão das respostas da API. O deflate.conf padrão do Debian comprime
+# HTML/CSS/JS, mas não application/json - e as listagens (produtos, vendas,
+# relatórios) são justamente as respostas maiores. Response::encerrarConexao()
+# desliga o gzip nas poucas respostas que precisam de Content-Length exato.
+RUN { \
+		echo '<IfModule mod_deflate.c>'; \
+		echo '    AddOutputFilterByType DEFLATE application/json image/svg+xml'; \
+		echo '</IfModule>'; \
+	} > /etc/apache2/conf-available/hydra-deflate.conf \
+	&& a2enconf hydra-deflate
 
 # A imagem oficial nao ativa nenhum php.ini; sem isso o PHP assume
 # display_errors=On e devolve mensagens de erro (com caminhos internos

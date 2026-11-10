@@ -355,13 +355,19 @@
 
     function setupInteractions() {
         document.querySelectorAll('#hydroPeriodPresets [data-preset]').forEach((button) => button.addEventListener('click', () => setPreset(button.dataset.preset)));
+        // Escolher "de" e "até" em seguida disparava as 7 consultas do
+        // período duas vezes; a espera curta junta as duas mudanças numa só.
+        let recargaPeriodo = null;
         [periodFrom, periodTo].forEach((input) => input.addEventListener('change', () => {
-            if (periodFrom.value && periodTo.value && periodFrom.value > periodTo.value) {
-                window.alert('A data inicial não pode ser posterior à data final.');
-                return;
-            }
-            syncPresetButtons('');
-            loadPeriodReports();
+            clearTimeout(recargaPeriodo);
+            recargaPeriodo = setTimeout(() => {
+                if (periodFrom.value && periodTo.value && periodFrom.value > periodTo.value) {
+                    window.alert('A data inicial não pode ser posterior à data final.');
+                    return;
+                }
+                syncPresetButtons('');
+                loadPeriodReports();
+            }, 400);
         }));
         periodClear.addEventListener('click', () => setPreset('30'));
         document.querySelectorAll('[data-product-tab]').forEach((button) => button.addEventListener('click', () => {

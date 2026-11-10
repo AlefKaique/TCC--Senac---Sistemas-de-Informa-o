@@ -37,7 +37,7 @@
 }
 
 .hydro-stock .hydro-filial-card-inativa {
-    background: #f6f7fa;
+    background: var(--soft, #f6f7fa);
     box-shadow: none;
 }
 
@@ -204,7 +204,7 @@
 .hydro-stock .hydro-filial-form-erro {
     margin: 0 0 16px;
     padding: 12px 14px;
-    border: 1px solid #f5c2c8;
+    border: 1px solid var(--red-border, #f5c2c8);
     border-radius: 10px;
     background: var(--red-bg);
     color: #a32336;

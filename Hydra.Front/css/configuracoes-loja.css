@@ -105,7 +105,7 @@
     width: 76px;
     height: 76px;
     border-radius: 14px;
-    background: #f1f3f9;
+    background: var(--soft, #f1f3f9);
     border: 1px dashed var(--border);
     display: flex;
     align-items: center;
@@ -348,12 +348,12 @@
 .hydro-alerta-envio-status--enviado,
 .hydro-alerta-envio-status--entregue,
 .hydro-alerta-envio-status--lido {
-    background: #e7f7ee;
+    background: var(--green-bg, #e7f7ee);
     color: #176b3a;
 }
 
 .hydro-alerta-envio-status--falhou {
-    background: #fdecec;
+    background: var(--red-bg, #fdecec);
     color: #a52e2e;
 }
 

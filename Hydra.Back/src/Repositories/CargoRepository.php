@@ -413,10 +413,39 @@ final class CargoRepository
         $stmt->execute(['id_loja' => $idLoja]);
         $cargos = $stmt->fetchAll();
 
+        // Permissões e contagem de usuários de TODOS os cargos da loja em duas
+        // consultas, em vez de duas por cargo (telas Cargos e Equipe).
+        $stmt = db()->prepare(
+            'SELECT cp.id_cargo, p.codigo
+               FROM cargo_permissoes cp
+               JOIN cargos c ON c.id_cargo = cp.id_cargo
+               JOIN permissoes p ON p.id_permissao = cp.id_permissao
+              WHERE c.id_loja = :id_loja'
+        );
+        $stmt->execute(['id_loja' => $idLoja]);
+        $permissoesPorCargo = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $permissoesPorCargo[(int) $row['id_cargo']][] = $row['codigo'];
+        }
+
+        $stmt = db()->prepare(
+            'SELECT u.id_cargo, COUNT(*) AS total
+               FROM usuarios u
+               JOIN cargos c ON c.id_cargo = u.id_cargo
+              WHERE c.id_loja = :id_loja
+              GROUP BY u.id_cargo'
+        );
+        $stmt->execute(['id_loja' => $idLoja]);
+        $usuariosPorCargo = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $usuariosPorCargo[(int) $row['id_cargo']] = (int) $row['total'];
+        }
+
         foreach ($cargos as &$cargo) {
+            $id = (int) $cargo['id_cargo'];
             $cargo['cargo_sistema'] = (bool) $cargo['cargo_sistema'];
-            $cargo['permissoes'] = $this->permissoesDoCargo((int) $cargo['id_cargo']);
-            $cargo['qtd_usuarios'] = $this->countUsuarios((int) $cargo['id_cargo']);
+            $cargo['permissoes'] = self::$cachePermissoes[$id] = $permissoesPorCargo[$id] ?? [];
+            $cargo['qtd_usuarios'] = $usuariosPorCargo[$id] ?? 0;
         }
         unset($cargo);
 

@@ -101,6 +101,37 @@ final class VendaRepository
         ]);
     }
 
+    /**
+     * Todos os itens da venda num único INSERT (antes era um por item, cada
+     * um com sua ida e volta ao banco dentro da transação da venda).
+     *
+     * @param array<int,array{id_produto:int,quantidade:float,preco_unitario:float,custo_unitario:?float}> $itens
+     */
+    public function addItens(int $idVenda, array $itens): void
+    {
+        if ($itens === []) {
+            return;
+        }
+        $linhas = [];
+        $params = [];
+        foreach ($itens as $item) {
+            $linhas[] = '(?, ?, ?, ?, ?, 0)';
+            array_push(
+                $params,
+                $idVenda,
+                $item['id_produto'],
+                $item['quantidade'],
+                $item['preco_unitario'],
+                $item['custo_unitario']
+            );
+        }
+        db()->prepare(
+            'INSERT INTO itens_venda
+                (id_venda, id_produto, quantidade, preco_unitario, custo_unitario, custo_estimado)
+             VALUES ' . implode(', ', $linhas)
+        )->execute($params);
+    }
+
     public function addPagamento(int $idVenda, string $formaPagamento, float $valor): void
     {
         $stmt = db()->prepare(
@@ -135,13 +166,28 @@ final class VendaRepository
         return $row ?: null;
     }
 
-    /** @return array<int,array<string,mixed>> */
-    public function listByFilial(int $idFilial): array
+    /**
+     * Vendas da filial, da mais recente para a mais antiga. $de e $ateExclusivo
+     * ("Y-m-d H:i:s") limitam o período: o Caixa pede só os últimos dias, em
+     * vez de baixar o histórico inteiro a cada abertura da tela. Sem eles,
+     * devolve tudo (atalho "Tudo" do histórico).
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listByFilial(int $idFilial, ?string $de = null, ?string $ateExclusivo = null): array
     {
-        $stmt = db()->prepare(
-            self::SELECT_COM_USUARIO . ' WHERE v.id_filial = :id_filial ORDER BY v.data_venda DESC'
-        );
-        $stmt->execute(['id_filial' => $idFilial]);
+        $sql = self::SELECT_COM_USUARIO . ' WHERE v.id_filial = :id_filial';
+        $params = ['id_filial' => $idFilial];
+        if ($de !== null) {
+            $sql .= ' AND v.data_venda >= :de';
+            $params['de'] = $de;
+        }
+        if ($ateExclusivo !== null) {
+            $sql .= ' AND v.data_venda < :ate';
+            $params['ate'] = $ateExclusivo;
+        }
+        $stmt = db()->prepare($sql . ' ORDER BY v.data_venda DESC');
+        $stmt->execute($params);
         return $stmt->fetchAll();
     }
 

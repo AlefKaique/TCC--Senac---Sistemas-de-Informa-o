@@ -373,6 +373,10 @@
     /* ================= Init ================= */
     (async function init() {
         if (!window.hydraApi) return;
+        // Sai junto com /auth/me, e não depois dele; só é usado se a sessão
+        // e a permissão forem confirmadas abaixo.
+        const cargosPedido = window.hydraApi('/cargos');
+        cargosPedido.catch(() => {});
         try {
             const { usuario } = await window.hydraSessao();
             const nameEl = document.getElementById('hydroUserName');
@@ -388,7 +392,7 @@
         }
 
         try {
-            const data = await window.hydraApi('/cargos');
+            const data = await cargosPedido;
             cargos = data.cargos;
             catalogo = data.permissoes;
             renderList();

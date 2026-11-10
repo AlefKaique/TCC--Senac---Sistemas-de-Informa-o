@@ -40,6 +40,37 @@ final class MovimentacaoEstoqueRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Uma movimentação por produto, todas num único INSERT (mesma origem,
+     * tipo, usuário e venda). Usado pela venda, que antes inseria uma a uma.
+     *
+     * @param array<int,string> $quantidadePorProduto id_produto => quantidade
+     */
+    public function createMany(
+        int $idLoja,
+        int $idFilial,
+        ?int $idUsuario,
+        ?int $idVenda,
+        string $tipo,
+        array $quantidadePorProduto,
+        string $origem
+    ): void {
+        if ($quantidadePorProduto === []) {
+            return;
+        }
+        $linhas = [];
+        $params = [];
+        foreach ($quantidadePorProduto as $idProduto => $quantidade) {
+            $linhas[] = '(?, ?, ?, ?, ?, ?, ?, ?)';
+            array_push($params, $idLoja, $idFilial, (int) $idProduto, $idUsuario, $idVenda, $tipo, (string) $quantidade, $origem);
+        }
+        db()->prepare(
+            'INSERT INTO movimentacoes_estoque
+                (id_loja, id_filial, id_produto, id_usuario, id_venda, tipo, quantidade, origem)
+             VALUES ' . implode(', ', $linhas)
+        )->execute($params);
+    }
+
     public function create(
         int $idLoja,
         int $idFilial,

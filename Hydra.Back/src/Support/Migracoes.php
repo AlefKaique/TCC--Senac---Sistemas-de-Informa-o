@@ -140,6 +140,35 @@ final class Migracoes
                 db()->exec('CREATE INDEX idx_pagamentos_id_venda ON pagamentos (id_venda)');
             }
         });
+
+        // Índices das consultas mais frequentes que nenhum índice existente
+        // atendia (ver o comentário de cada um). Depois da migração acima,
+        // que garante a coluna vendas.data_cancelamento.
+        self::garantir('indices_desempenho_v1', static function (): void {
+            // Histórico de vendas por filial (GET /api/vendas), ordenado por
+            // data: (id_filial, status, data_venda) não serve sem o status.
+            self::criarIndiceSeFaltar('vendas', 'idx_vendas_filial_data', 'id_filial, data_venda');
+            // Relatório de cancelamentos: filtra por data_cancelamento.
+            self::criarIndiceSeFaltar('vendas', 'idx_vendas_filial_status_cancelamento', 'id_filial, status, data_cancelamento');
+            // Histórico de estoque (30 dias) da filial e o de cada produto:
+            // o índice (id_loja, id_filial) não começa pela filial.
+            self::criarIndiceSeFaltar('movimentacoes_estoque', 'idx_movimentacoes_filial_data', 'id_filial, data_movimentacao');
+            self::criarIndiceSeFaltar('movimentacoes_estoque', 'idx_movimentacoes_produto_data', 'id_produto, data_movimentacao');
+            // Produtos ativos da filial (relatórios, alertas, catálogo).
+            self::criarIndiceSeFaltar('produtos', 'idx_produtos_filial_status', 'id_filial, status');
+        });
+    }
+
+    /**
+     * CREATE INDEX só se o índice ainda não existir. Para uso dentro de uma
+     * migração (Migracoes::garantir), que já roda uma única vez por banco.
+     * Nomes e colunas são constantes do código, nunca entrada do usuário.
+     */
+    public static function criarIndiceSeFaltar(string $tabela, string $indice, string $colunas): void
+    {
+        if (!self::indiceExiste($tabela, $indice)) {
+            db()->exec("CREATE INDEX {$indice} ON {$tabela} ({$colunas})");
+        }
     }
 
     /** Cria as preferências, o histórico diário e o limite dos testes de alertas. */
@@ -256,6 +285,12 @@ final class Migracoes
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
             );
         });
+
+        // O webhook do WhatsApp desativa destinatários pelo telefone; o UNIQUE
+        // (id_usuario, telefone_whatsapp) não serve sem o id_usuario.
+        self::garantir('indices_alertas_v1', static function (): void {
+            self::criarIndiceSeFaltar('destinatarios_alerta', 'idx_destinatario_telefone', 'telefone_whatsapp');
+        });
     }
 
     /** Cria as tabelas próprias da autenticação da plataforma em bancos existentes. */
@@ -333,6 +368,12 @@ final class Migracoes
             if (!self::indiceExiste('vendas', 'idx_vendas_loja_data')) {
                 db()->exec('CREATE INDEX idx_vendas_loja_data ON vendas (id_loja, data_venda)');
             }
+        });
+
+        // Histórico de suspensões no detalhe de cada mercado: não havia
+        // índice nenhum em auditoria_plataforma.id_loja.
+        self::garantir('indices_auditoria_v1', static function (): void {
+            self::criarIndiceSeFaltar('auditoria_plataforma', 'idx_auditoria_loja_data', 'id_loja, data');
         });
     }
 

@@ -145,7 +145,9 @@ final class Auth
      */
     public static function requirePlataforma(): array
     {
-        self::reabrirSessao();
+        // Só lê aqui; a consulta ao banco roda com a sessão já liberada, e a
+        // sessão só é reaberta se houver o que gravar (ver o fim do método).
+        self::liberarSessao();
         if (isset($_SESSION['id_usuario']) || isset($_SESSION['id_loja'])) {
             self::logout();
             Response::json([
@@ -166,6 +168,7 @@ final class Auth
 
         $ultimaAtividade = (int) ($sessao['ultima_atividade'] ?? 0);
         if ($ultimaAtividade <= 0 || time() - $ultimaAtividade > 30 * 60) {
+            self::reabrirSessao();
             unset($_SESSION['admin_plataforma']);
             self::liberarSessao();
             Response::json([
@@ -177,6 +180,7 @@ final class Auth
 
         $admin = (new AdminPlataformaRepository())->findAtivoById((int) $sessao['id_admin']);
         if ($admin === null) {
+            self::reabrirSessao();
             unset($_SESSION['admin_plataforma']);
             self::liberarSessao();
             Response::json([
@@ -186,15 +190,27 @@ final class Auth
             exit;
         }
 
-        $_SESSION['admin_plataforma'] = [
+        $novoEstado = [
             'id_admin' => (int) $admin['id_admin'],
             'nome' => (string) $admin['nome'],
             'email' => (string) $admin['email'],
             'nivel' => (string) $admin['nivel'],
-            'ultima_atividade' => time(),
         ];
-
-        self::liberarSessao();
+        $dadosMudaram = false;
+        foreach ($novoEstado as $chave => $valor) {
+            if (($sessao[$chave] ?? null) !== $valor) {
+                $dadosMudaram = true;
+                break;
+            }
+        }
+        // ultima_atividade conta o tempo de inatividade (30 min). Regravá-la a
+        // cada chamada reabria a sessão (e o lock) em todas as requisições;
+        // com folga de 60 s, a precisão do timeout continua mais que suficiente.
+        if ($dadosMudaram || time() - $ultimaAtividade >= 60) {
+            self::reabrirSessao();
+            $_SESSION['admin_plataforma'] = $novoEstado + ['ultima_atividade' => time()];
+            self::liberarSessao();
+        }
 
         return [
             'id' => (int) $admin['id_admin'],
@@ -355,6 +371,13 @@ final class Auth
             exit;
         }
 
+        // Solta o lock ANTES de ir ao banco. Antes ele só era solto depois
+        // da consulta abaixo, e as 5 a 10 chamadas que cada tela dispara ao
+        // mesmo tempo esperavam, uma a uma, a conexão com o MySQL remoto
+        // mais essa consulta. $_SESSION continua legível; se algo precisar
+        // ser gravado, a sessão é reaberta só para isso.
+        self::liberarSessao();
+
         // Usuário, permissões e acesso à filial da sessão numa consulta só
         // (ver UsuarioRepository::estadoDaSessao()).
         $idFilial = (int) ($_SESSION['id_filial'] ?? 0);
@@ -375,13 +398,32 @@ final class Auth
 
         // Reespelha cargo e permissões, para que mudanças feitas na tela
         // de Cargos valham na próxima requisição, sem precisar relogar.
-        $_SESSION['perfil'] = $atual['perfil'];
-        $_SESSION['nome'] = $atual['nome'];
-        $_SESSION['email'] = $atual['email'];
-        $_SESSION['id_cargo'] = $atual['id_cargo'] !== null ? (int) $atual['id_cargo'] : null;
-        $_SESSION['permissoes'] = $_SESSION['id_cargo'] !== null && $atual['permissoes'] !== null
-            ? explode(',', (string) $atual['permissoes'])
-            : [];
+        $idCargo = $atual['id_cargo'] !== null ? (int) $atual['id_cargo'] : null;
+        $estado = [
+            'perfil' => $atual['perfil'],
+            'nome' => $atual['nome'],
+            'email' => $atual['email'],
+            'id_cargo' => $idCargo,
+            'permissoes' => $idCargo !== null && $atual['permissoes'] !== null
+                ? explode(',', (string) $atual['permissoes'])
+                : [],
+        ];
+        $mudou = false;
+        foreach ($estado as $chave => $valor) {
+            if (($_SESSION[$chave] ?? null) !== $valor) {
+                $mudou = true;
+                break;
+            }
+        }
+        // Só reabre a sessão (e retoma o lock) quando algo mudou de fato,
+        // o que é raro: no caso comum a requisição nem toca no arquivo.
+        if ($mudou) {
+            self::reabrirSessao();
+            foreach ($estado as $chave => $valor) {
+                $_SESSION[$chave] = $valor;
+            }
+            self::liberarSessao();
+        }
         // Guardado para requireFilial() não repetir a consulta.
         self::$acessoFilial = $idFilial > 0
             ? [
@@ -390,10 +432,6 @@ final class Auth
                 'vinculada' => (int) $atual['filial_vinculada'] === 1,
             ]
             : null;
-
-        // Daqui em diante a requisição só LÊ a sessão: solta o lock para as
-        // outras chamadas da mesma tela rodarem em paralelo.
-        self::liberarSessao();
 
         return self::user();
     }

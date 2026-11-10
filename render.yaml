@@ -16,9 +16,12 @@ services:
         sync: false
       - key: DB_PASS
         sync: false
-      # Reaproveita a conexao com o MySQL entre requisicoes. Defina "true"
-      # no painel do Render depois de conferir o limite de conexoes do plano
-      # do banco. Sem valor, fica desligado.
+      # Reaproveita a conexao com o MySQL entre requisicoes. RECOMENDADO
+      # "true": com o banco fora do Render, abrir uma conexao nova custa
+      # varias idas e voltas pela rede em TODA chamada da API - e o maior
+      # ganho de velocidade disponivel. Confira antes o limite de conexoes
+      # do plano do banco (cada processo do Apache segura uma). Sem valor,
+      # fica desligado.
       - key: DB_PERSISTENT
         sync: false
       # Front e API sao servidos pelo mesmo dominio neste servico, entao

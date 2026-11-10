@@ -51,7 +51,16 @@ final class VendaController
     public function index(): void
     {
         $user = Auth::requireAnyPermissionNaFilial(['vendas.historico', 'relatorios.visualizar']);
-        $vendas = $this->vendas->listByFilial($user['id_filial']);
+        // ?de=AAAA-MM-DD&ate=AAAA-MM-DD (opcionais, dias inteiros): o Caixa
+        // pede só um período em vez do histórico inteiro com itens e
+        // pagamentos. Sem parâmetros, o comportamento antigo (tudo) continua.
+        $de = $this->dataDoFiltro($_GET['de'] ?? null);
+        $ate = $this->dataDoFiltro($_GET['ate'] ?? null);
+        $vendas = $this->vendas->listByFilial(
+            $user['id_filial'],
+            $de?->format('Y-m-d 00:00:00'),
+            $ate?->modify('+1 day')->format('Y-m-d 00:00:00')
+        );
         // Duas consultas para o histórico inteiro, em vez de duas por venda.
         $ids = array_map(static fn ($v) => (int) $v['id_venda'], $vendas);
         $itens = $this->vendas->listItensByVendas($ids);
@@ -69,6 +78,16 @@ final class VendaController
             'vendas' => $vendas,
             'proximo_numero' => $this->vendas->proximoNumero($user['id_filial']),
         ]);
+    }
+
+    /** "AAAA-MM-DD" válido vira data; qualquer outra coisa é ignorada (null). */
+    private function dataDoFiltro(mixed $valor): ?\DateTimeImmutable
+    {
+        if (!is_string($valor) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor)) {
+            return null;
+        }
+        $data = \DateTimeImmutable::createFromFormat('!Y-m-d', $valor);
+        return $data !== false && $data->format('Y-m-d') === $valor ? $data : null;
     }
 
     /**
@@ -138,10 +157,14 @@ final class VendaController
 
         // Recalcula os preços a partir do produto no banco — nunca confia no
         // preço enviado pelo cliente.
+        // Produtos e promoções vigentes em duas consultas para a venda inteira,
+        // em vez de duas consultas por produto.
+        $produtosDaVenda = $this->produtos->findManyInFilial(array_keys($quantidadePorProduto), $user['id_filial']);
+        $promocoesVigentes = $this->promocoes->vigentesPorProduto($user['id_filial']);
         $itensValidados = [];
         $subtotal = 0.0;
         foreach ($quantidadePorProduto as $idProduto => $quantidade) {
-            $produto = $this->produtos->findInFilial($idProduto, $user['id_filial']);
+            $produto = $produtosDaVenda[$idProduto] ?? null;
             if ($produto === null || $produto['status'] !== 'ativo') {
                 Response::json(['erro' => 'Produto indisponível para venda'], 422);
                 return;
@@ -160,7 +183,7 @@ final class VendaController
             }
 
             // Promoção vigente hoje (tela Promoções) substitui o preço normal.
-            $precoPromocional = $this->promocoes->precoVigente($idProduto, $user['id_filial']);
+            $precoPromocional = $promocoesVigentes[$idProduto]['preco_promocional'] ?? null;
             $precoUnitario = $precoPromocional ?? (float) $produto['preco_venda'];
             $subtotal += $precoUnitario * $quantidade;
             $itensValidados[] = [
@@ -193,6 +216,8 @@ final class VendaController
                 $valorTotal
             );
 
+            $itensGravar = [];
+            $saidas = [];
             foreach ($itensValidados as $item) {
                 // A verificação acima serve para a mensagem de erro; a
                 // garantia real vem deste UPDATE condicional, que impede
@@ -200,25 +225,23 @@ final class VendaController
                 if (!$this->produtos->baixarQuantidadeSeHouver($item['id_produto'], $item['quantidade'])) {
                     throw new \RuntimeException('Estoque insuficiente para o produto ' . $item['id_produto']);
                 }
-                $custoUnitario = $this->vendas->custoAtualProdutoBloqueado($item['id_produto']);
-                $this->vendas->addItem(
-                    $idVenda,
-                    $item['id_produto'],
-                    $item['quantidade'],
-                    $item['preco_unitario'],
-                    $custoUnitario
-                );
-                $this->movimentacoes->create(
-                    $user['id_loja'],
-                    $user['id_filial'],
-                    $item['id_produto'],
-                    $user['id_usuario'],
-                    $idVenda,
-                    'saida',
-                    (string) $item['quantidade'],
-                    'venda'
-                );
+                $itensGravar[] = $item + [
+                    'custo_unitario' => $this->vendas->custoAtualProdutoBloqueado($item['id_produto']),
+                ];
+                $saidas[$item['id_produto']] = (string) $item['quantidade'];
             }
+            // Itens e movimentações de saída num INSERT cada, depois do loop:
+            // a transação (que segura a numeração da filial) fica mais curta.
+            $this->vendas->addItens($idVenda, $itensGravar);
+            $this->movimentacoes->createMany(
+                $user['id_loja'],
+                $user['id_filial'],
+                $user['id_usuario'],
+                $idVenda,
+                'saida',
+                $saidas,
+                'venda'
+            );
 
             foreach ($pagamentosEntrada as $pagamento) {
                 $this->vendas->addPagamento($idVenda, (string) $pagamento['forma_pagamento'], (float) $pagamento['valor']);
@@ -283,6 +306,7 @@ final class VendaController
             'id_filial' => $user['id_filial'],
             'expira' => time() + self::AUTORIZACAO_MINUTOS * 60,
         ];
+        Auth::liberarSessao();
 
         Response::json([
             'autorizador' => $autorizador['nome'],
@@ -296,6 +320,7 @@ final class VendaController
         Auth::requireLogin();
         Auth::reabrirSessao();
         unset($_SESSION['cancelamento_autorizado']);
+        Auth::liberarSessao();
         Response::json(['ok' => true]);
     }
 
@@ -319,6 +344,7 @@ final class VendaController
         if ($autorizador === null || !$this->autorizadorAcessaFilial($autorizador, $user)) {
             Auth::reabrirSessao();
             unset($_SESSION['cancelamento_autorizado']);
+            Auth::liberarSessao();
             Response::json([
                 'erro' => 'A autorização expirou. Peça ao gerente ou administrador para digitar a senha de novo.',
                 'codigo' => 'autorizacao_necessaria',

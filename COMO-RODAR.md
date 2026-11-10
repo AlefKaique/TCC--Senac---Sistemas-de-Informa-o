@@ -93,6 +93,66 @@ fetch"** no navegador — geralmente significa "o backend não está rodando".
 
 Clique no terminal correspondente e aperte `Ctrl+C`.
 
+## Deixar o sistema mais rápido localmente (Apache do XAMPP)
+
+O `php -S` do passo 2 é prático, mas **no Windows ele atende uma requisição
+por vez**. Cada tela do Hydra dispara várias chamadas à API ao mesmo tempo
+(sessão, filial, produtos, vendas...), e com o `php -S` elas entram numa fila
+única: a tela demora a soma de todas. O Apache que já vem no XAMPP atende as
+chamadas em paralelo. A troca é feita uma vez só:
+
+1. **Abra a porta 8080 no Apache.** No XAMPP Control Panel, em Apache →
+   **Config → httpd.conf**, procure a linha `Listen 80` e acrescente logo
+   abaixo:
+
+   ```
+   Listen 8080
+   ```
+
+2. **Aponte a porta 8080 para o back-end.** Em Apache → **Config →
+   Browse [Apache]**, abra `conf/extra/httpd-vhosts.conf` e acrescente no fim
+   (troque o caminho pelo da pasta do projeto na sua máquina; use `/` e
+   mantenha as aspas):
+
+   ```
+   <VirtualHost *:8080>
+       ServerName localhost
+       DocumentRoot "C:/caminho/do/projeto/Hydra.Back/public"
+       <Directory "C:/caminho/do/projeto/Hydra.Back/public">
+           AllowOverride All
+           Require all granted
+       </Directory>
+   </VirtualHost>
+   ```
+
+   O `.htaccess` que já existe em `Hydra.Back/public` encaminha todas as
+   chamadas para o `index.php`, então nada mais precisa mudar. Se o caminho
+   da pasta tiver acentos e o Apache não subir, mova o projeto para uma pasta
+   simples (ex.: `C:/projetos/hydra`).
+
+3. **Ligue o OPcache** (o PHP deixa de recompilar o back-end a cada chamada).
+   Em Apache → **Config → PHP (php.ini)**, confira que estas linhas existem
+   e **não** começam com `;`:
+
+   ```
+   zend_extension=opcache
+   opcache.enable=1
+   ```
+
+4. **No `Hydra.Back/.env`, use `DB_HOST=127.0.0.1`**, não `localhost`. No
+   Windows, `localhost` tenta primeiro o IPv6 e só depois cai para o IPv4, o
+   que pode atrasar cerca de 1 segundo **cada** conexão com o MySQL.
+
+5. Reinicie o Apache no XAMPP Control Panel (Stop → Start).
+
+Pronto: o back-end passa a responder em `http://localhost:8080/api` pelo
+Apache, sempre que o XAMPP estiver com o Apache ligado. **Não rode mais o
+`php -S` do passo 2** (os dois disputariam a mesma porta). O front continua
+igual (passo 3), e o `api.js` não muda.
+
+Para conferir, abra `http://localhost:8080/api/health` no navegador: deve
+aparecer `{"status":"ok"}`.
+
 ## Erros comuns
 
 | Sintoma | Causa provável |
@@ -136,6 +196,12 @@ da raiz para servir o frontend e a API PHP no mesmo Web Service.
   por loja).
 5. O endereço público do sistema será a raiz do serviço; o Render verificará
   automaticamente `/api/health`.
+6. **Recomendado para velocidade:** defina `DB_PERSISTENT=true` em
+  Environment. Com o MySQL fora do Render, abrir uma conexão nova custa
+  várias idas e voltas pela rede em toda chamada da API; com a conexão
+  persistente, cada processo do Apache reaproveita a sua. Antes, confira no
+  plano do banco o limite de conexões simultâneas (cada processo do Apache
+  segura uma conexão aberta).
 
 O frontend detecta automaticamente a API no Render (`/api`). Em ambiente
   local, continua usando `http://localhost:8080/api`.

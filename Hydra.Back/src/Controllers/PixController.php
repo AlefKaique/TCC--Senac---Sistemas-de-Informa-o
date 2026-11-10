@@ -140,10 +140,14 @@ final class PixController
             $quantidadePorProduto[$idProduto] = ($quantidadePorProduto[$idProduto] ?? 0.0) + (float) $quantidade;
         }
 
+        // Produtos e promoções vigentes em duas consultas para o pedido
+        // inteiro, em vez de duas por produto (até 100 itens).
+        $produtosDoPedido = $this->produtos->findManyInFilial(array_keys($quantidadePorProduto), (int) $user['id_filial']);
+        $promocoesVigentes = $this->promocoes->vigentesPorProduto((int) $user['id_filial']);
         $itens = [];
         $valorTotal = 0.0;
         foreach ($quantidadePorProduto as $idProduto => $quantidade) {
-            $produto = $this->produtos->findInFilial((int) $idProduto, (int) $user['id_filial']);
+            $produto = $produtosDoPedido[(int) $idProduto] ?? null;
             if ($produto === null || $produto['status'] !== 'ativo') {
                 Response::json(['erro' => 'Um dos produtos não está disponível nesta filial.'], 422);
                 return;
@@ -156,7 +160,7 @@ final class PixController
                 Response::json(['erro' => 'Estoque insuficiente para ' . $produto['nome']], 409);
                 return;
             }
-            $preco = $this->promocoes->precoVigente((int) $idProduto, (int) $user['id_filial'])
+            $preco = $promocoesVigentes[(int) $idProduto]['preco_promocional']
                 ?? (float) $produto['preco_venda'];
             $itens[] = [
                 'id_produto' => (int) $idProduto,
@@ -332,7 +336,10 @@ final class PixController
                 Response::json(['status' => 'expired']);
                 return;
             }
-            Response::json($this->respostaPendente($pendente));
+            // O Caixa consulta a cada poucos segundos; depois que o QR já está
+            // na tela ele pede ?sem_qr=1 e a imagem (dezenas de KB em base64)
+            // deixa de ir em toda resposta.
+            Response::json($this->respostaPendente($pendente, ($_GET['sem_qr'] ?? '') !== '1'));
             return;
         }
 
@@ -410,6 +417,8 @@ final class PixController
 
             $itens = json_decode((string) $pendente['itens_json'], true, 512, JSON_THROW_ON_ERROR);
             $subtotal = 0.0;
+            $itensGravar = [];
+            $saidas = [];
             foreach ($itens as $item) {
                 $produto = $this->produtos->findInFilial((int) $item['id_produto'], (int) $user['id_filial']);
                 if ($produto === null || $produto['status'] !== 'ativo') {
@@ -418,6 +427,16 @@ final class PixController
                 if (!$this->produtos->baixarQuantidadeSeHouver((int) $item['id_produto'], (float) $item['quantidade'])) {
                     throw new RuntimeException('O pagamento foi aprovado, mas o estoque mudou. Reponha o estoque e consulte o pagamento novamente.');
                 }
+                // Custo da época da venda, com a linha do produto já travada
+                // pelo UPDATE acima (mesmo critério de VendaController::store).
+                $itensGravar[] = [
+                    'id_produto' => (int) $item['id_produto'],
+                    'quantidade' => (float) $item['quantidade'],
+                    'preco_unitario' => (float) $item['preco_unitario'],
+                    'custo_unitario' => $this->vendas->custoAtualProdutoBloqueado((int) $item['id_produto']),
+                ];
+                $idProdutoItem = (int) $item['id_produto'];
+                $saidas[$idProdutoItem] = (string) ((float) ($saidas[$idProdutoItem] ?? 0) + (float) $item['quantidade']);
                 $subtotal += (float) $item['preco_unitario'] * (float) $item['quantidade'];
             }
             $subtotal = round($subtotal, 2);
@@ -434,24 +453,20 @@ final class PixController
                 0,
                 $subtotal
             );
-            foreach ($itens as $item) {
-                $this->vendas->addItem(
-                    $idVenda,
-                    (int) $item['id_produto'],
-                    (float) $item['quantidade'],
-                    (float) $item['preco_unitario']
-                );
-                $this->movimentacoes->create(
-                    (int) $user['id_loja'],
-                    (int) $user['id_filial'],
-                    (int) $item['id_produto'],
-                    (int) $user['id_usuario'],
-                    $idVenda,
-                    'saida',
-                    (string) $item['quantidade'],
-                    'venda'
-                );
-            }
+            // Antes: addItem() era chamado sem o custo (argumento obrigatório),
+            // o que estourava ArgumentCountError e impedia gravar QUALQUER
+            // venda paga por Pix. Agora grava itens e saídas de estoque de uma
+            // vez, como a venda comum.
+            $this->vendas->addItens($idVenda, $itensGravar);
+            $this->movimentacoes->createMany(
+                (int) $user['id_loja'],
+                (int) $user['id_filial'],
+                (int) $user['id_usuario'],
+                $idVenda,
+                'saida',
+                $saidas,
+                'venda'
+            );
             $this->vendas->addPagamento($idVenda, 'pix', $subtotal);
             $this->mercadoPago->concluir($id, $idVenda);
             $pdo->commit();
@@ -479,16 +494,19 @@ final class PixController
     /** @param array<string,mixed> $pendente
      *  @return array<string,mixed>
      */
-    private function respostaPendente(array $pendente): array
+    private function respostaPendente(array $pendente, bool $incluirQr = true): array
     {
-        return [
+        $resposta = [
             'status' => 'pending',
-            'qr_code' => $pendente['qr_code'],
-            'qr_code_base64' => $pendente['qr_code_base64'],
-            'ticket_url' => $pendente['ticket_url'],
             'valor' => (float) $pendente['valor'],
             'expira_em' => $pendente['expira_em'],
         ];
+        if ($incluirQr) {
+            $resposta['qr_code'] = $pendente['qr_code'];
+            $resposta['qr_code_base64'] = $pendente['qr_code_base64'];
+            $resposta['ticket_url'] = $pendente['ticket_url'];
+        }
+        return $resposta;
     }
 
     /** @param array<string,mixed> $conta */

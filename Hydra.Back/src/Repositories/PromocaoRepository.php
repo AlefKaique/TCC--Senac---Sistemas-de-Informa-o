@@ -31,7 +31,7 @@ final class PromocaoRepository
      * só roda quando reaplicado à mão, e sem a tabela o catálogo de produtos
      * (que consulta as promoções vigentes) pararia de carregar.
      *
-     * Roda uma vez por requisição. O construtor é chamado antes de qualquer
+     * Roda uma vez por banco (Migracoes::garantir). O construtor é chamado antes de qualquer
      * transação abrir (VendaController abre a dela só em store()), o que
      * importa porque DDL no MySQL faz commit implícito.
      *
@@ -67,6 +67,13 @@ final class PromocaoRepository
                 CONSTRAINT fk_promocoes_filial
                     FOREIGN KEY (id_loja, id_filial) REFERENCES filiais(id_loja, id_filial) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        ));
+        // Promoções vigentes da filial (consultadas em toda listagem de
+        // produtos e em cada venda): nenhum índice começava por id_filial.
+        Migracoes::garantir('indices_promocoes_v1', static fn () => Migracoes::criarIndiceSeFaltar(
+            'promocoes',
+            'idx_promocoes_filial_status_periodo',
+            'id_filial, status, data_inicio, data_fim'
         ));
         self::$tabelaGarantida = true;
     }

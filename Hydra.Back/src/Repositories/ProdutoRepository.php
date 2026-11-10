@@ -141,6 +141,30 @@ final class ProdutoRepository
         return $row ?: null;
     }
 
+    /**
+     * Vários produtos da filial numa consulta só, indexados por id_produto
+     * (ids de outra filial simplesmente não voltam). Usado pela venda, que
+     * antes buscava produto por produto.
+     *
+     * @param int[] $ids
+     * @return array<int,array<string,mixed>>
+     */
+    public function findManyInFilial(array $ids, int $idFilial): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        if ($ids === []) {
+            return [];
+        }
+        $marcadores = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = db()->prepare("SELECT * FROM produtos WHERE id_filial = ? AND id_produto IN ($marcadores)");
+        $stmt->execute([$idFilial, ...$ids]);
+        $porId = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $porId[(int) $row['id_produto']] = $row;
+        }
+        return $porId;
+    }
+
     public function findByBarcodeInFilial(string $codigoBarras, int $idFilial): ?array
     {
         $stmt = db()->prepare(
