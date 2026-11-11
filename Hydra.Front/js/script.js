@@ -13,6 +13,8 @@
       if (homeLink) homeLink.setAttribute('href', window.hydraHomePorPermissao(usuario));
       if (loginBtn) loginBtn.remove();
       if (signupBtn) signupBtn.remove();
+      document.getElementById('hydroLoginBtnMobile')?.remove();
+      document.getElementById('hydroSignupBtnMobile')?.remove();
     })
     .catch(() => { });
 })();
@@ -21,8 +23,27 @@
 const hamburger = document.getElementById('hamburger');
 const nav = document.getElementById('nav');
 
+function setMenuAberto(aberto) {
+  nav.classList.toggle('is-open', aberto);
+  hamburger.setAttribute('aria-expanded', String(aberto));
+  hamburger.setAttribute('aria-label', aberto ? 'Fechar menu' : 'Abrir menu');
+}
+
 hamburger.addEventListener('click', () => {
-  nav.classList.toggle('is-open');
+  setMenuAberto(!nav.classList.contains('is-open'));
+});
+
+// Fecha com Esc e ao tocar fora do cabeçalho.
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && nav.classList.contains('is-open')) {
+    setMenuAberto(false);
+    hamburger.focus();
+  }
+});
+document.addEventListener('click', (event) => {
+  if (nav.classList.contains('is-open') && !event.target.closest('.header')) {
+    setMenuAberto(false);
+  }
 });
 
 // ===== Nav: smooth scroll (scrollIntoView) + immediate active-state feedback =====
@@ -42,7 +63,7 @@ navLinks.forEach(link => {
 
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    nav.classList.remove('is-open');
+    setMenuAberto(false);
   });
 });
 

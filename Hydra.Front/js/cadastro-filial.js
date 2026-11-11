@@ -183,17 +183,7 @@
         }
     });
 
-    /* ================= Mobile sidebar ================= */
-    const sidebar = document.getElementById('hydroSidebar');
-    const overlay = document.getElementById('hydroSidebarOverlay');
-    document.getElementById('hydroMobileToggle').addEventListener('click', () => {
-        sidebar.classList.add('hydro-open');
-        overlay.classList.add('hydro-show');
-    });
-    overlay.addEventListener('click', () => {
-        sidebar.classList.remove('hydro-open');
-        overlay.classList.remove('hydro-show');
-    });
+    /* Menu lateral do celular: window.hydraMenuLateral (api.js). */
 
     /* ================= Init ================= */
     (async function init() {

@@ -814,6 +814,17 @@ body {
         transform: translateX(0);
     }
 
+    /* Fechada, a barra fica fora da tela e também fora do Tab/leitor de tela. */
+    .hydro-sidebar:not(.hydro-open) {
+        visibility: hidden;
+        transition: transform .25s ease, visibility 0s linear .25s;
+    }
+
+    /* Aberta, o botão do menu passa para o lado da barra em vez de cobrir a logo. */
+    .hydro-mobile-toggle[aria-expanded="true"] {
+        left: 262px;
+    }
+
     .hydro-main {
         padding: 74px 20px 50px;
     }

@@ -1881,20 +1881,42 @@
         renderCatalog();
     }
 
-    /* ================= Mobile sidebar ================= */
-    const sidebar = document.getElementById('hydroSidebar');
-    const overlay = document.getElementById('hydroSidebarOverlay');
-    const mobileToggle = document.getElementById('hydroMobileToggle');
-    if (mobileToggle) {
-        mobileToggle.addEventListener('click', () => {
-            sidebar.classList.add('hydro-open');
-            overlay.classList.add('hydro-show');
-        });
-        overlay.addEventListener('click', () => {
-            sidebar.classList.remove('hydro-open');
-            overlay.classList.remove('hydro-show');
-        });
-    }
+    /* Menu lateral do celular: window.hydraMenuLateral (api.js). */
+
+    /* ================= Barra "Ver pedido" (celular) =================
+       Abaixo de 980px o resumo do pedido fica depois de todo o catálogo, e o
+       operador tinha de rolar a vitrine inteira até "Finalizar Venda". Esta
+       barra fixa mostra o total e leva até o pedido; ela só espelha o que o
+       painel do pedido já exibe, sem tocar na lógica da venda. */
+    (function barraPedidoCelular() {
+        const bar = document.getElementById('hydroOrderMobileBar');
+        const card = document.getElementById('hydroOrderCard');
+        const totalEl = document.getElementById('hydroOrderMobileTotal');
+        const countEl = document.getElementById('hydroOrderMobileCount');
+        const botao = document.getElementById('hydroOrderMobileBtn');
+        if (!bar || !card || !totalEl || !countEl || !botao || !orderTotalEl || !cartCountEl) return;
+
+        const celular = window.matchMedia('(max-width: 980px)');
+        let pedidoNaTela = false;
+        const atualizar = () => {
+            totalEl.textContent = orderTotalEl.textContent;
+            countEl.textContent = cartCountEl.textContent.replace(/[()]/g, '').trim() || 'Pedido vazio';
+            bar.hidden = !celular.matches || pedidoNaTela;
+        };
+
+        const observarTexto = { childList: true, characterData: true, subtree: true };
+        new MutationObserver(atualizar).observe(orderTotalEl, observarTexto);
+        new MutationObserver(atualizar).observe(cartCountEl, observarTexto);
+        if ('IntersectionObserver' in window) {
+            new IntersectionObserver(([entrada]) => {
+                pedidoNaTela = entrada.isIntersecting;
+                atualizar();
+            }).observe(card);
+        }
+        if (celular.addEventListener) celular.addEventListener('change', atualizar);
+        botao.addEventListener('click', () => card.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+        atualizar();
+    })();
 
     /* Catálogo e histórico de demonstração (localStorage), usados pelo
        visitante não autenticado. Sem back-end não há numeração de loja, então

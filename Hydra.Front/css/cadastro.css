@@ -300,9 +300,11 @@ html, body.signup-body{
   .signup__form-side{
     min-height: auto;
   }
+  /* Formulário primeiro: antes o painel azul ficava em cima e empurrava
+     o login/cadastro para fora da tela. */
   .signup__promo{
-    order: -1;
-    margin: 16px 16px 0;
+    order: 1;
+    margin: 0 16px 16px;
     padding: 44px 32px 90px;
     align-self: auto;
   }
@@ -312,13 +314,20 @@ html, body.signup-body{
   }
 }
 
+/* No celular o painel ilustrativo só ocupa espaço: fica só o formulário. */
+@media (max-width: 768px){
+  .signup__promo{
+    display: none;
+  }
+}
+
 @media (max-width: 480px){
   .signup__form-side{
     padding: 36px 20px;
   }
   .signup__promo{
     padding: 36px 22px 90px;
-    margin: 12px 12px 0;
+    margin: 0 12px 12px;
   }
   .mockup__card{
     width: 150px;
