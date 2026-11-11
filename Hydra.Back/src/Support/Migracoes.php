@@ -306,7 +306,7 @@ final class Migracoes
                     codigo_acesso_hash      CHAR(64) NULL,
                     codigo_acesso_expira_em DATETIME NULL,
                     status                  ENUM('ativo','inativo') NOT NULL DEFAULT 'ativo',
-                    nivel                   ENUM('proprietario','gestor','analista') NOT NULL DEFAULT 'analista',
+                    nivel                   ENUM('administrador','proprietario','gestor','analista') NOT NULL DEFAULT 'analista',
                     senha_definida          TINYINT(1) NOT NULL DEFAULT 1,
                     criado_por              INT NULL,
                     ultimo_acesso           DATETIME NULL,
@@ -374,6 +374,21 @@ final class Migracoes
         // índice nenhum em auditoria_plataforma.id_loja.
         self::garantir('indices_auditoria_v1', static function (): void {
             self::criarIndiceSeFaltar('auditoria_plataforma', 'idx_auditoria_loja_data', 'id_loja, data');
+        });
+
+        // Nível "administrador" (acesso total, igual ao proprietário) e a
+        // opção por conta de entrar sem o código por e-mail.
+        self::garantir('plataforma_admin_v1', static function (): void {
+            db()->exec(
+                "ALTER TABLE admins_plataforma MODIFY nivel
+                    ENUM('administrador','proprietario','gestor','analista') NOT NULL DEFAULT 'analista'"
+            );
+            if (!self::colunaExiste('admins_plataforma', 'login_sem_codigo')) {
+                db()->exec(
+                    'ALTER TABLE admins_plataforma
+                        ADD COLUMN login_sem_codigo TINYINT(1) NOT NULL DEFAULT 0'
+                );
+            }
         });
     }
 

@@ -196,12 +196,13 @@ As telas administrativas ficam em `Hydra.Front/pages/plataforma/`. A
 autenticação da plataforma é separada das sessões de mercado: o login exige
 senha e código por e-mail, e os endpoints validam o nível do membro no
 servidor. Os níveis são **Analista** (consulta), **Gestor** (consulta,
-auditoria e suspensão/reativação) e **Proprietário** (acesso total e gestão
-da equipe).
+auditoria e suspensão/reativação), **Proprietário** e **Administrador**
+(ambos com acesso total e gestão da equipe). A plataforma sempre mantém pelo
+menos um Proprietário ou Administrador ativo.
 
 | Método | Rota | Acesso | Descrição |
 |--------|------|--------|-----------|
-| POST | `/api/plataforma/auth/login` | pública | Confere e-mail/senha e envia código de acesso |
+| POST | `/api/plataforma/auth/login` | pública | Confere e-mail/senha e envia código de acesso (ou já abre a sessão, se a conta tiver login sem código) |
 | POST | `/api/plataforma/auth/codigo` | login pendente | Confere o código e abre a sessão da plataforma |
 | POST | `/api/plataforma/auth/reenviar` | login pendente | Reenvia o código da segunda etapa |
 | POST | `/api/plataforma/auth/primeiro-acesso` | convite válido | Define a senha inicial de um membro convidado |
@@ -211,13 +212,13 @@ da equipe).
 | GET | `/api/plataforma/rendimento?dias=30` | plataforma autenticada | Faturamento agregado, evolução e ranking dos mercados (7, 30, 90 ou 365 dias) |
 | GET | `/api/plataforma/lojas` | plataforma autenticada | Lista paginada de mercados com busca e filtros |
 | GET | `/api/plataforma/lojas/{id}` | plataforma autenticada | Detalhes agregados de um mercado |
-| POST | `/api/plataforma/lojas/{id}/suspender` | Proprietário ou Gestor | Suspende o mercado com motivo obrigatório |
-| POST | `/api/plataforma/lojas/{id}/reativar` | Proprietário ou Gestor | Reativa o mercado com motivo obrigatório |
+| POST | `/api/plataforma/lojas/{id}/suspender` | Administrador, Proprietário ou Gestor | Suspende o mercado com motivo obrigatório |
+| POST | `/api/plataforma/lojas/{id}/reativar` | Administrador, Proprietário ou Gestor | Reativa o mercado com motivo obrigatório |
 | GET | `/api/plataforma/cadastros-pendentes` | plataforma autenticada | Lista cadastros que ainda aguardam confirmação |
-| GET | `/api/plataforma/auditoria` | Proprietário ou Gestor | Consulta o histórico de ações administrativas |
-| GET/POST | `/api/plataforma/equipe` | Proprietário | Lista membros ou envia um convite |
-| PUT | `/api/plataforma/equipe/{id}` | Proprietário | Altera nível ou situação de um membro |
-| POST | `/api/plataforma/equipe/{id}/reenviar-convite` | Proprietário | Emite um novo convite válido por 24 horas |
+| GET | `/api/plataforma/auditoria` | Administrador, Proprietário ou Gestor | Consulta o histórico de ações administrativas |
+| GET/POST | `/api/plataforma/equipe` | Administrador ou Proprietário | Lista membros ou envia um convite |
+| PUT | `/api/plataforma/equipe/{id}` | Administrador ou Proprietário | Altera nível ou situação de um membro |
+| POST | `/api/plataforma/equipe/{id}/reenviar-convite` | Administrador ou Proprietário | Emite um novo convite válido por 24 horas |
 
 Não há conta padrão. Para criar o primeiro Proprietário, na pasta
 `Hydra.Back`, execute `php bin/criar-admin-plataforma.php "Nome" email@dominio.com`
@@ -226,6 +227,29 @@ não exibe a senha enquanto ela é digitada. Em bancos existentes, as colunas
 da equipe, o status de suspensão e os índices necessários são aplicados
 automaticamente na primeira requisição da plataforma; não é necessário
 recriar o banco nem reaplicar `schema.sql`.
+
+#### Administrador sem código por e-mail (apresentação)
+
+O script também aceita `--nivel=administrador|proprietario` e
+`--sem-codigo` / `--com-codigo`. Para criar um Administrador que entra só com
+e-mail e senha, sem a etapa do código por e-mail:
+
+```bash
+php bin/criar-admin-plataforma.php "Equipe Hydra" admin@hydra.com --nivel=administrador --sem-codigo
+```
+
+A entrada fica em `pages/plataforma/login.html` (há o link **Acesso Equipe
+Hydra** na tela de login das lojas). Cada entrada aparece na auditoria como
+"Entrou no sistema (sem código)". A opção só pode ser ligada pelo script,
+nunca pela tela.
+
+> **Atenção:** `--sem-codigo` remove a segunda etapa de verificação de uma
+> conta com acesso total. Use uma senha forte e, depois da apresentação,
+> desligue a opção: rode o mesmo comando com `--com-codigo` e responda "N"
+> quando o script perguntar se deve redefinir a senha (a senha atual é mantida).
+
+`bin/` não vai para a imagem Docker. Para agir sobre o banco de produção,
+rode o script localmente com o `.env` apontando para esse banco.
 
 ### Cancelamento de venda
 

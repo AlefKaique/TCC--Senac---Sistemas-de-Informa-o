@@ -77,11 +77,50 @@ function lerSenha(string $rotulo): string
     return trim((string) fgets(STDIN));
 }
 
-$nome = trim((string) ($argv[1] ?? ''));
-$email = trim(strtolower((string) ($argv[2] ?? '')));
+// Argumentos posicionais (nome e e-mail) e as opções:
+//   --nivel=administrador|proprietario  (padrão: proprietario)
+//   --sem-codigo  entra só com e-mail e senha, sem o código por e-mail
+//   --com-codigo  volta a exigir o código por e-mail
+$uso = "Uso: php bin/criar-admin-plataforma.php \"Nome\" email@dominio.com"
+    . " [--nivel=administrador|proprietario] [--sem-codigo|--com-codigo]\n";
+$posicionais = [];
+$nivel = null;          // null = proprietario em contas novas / mantém nas existentes
+$loginSemCodigo = null; // null = 0 em contas novas / mantém nas existentes
+foreach (array_slice($argv, 1) as $argumento) {
+    if (str_starts_with($argumento, '--nivel=')) {
+        $nivel = substr($argumento, strlen('--nivel='));
+    } elseif ($argumento === '--sem-codigo') {
+        $loginSemCodigo = 1;
+    } elseif ($argumento === '--com-codigo') {
+        $loginSemCodigo = 0;
+    } elseif (str_starts_with($argumento, '--')) {
+        fwrite(STDERR, "Opção desconhecida: {$argumento}\n" . $uso);
+        exit(1);
+    } else {
+        $posicionais[] = $argumento;
+    }
+}
+
+$nome = trim((string) ($posicionais[0] ?? ''));
+$email = trim(strtolower((string) ($posicionais[1] ?? '')));
 if ($nome === '' || mb_strlen($nome, 'UTF-8') > 100 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    fwrite(STDERR, "Uso: php bin/criar-admin-plataforma.php \"Nome\" email@dominio.com\n");
+    fwrite(STDERR, $uso);
     exit(1);
+}
+if ($nivel !== null && !in_array($nivel, AdminPlataformaRepository::ACESSO_TOTAL, true)) {
+    fwrite(STDERR, "O nível deve ser \"administrador\" ou \"proprietario\".\n");
+    exit(1);
+}
+
+function informarModoDeLogin(AdminPlataformaRepository $admins, string $email): void
+{
+    $estado = $admins->findByEmail($email);
+    if ($estado !== null && (int) ($estado['login_sem_codigo'] ?? 0) === 1) {
+        fwrite(STDOUT, "Login SEM código por e-mail: entra só com e-mail e senha.\n"
+            . "Depois da apresentação, rode de novo com --com-codigo para reativar a verificação.\n");
+    } else {
+        fwrite(STDOUT, "Login com código por e-mail (verificação em duas etapas ativa).\n");
+    }
 }
 
 $admins = new AdminPlataformaRepository();
@@ -89,7 +128,23 @@ $existente = $admins->findByEmail($email);
 if ($existente !== null) {
     $resposta = strtolower(lerLinha("O e-mail já existe. Redefinir a senha? [s/N] "));
     if (!in_array($resposta, ['s', 'sim'], true)) {
-        fwrite(STDOUT, "Operação cancelada.\n");
+        if ($nivel === null && $loginSemCodigo === null) {
+            fwrite(STDOUT, "Operação cancelada.\n");
+            exit(0);
+        }
+        // Só troca nível e/ou modo de login, mantendo a senha atual.
+        db()->prepare(
+            "UPDATE admins_plataforma
+                SET nivel = COALESCE(:nivel, nivel),
+                    login_sem_codigo = COALESCE(:sem_codigo, login_sem_codigo)
+              WHERE id_admin = :id_admin"
+        )->execute([
+            'nivel' => $nivel,
+            'sem_codigo' => $loginSemCodigo,
+            'id_admin' => (int) $existente['id_admin'],
+        ]);
+        fwrite(STDOUT, "Membro atualizado sem alterar a senha.\n");
+        informarModoDeLogin($admins, $email);
         exit(0);
     }
 } else {
@@ -117,15 +172,31 @@ if ($senhaHash === false) {
 
 if ($existente !== null) {
     $admins->redefinirSenha((int) $existente['id_admin'], $senhaHash);
+    // Sem --nivel, mantém o comportamento antigo de garantir acesso total:
+    // contas que já são administrador continuam administrador.
     db()->prepare(
-        "UPDATE admins_plataforma SET nivel = 'proprietario', status = 'ativo', senha_definida = 1
+        "UPDATE admins_plataforma
+            SET nivel = COALESCE(:nivel, IF(nivel = 'administrador', 'administrador', 'proprietario')),
+                status = 'ativo', senha_definida = 1,
+                login_sem_codigo = COALESCE(:sem_codigo, login_sem_codigo)
           WHERE id_admin = :id_admin"
-    )->execute(['id_admin' => (int) $existente['id_admin']]);
-    fwrite(STDOUT, "Senha do administrador da plataforma redefinida.\n");
+    )->execute([
+        'nivel' => $nivel,
+        'sem_codigo' => $loginSemCodigo,
+        'id_admin' => (int) $existente['id_admin'],
+    ]);
+    fwrite(STDOUT, "Senha do membro da plataforma redefinida.\n");
 } else {
     db()->prepare(
-        "INSERT INTO admins_plataforma (nome, email, senha, nivel, senha_definida, status)
-         VALUES (:nome, :email, :senha, 'proprietario', 1, 'ativo')"
-    )->execute(['nome' => $nome, 'email' => $email, 'senha' => $senhaHash]);
-    fwrite(STDOUT, "Administrador da plataforma criado.\n");
+        "INSERT INTO admins_plataforma (nome, email, senha, nivel, senha_definida, status, login_sem_codigo)
+         VALUES (:nome, :email, :senha, :nivel, 1, 'ativo', :sem_codigo)"
+    )->execute([
+        'nome' => $nome,
+        'email' => $email,
+        'senha' => $senhaHash,
+        'nivel' => $nivel ?? 'proprietario',
+        'sem_codigo' => $loginSemCodigo ?? 0,
+    ]);
+    fwrite(STDOUT, "Membro da plataforma criado (nível: " . ($nivel ?? 'proprietario') . ").\n");
 }
+informarModoDeLogin($admins, $email);

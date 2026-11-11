@@ -26,13 +26,13 @@ final class PlataformaEquipeController
 
     public function index(): void
     {
-        Auth::requirePlataformaNivel(['proprietario']);
+        Auth::requirePlataformaNivel(AdminPlataformaRepository::ACESSO_TOTAL);
         Response::json(['membros' => $this->admins->listarEquipe()]);
     }
 
     public function criar(): void
     {
-        $ator = Auth::requirePlataformaNivel(['proprietario']);
+        $ator = Auth::requirePlataformaNivel(AdminPlataformaRepository::ACESSO_TOTAL);
         $dados = Request::json();
         $nome = trim((string) ($dados['nome'] ?? ''));
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
@@ -45,7 +45,7 @@ final class PlataformaEquipeController
             Response::json(['erro' => 'Informe um e-mail válido.'], 422);
             return;
         }
-        if (!in_array($nivel, ['proprietario', 'gestor', 'analista'], true)) {
+        if (!in_array($nivel, AdminPlataformaRepository::NIVEIS, true)) {
             Response::json(['erro' => 'Selecione um nível de acesso válido.'], 422);
             return;
         }
@@ -87,7 +87,7 @@ final class PlataformaEquipeController
 
     public function atualizar(int $idAdmin): void
     {
-        $ator = Auth::requirePlataformaNivel(['proprietario']);
+        $ator = Auth::requirePlataformaNivel(AdminPlataformaRepository::ACESSO_TOTAL);
         if ($idAdmin === $ator['id']) {
             Response::json(['erro' => 'Você não pode alterar seu próprio nível ou status.'], 403);
             return;
@@ -99,7 +99,7 @@ final class PlataformaEquipeController
             Response::json(['erro' => 'Informe o novo nível ou status do membro.'], 422);
             return;
         }
-        if ($nivel !== null && !in_array($nivel, ['proprietario', 'gestor', 'analista'], true)) {
+        if ($nivel !== null && !in_array($nivel, AdminPlataformaRepository::NIVEIS, true)) {
             Response::json(['erro' => 'Nível de acesso inválido.'], 422);
             return;
         }
@@ -119,7 +119,7 @@ final class PlataformaEquipeController
 
     public function reenviarConvite(int $idAdmin): void
     {
-        $ator = Auth::requirePlataformaNivel(['proprietario']);
+        $ator = Auth::requirePlataformaNivel(AdminPlataformaRepository::ACESSO_TOTAL);
         $membro = $this->admins->buscarMembro($idAdmin);
         if ($membro === null) {
             Response::json(['erro' => 'Membro não encontrado.'], 404);

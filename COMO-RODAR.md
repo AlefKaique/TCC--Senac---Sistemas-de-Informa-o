@@ -77,6 +77,22 @@ Com os dois servidores rodando, abra `http://localhost:5500/pages/cadastro.html`
 > para a tela de login. Portas diferentes (5500 e 8080) não são problema,
 > só o nome do host precisa ser o mesmo dos dois lados.
 
+### 5. (Opcional) Login de Administrador da Equipe Hydra
+
+O painel da Equipe Hydra (todos os mercados) fica em
+`http://localhost:5500/pages/plataforma/login.html`. Também há o link
+**Acesso Equipe Hydra** na tela de login. Para criar um Administrador com
+acesso total que entra só com e-mail e senha, sem código por e-mail, rode
+na pasta `Hydra.Back`:
+
+```bash
+php bin/criar-admin-plataforma.php "Equipe Hydra" admin@hydra.com --nivel=administrador --sem-codigo
+```
+
+Depois da apresentação, rode o mesmo comando com `--com-codigo` (responda
+"N" para manter a senha) para voltar a exigir o código. Detalhes no
+[README do backend](Hydra.Back/README.md#plataforma-hydra).
+
 ## Por que os dois terminais precisam ficar abertos
 
 `php -S` não é um comando que "executa e termina" — ele inicia um
