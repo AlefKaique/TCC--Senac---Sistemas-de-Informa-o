@@ -65,7 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         body: { email: emailInput.value.trim(), senha: document.getElementById('senha').value },
       });
-      if (!resposta.requer_codigo) return;
+      // Conta com login sem código (ex.: Administrador da apresentação):
+      // a sessão já foi criada, então vai direto para o painel.
+      if (!resposta.requer_codigo) {
+        if (resposta.admin) window.location.href = 'visao-geral.html';
+        return;
+      }
 
       emailVerificado = resposta.email;
       document.getElementById('sent-to-email').textContent = emailVerificado;

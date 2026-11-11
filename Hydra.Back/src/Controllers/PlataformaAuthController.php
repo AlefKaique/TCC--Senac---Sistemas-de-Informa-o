@@ -50,6 +50,18 @@ final class PlataformaAuthController
         }
 
         RateLimit::limpar($chaveLogin);
+
+        // Conta marcada pelo script bin/criar-admin-plataforma.php --sem-codigo:
+        // entra só com e-mail e senha, sem a etapa do código por e-mail.
+        if ((int) ($admin['login_sem_codigo'] ?? 0) === 1) {
+            $idAdmin = (int) $admin['id_admin'];
+            $this->admins->registrarAcesso($idAdmin);
+            $this->auditoria->registrar($idAdmin, 'login_ok_sem_codigo');
+            Auth::loginPlataforma($admin);
+            Response::json($this->respostaDeLogin($admin));
+            return;
+        }
+
         $emailChave = $admin['email'];
         $chaveEnvio = 'plataforma:envio:' . $emailChave;
         RateLimit::requireNaoBloqueado($chaveEnvio);
@@ -143,14 +155,7 @@ final class PlataformaAuthController
         );
         Auth::loginPlataforma($admin);
 
-        Response::json([
-            'admin' => [
-                'id' => $idAdmin,
-                'nome' => (string) $admin['nome'],
-                'email' => (string) $admin['email'],
-                'nivel' => (string) $admin['nivel'],
-            ],
-        ]);
+        Response::json($this->respostaDeLogin($admin));
     }
 
     /** POST /api/plataforma/auth/reenviar */
@@ -210,6 +215,19 @@ final class PlataformaAuthController
         $this->auditoria->registrar($admin['id'], 'logout');
         Auth::logoutPlataforma();
         Response::json(['ok' => true]);
+    }
+
+    /** @return array{admin:array{id:int,nome:string,email:string,nivel:string}} */
+    private function respostaDeLogin(array $admin): array
+    {
+        return [
+            'admin' => [
+                'id' => (int) $admin['id_admin'],
+                'nome' => (string) $admin['nome'],
+                'email' => (string) $admin['email'],
+                'nivel' => (string) $admin['nivel'],
+            ],
+        ];
     }
 
     /** Salva somente o hash do código e envia o valor temporário por e-mail. */

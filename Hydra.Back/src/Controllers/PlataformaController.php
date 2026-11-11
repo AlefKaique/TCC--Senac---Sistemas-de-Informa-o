@@ -2,6 +2,7 @@
 
 namespace Hydra\Controllers;
 
+use Hydra\Repositories\AdminPlataformaRepository;
 use Hydra\Repositories\AuditoriaPlataformaRepository;
 use Hydra\Repositories\PlataformaRepository;
 use Hydra\Support\Auth;
@@ -72,13 +73,13 @@ final class PlataformaController
 
     public function suspender(int $idLoja): void
     {
-        $admin = Auth::requirePlataformaNivel(['proprietario', 'gestor']);
+        $admin = Auth::requirePlataformaNivel(AdminPlataformaRepository::GESTAO);
         $this->alterarStatus($idLoja, 'suspensa', 'mercado_suspenso', $admin['id']);
     }
 
     public function reativar(int $idLoja): void
     {
-        $admin = Auth::requirePlataformaNivel(['proprietario', 'gestor']);
+        $admin = Auth::requirePlataformaNivel(AdminPlataformaRepository::GESTAO);
         $this->alterarStatus($idLoja, 'ativa', 'mercado_reativado', $admin['id']);
     }
 
@@ -90,7 +91,7 @@ final class PlataformaController
 
     public function auditoria(): void
     {
-        Auth::requirePlataformaNivel(['proprietario', 'gestor']);
+        Auth::requirePlataformaNivel(AdminPlataformaRepository::GESTAO);
         $pagina = max(1, min(100000, (int) ($_GET['pagina'] ?? 1)));
         $de = trim((string) ($_GET['de'] ?? ''));
         $ate = trim((string) ($_GET['ate'] ?? ''));

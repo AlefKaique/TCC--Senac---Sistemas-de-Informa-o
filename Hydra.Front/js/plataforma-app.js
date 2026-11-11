@@ -39,9 +39,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
   const currency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0));
   const labelsStatus = { ativo: 'Ativo', novo: 'Novo', ocioso: 'Ocioso', inativo: 'Inativo', suspenso: 'Suspenso', pendente: 'Pendente', ativa: 'Ativa', inativa: 'Inativa' };
+  const labelsNivel = { administrador: 'Administrador', proprietario: 'Proprietário', gestor: 'Gestor', analista: 'Analista' };
   const statusBadge = (value) => `<span class="plataforma-badge status-${escapeHtml(value)}">${escapeHtml(labelsStatus[value] || value || '—')}</span>`;
   const actionLabels = {
-    login_ok: 'Entrou no sistema', login_falha_senha: 'Errou a senha',
+    login_ok: 'Entrou no sistema', login_ok_sem_codigo: 'Entrou no sistema (sem código)',
+    login_falha_senha: 'Errou a senha',
     login_falha_codigo: 'Errou o código', logout: 'Saiu do sistema',
     mercado_suspenso: 'Suspendeu o mercado', mercado_reativado: 'Reativou o mercado',
     equipe_convidada: 'Convidou um membro', equipe_alterada: 'Alterou um membro',
@@ -236,7 +238,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const data = await carregar(`/plataforma/lojas/${encodeURIComponent(id)}`);
     const market = data.loja;
-    const podeGerenciar = ['proprietario', 'gestor'].includes(window.plataformaAdmin.nivel);
+    const podeGerenciar = ['administrador', 'proprietario', 'gestor'].includes(window.plataformaAdmin.nivel);
     const suspenso = market.status_loja === 'suspensa';
     const voltar = params.get('voltar');
     const voltarUrl = `mercados.html${voltar ? `?${encodeURIComponent(voltar).replace(/%3D/g, '=').replace(/%26/g, '&')}` : ''}`;
@@ -340,14 +342,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('equipe-vazio').hidden = data.membros.length > 0;
     tbody.innerHTML = data.membros.map((member) => {
       const self = Number(member.id_admin) === Number(window.plataformaAdmin.id);
-      const roleOptions = ['analista', 'gestor', 'proprietario'].map((role) => `<option value="${role}" ${role === member.nivel ? 'selected' : ''}>${role[0].toUpperCase() + role.slice(1)}</option>`).join('');
+      const roleOptions = ['analista', 'gestor', 'proprietario', 'administrador'].map((role) => `<option value="${role}" ${role === member.nivel ? 'selected' : ''}>${labelsNivel[role]}</option>`).join('');
       const situation = Number(member.senha_definida) === 1
         ? 'Senha criada'
         : '<span class="plataforma-badge status-pendente">Aguardando primeiro acesso</span>';
       const actions = self
         ? '<span>Você</span>'
         : `<div class="plataforma-actions"><label class="plataforma-field">Nível<select data-nivel-membro="${member.id_admin}">${roleOptions}</select></label><button class="plataforma-btn" type="button" data-alterar-nivel="${member.id_admin}">Alterar nível</button><button class="plataforma-btn ${member.status === 'ativo' ? 'plataforma-btn-danger' : 'plataforma-btn-success'}" type="button" data-alterar-status="${member.id_admin}" data-status-atual="${member.status}">${member.status === 'ativo' ? 'Inativar' : 'Reativar'}</button>${Number(member.senha_definida) === 0 ? `<button class="plataforma-btn" type="button" data-reenviar-convite="${member.id_admin}">Reenviar convite</button>` : ''}</div>`;
-      return `<tr><td>${escapeHtml(member.nome)}</td><td>${escapeHtml(member.email)}</td><td>${escapeHtml(member.nivel[0].toUpperCase() + member.nivel.slice(1))}</td><td>${statusBadge(member.status)}</td><td>${dateTime(member.ultimo_acesso)}</td><td>${situation}</td><td>${actions}</td></tr>`;
+      return `<tr><td>${escapeHtml(member.nome)}</td><td>${escapeHtml(member.email)}</td><td>${escapeHtml(labelsNivel[member.nivel] || member.nivel)}</td><td>${statusBadge(member.status)}</td><td>${dateTime(member.ultimo_acesso)}</td><td>${situation}</td><td>${actions}</td></tr>`;
     }).join('');
   }
 

@@ -717,8 +717,11 @@ CREATE TABLE IF NOT EXISTS admins_plataforma (
     codigo_acesso_hash      CHAR(64) NULL,
     codigo_acesso_expira_em DATETIME NULL,
     status                  ENUM('ativo','inativo') NOT NULL DEFAULT 'ativo',
-    nivel                   ENUM('proprietario','gestor','analista') NOT NULL DEFAULT 'analista',
+    nivel                   ENUM('administrador','proprietario','gestor','analista') NOT NULL DEFAULT 'analista',
     senha_definida          TINYINT(1) NOT NULL DEFAULT 1,
+    -- 1 = entra só com e-mail e senha, sem o código por e-mail. Só é ligado
+    -- pelo script bin/criar-admin-plataforma.php (--sem-codigo).
+    login_sem_codigo        TINYINT(1) NOT NULL DEFAULT 0,
     criado_por              INT NULL,
     ultimo_acesso           DATETIME NULL,
     data_criacao            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

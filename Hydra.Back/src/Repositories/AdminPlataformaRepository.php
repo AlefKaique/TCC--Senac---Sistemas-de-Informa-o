@@ -7,6 +7,15 @@ use Hydra\Support\Migracoes;
 /** Persistência das contas exclusivas de administração da plataforma. */
 final class AdminPlataformaRepository
 {
+    /** Todos os níveis da Equipe Hydra, do mais amplo ao mais restrito. */
+    public const NIVEIS = ['administrador', 'proprietario', 'gestor', 'analista'];
+
+    /** Acesso total, inclusive para gerenciar a própria equipe. */
+    public const ACESSO_TOTAL = ['administrador', 'proprietario'];
+
+    /** Podem suspender/reativar mercados e consultar a auditoria. */
+    public const GESTAO = ['administrador', 'proprietario', 'gestor'];
+
     public function __construct()
     {
         Migracoes::garantirAdminsPlataforma();
@@ -161,11 +170,11 @@ final class AdminPlataformaRepository
     {
         db()->beginTransaction();
         try {
-            // Travar os proprietários ativos evita duas alterações concorrentes
-            // deixarem a equipe sem ninguém com acesso total.
+            // Travar os membros com acesso total evita duas alterações
+            // concorrentes deixarem a equipe sem ninguém com acesso total.
             db()->query(
                 "SELECT id_admin FROM admins_plataforma
-                  WHERE nivel = 'proprietario' AND status = 'ativo' FOR UPDATE"
+                  WHERE nivel IN ('administrador','proprietario') AND status = 'ativo' FOR UPDATE"
             )->fetchAll();
             $membro = $this->buscarMembro($idAdmin);
             if ($membro === null) {
@@ -180,17 +189,17 @@ final class AdminPlataformaRepository
                 return ['membro' => $membro];
             }
             if (
-                $membro['nivel'] === 'proprietario'
+                in_array($membro['nivel'], self::ACESSO_TOTAL, true)
                 && $membro['status'] === 'ativo'
-                && ($novoNivel !== 'proprietario' || $novoStatus !== 'ativo')
+                && (!in_array($novoNivel, self::ACESSO_TOTAL, true) || $novoStatus !== 'ativo')
             ) {
                 $stmt = db()->query(
                     "SELECT COUNT(*) FROM admins_plataforma
-                      WHERE nivel = 'proprietario' AND status = 'ativo'"
+                      WHERE nivel IN ('administrador','proprietario') AND status = 'ativo'"
                 );
                 if ((int) $stmt->fetchColumn() <= 1) {
                     db()->rollBack();
-                    return ['erro' => 'A plataforma precisa de pelo menos um Proprietário ativo.'];
+                    return ['erro' => 'A plataforma precisa de pelo menos um Administrador ou Proprietário ativo.'];
                 }
             }
 
