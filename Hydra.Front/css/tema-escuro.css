@@ -384,6 +384,52 @@ html[data-hydra-theme="dark"] .status-suspenso,
 html[data-hydra-theme="dark"] .status-inativa { background: #442831; color: #ffabb4; }
 html[data-hydra-theme="dark"] .status-pendente { background: #34284d; color: #d0baff; }
 
+/* Rodapé da página inicial: no tema claro ele usa --navy-dark com texto
+   branco translúcido; no escuro --navy-dark vira um tom claro e o texto
+   sumia. Aqui ele fica mais escuro que o fundo da página, como no claro. */
+html[data-hydra-theme="dark"] .footer {
+  background: #0a0f18;
+  color: var(--theme-muted);
+  border-top: 1px solid var(--theme-border);
+}
+
+html[data-hydra-theme="dark"] .footer__contact {
+  border-bottom-color: var(--theme-border);
+}
+
+html[data-hydra-theme="dark"] .footer__col h4 {
+  color: var(--theme-text);
+}
+
+html[data-hydra-theme="dark"] .footer__col a {
+  color: #c8d3e6;
+}
+
+html[data-hydra-theme="dark"] .footer__col a:hover {
+  color: #fff;
+}
+
+/* Cartões de recursos da página inicial: o fundo é um degradê de --navy até
+   --navy-dark, e no tema escuro as duas viram tons claros (lilás), deixando
+   o texto branco quase invisível. A regra genérica de cartões acima só troca
+   background-color, não o degradê. */
+html[data-hydra-theme="dark"] .feature-card {
+  background-image: linear-gradient(155deg, #22304d 0%, #141c2c 100%) !important;
+  color: #f4f6fb;
+}
+
+html[data-hydra-theme="dark"] .feature-card h3 {
+  color: #f4f6fb;
+}
+
+html[data-hydra-theme="dark"] .feature-card p {
+  color: #b8c3d6;
+}
+
+html[data-hydra-theme="dark"] .feature-card__icon {
+  color: #1b2a63;
+}
+
 html[data-hydra-theme="dark"] .hydro-toast,
 html[data-hydra-theme="dark"] .toast,
 html[data-hydra-theme="dark"] .plataforma-btn-primary,
@@ -501,6 +547,33 @@ html:not([data-hydra-theme="dark"]) .accessibility-widget:not(.accessibility-wid
 
   html:not([data-hydra-theme="dark"]) .accessibility-widget:not(.accessibility-widget--sidebar) {
     bottom: 66px;
+  }
+}
+
+/* Celular: o botão com texto (~125px) cobria conteúdo, a barra "Salvar
+   alterações" de Cargos e o fim do menu lateral aberto. Vira um círculo só
+   com o ícone (o nome continua no aria-label/title) e fica abaixo do menu
+   lateral (z 39/40) e das barras e janelas da própria tela. */
+@media (max-width: 640px) {
+  html[data-hydra-theme="dark"] .hydra-theme-toggle,
+  html:not([data-hydra-theme="dark"]) .hydra-theme-toggle {
+    right: 12px;
+    bottom: 12px;
+    z-index: 35;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    gap: 0;
+  }
+
+  html .hydra-theme-toggle span {
+    display: none;
+  }
+
+  /* Espaço no fim das telas internas para o botão não cobrir o último item. */
+  html .hydro-main {
+    padding-bottom: 76px;
   }
 }
 

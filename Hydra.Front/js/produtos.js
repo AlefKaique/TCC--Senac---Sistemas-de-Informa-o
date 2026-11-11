@@ -389,19 +389,5 @@
         }, 600);
     });
 
-    /* ================= Mobile sidebar (padrão do sistema) ================= */
-    const sidebar = document.getElementById('hydroSidebar');
-    const overlay = document.getElementById('hydroSidebarOverlay');
-    const mobileToggle = document.getElementById('hydroMobileToggle');
-    if (mobileToggle) {
-        mobileToggle.addEventListener('click', () => {
-            sidebar.classList.add('hydro-open');
-            overlay.classList.add('hydro-show');
-        });
-        overlay.addEventListener('click', closeSidebar);
-    }
-    function closeSidebar() {
-        sidebar.classList.remove('hydro-open');
-        overlay.classList.remove('hydro-show');
-    }
+    /* Menu lateral do celular: window.hydraMenuLateral (api.js). */
 })();

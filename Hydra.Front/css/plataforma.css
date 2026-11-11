@@ -158,7 +158,10 @@ a.plataforma-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-
   .plataforma-card { padding: 14px; }
   .plataforma-card-value { font-size: 24px; }
   .plataforma-grid-2 { grid-template-columns: 1fr; }
-  .plataforma-content { padding: 18px 14px 32px; }
+  /* .hydro-main já dá 20px nas laterais; sem isto o conteúdo ficava com o dobro. */
+  .plataforma-content { padding: 4px 0 32px; }
+  /* Valores em R$ grandes não cabiam em uma linha nos cartões de ~135px. */
+  .plataforma-performance-cards .plataforma-card-value { white-space: normal; overflow-wrap: anywhere; }
   .plataforma-page-heading { flex-direction: column; }
   .plataforma-info-grid { grid-template-columns: 1fr; }
 }

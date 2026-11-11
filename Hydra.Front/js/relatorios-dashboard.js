@@ -384,8 +384,7 @@
             const rows = (state.stock?.alertas_validade || []).map((item) => [item.nome, number(item.quantidade, 3), item.validade, statusLabel(item.status)]);
             printTable('Produtos vencidos ou a vencer', ['Produto', 'Quantidade', 'Validade', 'Situação'], rows);
         });
-        document.getElementById('hydroMobileToggle')?.addEventListener('click', () => document.getElementById('hydroSidebar')?.classList.toggle('hydro-open'));
-        document.getElementById('hydroSidebarOverlay')?.addEventListener('click', () => document.getElementById('hydroSidebar')?.classList.remove('hydro-open'));
+        // Menu lateral do celular: window.hydraMenuLateral (api.js).
     }
 
     function demoPayloads(de, ate) {

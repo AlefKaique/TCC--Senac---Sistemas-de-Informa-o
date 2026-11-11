@@ -66,6 +66,59 @@ if (document.readyState === 'loading') {
   installHydraThemeToggle();
 }
 
+/**
+ * Menu lateral das telas internas no celular (abaixo de 980px). Antes cada
+ * tela tinha sua própria cópia: umas só abriam (o botão não fechava), o
+ * Relatório não escurecia o fundo e nenhuma tratava Esc ou aria-expanded.
+ * Instalado uma vez por página; as telas usam o retorno para fechar o menu.
+ *
+ * @returns {{abrir: () => void, fechar: () => void}}
+ */
+function hydraMenuLateral() {
+  const sidebar = document.getElementById('hydroSidebar');
+  const overlay = document.getElementById('hydroSidebarOverlay');
+  const toggle = document.getElementById('hydroMobileToggle');
+  if (!sidebar || !toggle) return { abrir() {}, fechar() {} };
+  if (sidebar.hydraMenu) return sidebar.hydraMenu;
+
+  const definir = (aberto) => {
+    sidebar.classList.toggle('hydro-open', aberto);
+    if (overlay) overlay.classList.toggle('hydro-show', aberto);
+    document.body.classList.toggle('hydra-menu-lateral-aberto', aberto);
+    toggle.setAttribute('aria-expanded', String(aberto));
+    toggle.setAttribute('aria-label', aberto ? 'Fechar menu' : 'Abrir menu');
+  };
+
+  toggle.type = 'button';
+  // No modo demonstração (public-demo.js) todo <button> abre o aviso de
+  // cadastro; abrir o menu é só navegação e precisa continuar liberado.
+  toggle.setAttribute('data-demo-allow', '');
+  toggle.setAttribute('aria-controls', 'hydroSidebar');
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.addEventListener('click', () => definir(!sidebar.classList.contains('hydro-open')));
+  if (overlay) overlay.addEventListener('click', () => definir(false));
+  // Ao escolher uma tela no menu, ele fecha (os submenus usam <summary>, não <a>).
+  sidebar.addEventListener('click', (event) => {
+    if (event.target.closest('a[href]')) definir(false);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && sidebar.classList.contains('hydro-open')) {
+      definir(false);
+      toggle.focus();
+    }
+  });
+
+  sidebar.hydraMenu = { abrir: () => definir(true), fechar: () => definir(false) };
+  return sidebar.hydraMenu;
+}
+window.hydraMenuLateral = hydraMenuLateral;
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', hydraMenuLateral, { once: true });
+} else {
+  hydraMenuLateral();
+}
+
 const defaultApiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:8080/api'
   : `${window.location.origin}/api`;

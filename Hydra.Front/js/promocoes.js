@@ -75,20 +75,20 @@
                     : `<button type="button" class="hydro-btn hydro-btn-primary hydro-btn-sm" data-criar="${p.id_produto}">Criar promoção</button>`;
                 return `
                 <tr>
-                    <td>
+                    <td class="hydro-product-cell-wrap" data-label="Produto">
                         <p class="hydro-product-name">${escapeHtml(p.nome)}</p>
                         <p class="hydro-product-desc">${escapeHtml(p.categoria || '')}</p>
                     </td>
-                    <td>
+                    <td data-label="Validade">
                         <div class="hydro-expiry-cell">
                             <span class="hydro-expiry-date">${formatDate(p.validade)}</span>
                             <span class="hydro-promo-days${dias <= 7 ? ' hydro-promo-days-urgent' : ''}">${diasTexto}</span>
                         </div>
                     </td>
-                    <td class="hydro-qty">${stockLabel(p.quantidade, p.unidade)}</td>
-                    <td>${money(p.preco_venda)}${perUnit(p.unidade)}</td>
-                    <td>${p.preco_custo != null ? money(p.preco_custo) + perUnit(p.unidade) : '<span class="hydro-text-muted">—</span>'}</td>
-                    <td><div class="hydro-row-actions">${acao}</div></td>
+                    <td class="hydro-qty" data-label="Estoque">${stockLabel(p.quantidade, p.unidade)}</td>
+                    <td data-label="Preço normal">${money(p.preco_venda)}${perUnit(p.unidade)}</td>
+                    <td data-label="Custo">${p.preco_custo != null ? money(p.preco_custo) + perUnit(p.unidade) : '<span class="hydro-text-muted">—</span>'}</td>
+                    <td class="hydro-col-actions" data-label="Ação"><div class="hydro-row-actions">${acao}</div></td>
                 </tr>`;
             })
             .join('');
@@ -121,18 +121,18 @@
                     : '';
                 return `
                 <tr>
-                    <td><p class="hydro-product-name">${escapeHtml(p.nome_produto)}</p></td>
-                    <td>
+                    <td class="hydro-product-cell-wrap" data-label="Produto"><p class="hydro-product-name">${escapeHtml(p.nome_produto)}</p></td>
+                    <td data-label="Preço">
                         <div class="hydro-promo-price">
                             <s>${money(normal)}${perUnit(p.unidade)}</s>
                             <strong>${money(promo)}${perUnit(p.unidade)}</strong>
                         </div>
                     </td>
-                    <td>${desconto}%</td>
-                    <td>${periodo}</td>
-                    <td><span class="hydro-badge ${sit.badge}">${sit.label}</span></td>
-                    <td>${escapeHtml(p.nome_usuario || '—')}</td>
-                    <td><div class="hydro-row-actions">${acao}</div></td>
+                    <td data-label="Desconto">${desconto}%</td>
+                    <td data-label="Período">${periodo}</td>
+                    <td data-label="Situação"><span class="hydro-badge ${sit.badge}">${sit.label}</span></td>
+                    <td data-label="Criada por">${escapeHtml(p.nome_usuario || '—')}</td>
+                    <td class="hydro-col-actions" data-label="Ação"><div class="hydro-row-actions">${acao}</div></td>
                 </tr>`;
             })
             .join('');
@@ -307,17 +307,7 @@
         }
     });
 
-    /* ================= Mobile sidebar ================= */
-    const sidebar = document.getElementById('hydroSidebar');
-    const overlay = document.getElementById('hydroSidebarOverlay');
-    document.getElementById('hydroMobileToggle').addEventListener('click', () => {
-        sidebar.classList.add('hydro-open');
-        overlay.classList.add('hydro-show');
-    });
-    overlay.addEventListener('click', () => {
-        sidebar.classList.remove('hydro-open');
-        overlay.classList.remove('hydro-show');
-    });
+    /* Menu lateral do celular: window.hydraMenuLateral (api.js). */
 
     /* ================= Init ================= */
     (async function init() {

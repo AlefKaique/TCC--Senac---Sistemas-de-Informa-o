@@ -193,7 +193,15 @@ img{ max-width:100%; display:block; }
 }
 .hamburger span{
   width:22px; height:2px; background:var(--navy); border-radius:2px;
+  transition: transform .25s ease, opacity .2s ease;
 }
+/* Menu aberto: as três linhas viram um "X". */
+.hamburger[aria-expanded="true"] span:nth-child(1){ transform: translateY(7px) rotate(45deg); }
+.hamburger[aria-expanded="true"] span:nth-child(2){ opacity:0; }
+.hamburger[aria-expanded="true"] span:nth-child(3){ transform: translateY(-7px) rotate(-45deg); }
+
+/* Login/Cadastro dentro do menu: só existem no menu do celular. */
+.nav__actions{ display:none; }
 
 /* ============ HERO ============ */
 .hero{
@@ -847,16 +855,16 @@ img{ max-width:100%; display:block; }
 
 }
 
-/* Celulares */
-@media (max-width:768px){
+/* Cabeçalho recolhido (menu hambúrguer). Começa em 900px e não em 768px:
+   entre 769 e ~900px o cabeçalho de desktop (logo + 4 links + 3 botões)
+   não cabia e a página rolava para o lado. */
+@media (max-width:900px){
 
-.container{
-    width:92%;
-    padding:0;
-}
-
-.header__inner{
-    padding:15px 0;
+/* ".header" na frente: o ".container{padding:0}" do bloco de 768px vem
+   depois no arquivo e, com a mesma especificidade, zerava este espaçamento. */
+.header .header__inner{
+    padding-top:15px;
+    padding-bottom:15px;
 }
 
 .nav{
@@ -867,17 +875,23 @@ img{ max-width:100%; display:block; }
 
     display:flex;
     flex-direction:column;
+    gap:0;
 
     background:var(--card, #fff);
+    box-shadow:0 12px 24px rgba(0,0,0,.08);
 
     max-height:0;
     overflow:hidden;
+    visibility:hidden;
 
-    transition:.3s;
+    transition:max-height .3s ease, visibility 0s linear .3s;
 }
 
 .nav.is-open{
-    max-height:350px;
+    max-height:calc(100vh - 70px);
+    overflow-y:auto;
+    visibility:visible;
+    transition:max-height .3s ease;
 }
 
 .nav__link{
@@ -885,16 +899,41 @@ img{ max-width:100%; display:block; }
     border-bottom:1px solid var(--gray-300);
 }
 
+.nav__link:hover{
+    transform:none;
+}
+
 .nav__link--active::after{
     display:none;
 }
 
-.header__actions .btn--sm{
+.nav__actions{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    padding:18px 25px 22px;
+}
+
+.nav__actions .btn{
+    width:100%;
+}
+
+.header__actions{
     display:none;
 }
 
 .hamburger{
     display:flex;
+}
+
+}
+
+/* Celulares */
+@media (max-width:768px){
+
+.container{
+    width:92%;
+    padding:0;
 }
 
 .hero{

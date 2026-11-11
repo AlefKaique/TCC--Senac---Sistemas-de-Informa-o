@@ -1066,15 +1066,9 @@
     }
 
     /* ================= Mobile sidebar ================= */
-    const sidebar = document.getElementById('hydroSidebar');
-    const overlay = document.getElementById('hydroSidebarOverlay');
-    document.getElementById('hydroMobileToggle').addEventListener('click', () => {
-        sidebar.classList.add('hydro-open');
-        overlay.classList.add('hydro-show');
-    });
-    overlay.addEventListener('click', closeSidebar);
+    // Abrir/fechar, fundo escuro, Esc e aria-expanded ficam em
+    // window.hydraMenuLateral (api.js), igual em todas as telas.
     function closeSidebar() {
-        sidebar.classList.remove('hydro-open');
-        overlay.classList.remove('hydro-show');
+        if (window.hydraMenuLateral) window.hydraMenuLateral().fechar();
     }
 })();

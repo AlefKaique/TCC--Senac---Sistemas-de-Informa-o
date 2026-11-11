@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nivel = document.getElementById('plataforma-admin-nivel');
     if (nome) nome.textContent = admin.nome;
     if (nivel) {
-      const nomes = { proprietario: 'Proprietário', gestor: 'Gestor', analista: 'Analista' };
+      const nomes = { administrador: 'Administrador', proprietario: 'Proprietário', gestor: 'Gestor', analista: 'Analista' };
       nivel.textContent = nomes[admin.nivel] || 'Equipe Hydra';
     }
     if (shell) shell.classList.add('plataforma-autenticada');
@@ -51,19 +51,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  const sidebar = document.getElementById('hydroSidebar');
-  const overlay = document.getElementById('hydroSidebarOverlay');
-  const toggle = document.getElementById('hydroMobileToggle');
-  const fecharMenu = () => {
-    if (sidebar) sidebar.classList.remove('hydro-open');
-    if (overlay) overlay.classList.remove('hydro-show');
-  };
-  if (toggle && sidebar && overlay) {
-    toggle.addEventListener('click', () => {
-      sidebar.classList.toggle('hydro-open');
-      overlay.classList.toggle('hydro-show');
-    });
-    overlay.addEventListener('click', fecharMenu);
-    sidebar.querySelectorAll('a').forEach((link) => link.addEventListener('click', fecharMenu));
-  }
+  // Menu lateral do celular: window.hydraMenuLateral (api.js).
 });

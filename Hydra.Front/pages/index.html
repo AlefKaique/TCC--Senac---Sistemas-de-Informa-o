@@ -30,6 +30,13 @@
         <a href="#recursos" class="nav__link" data-nav-link>Recursos</a>
         <a href="#planos" class="nav__link" data-nav-link>Planos</a>
         <a href="#termos" class="nav__link" data-nav-link>Termos de Uso</a>
+        <!-- Ações do cabeçalho repetidas dentro do menu: no celular os botões
+             de .header__actions ficam escondidos e só este menu aparece. -->
+        <div class="nav__actions">
+          <a href="login.html" class="btn btn--outline" id="hydroLoginBtnMobile">Login</a>
+          <a href="cadastro.html" class="btn btn--primary" id="hydroSignupBtnMobile">Cadastre-se</a>
+          <a href="controle-estoque.html" class="btn btn--ghost">Prévia do PDV</a>
+        </div>
       </nav>
 
       <div class="header__actions">
@@ -44,7 +51,8 @@
         <a href="cadastro.html" class="btn btn--outline btn--sm" id="hydroSignupBtn">Cadastre-se</a>
       </div>
 
-      <button class="hamburger" id="hamburger" aria-label="Abrir menu">
+      <button type="button" class="hamburger" id="hamburger" aria-label="Abrir menu" aria-controls="nav"
+        aria-expanded="false">
         <span></span><span></span><span></span>
       </button>
     </div>
@@ -350,6 +358,11 @@
           <h4>Contato</h4>
           <p><a href="https://wa.me/5511958206969" target="_blank" rel="noopener noreferrer">(11) 95820-6969</a></p>
           <p><a href="mailto:hydra.pdv@gmail.com">hydra.pdv@gmail.com</a></p>
+        </div>
+        <div class="footer__col">
+          <h4>Acesso</h4>
+          <p><a href="login.html">Entrar</a></p>
+          <p><a href="cadastro.html">Criar conta</a></p>
         </div>
         <div class="footer__col">
           <h4>Fundadores</h4>

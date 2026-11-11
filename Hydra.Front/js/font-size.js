@@ -8,8 +8,15 @@
     const root = document.documentElement;
 
     let size = parseFloat(localStorage.getItem(storageKey)) || defaultSize;
+    // O zoom não muda a largura que as media queries enxergam: em 1,375× um
+    // celular de 360px passava a caber só ~260px de layout e tudo estourava
+    // para o lado. No celular o aumento máximo efetivo fica em 1,125×; o
+    // valor escolhido continua salvo e volta inteiro em telas maiores.
+    const celular = window.matchMedia('(max-width: 640px)');
+    const maximumZoomCelular = 1.125;
     const applyVisualSize = () => {
-        const zoom = String(size / defaultSize);
+        const zoomEscolhido = size / defaultSize;
+        const zoom = String(celular.matches ? Math.min(zoomEscolhido, maximumZoomCelular) : zoomEscolhido);
         root.style.fontSize = `${size}px`;
         document.body.style.zoom = zoom;
         // O zoom também encolhe as alturas em "vh" (barra lateral, fundo da
@@ -18,6 +25,8 @@
     };
 
     applyVisualSize();
+    // Girar o tablet/celular ou redimensionar a janela recalcula o limite.
+    if (celular.addEventListener) celular.addEventListener('change', applyVisualSize);
 
     function applySize(nextSize) {
         size = Math.min(maximumSize, Math.max(minimumSize, nextSize));
