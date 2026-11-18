@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydra · Privacidade</title>
+  <link rel="icon" type="image/png" href="../img/logo-hydra.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/controle-estoque.css">
+    <link rel="stylesheet" href="../css/gerenciar-usuarios.css">
+    <link rel="stylesheet" href="../css/configuracoes-loja.css">
+    <link rel="stylesheet" href="../css/privacidade-conta.css">
+    <link rel="stylesheet" href="../css/menu-submenu.css">
+    <link rel="stylesheet" href="../css/public-demo.css">
+    <link rel="stylesheet" href="../css/font-size.css">
+    <link rel="stylesheet" href="../css/avatar.css">
+</head>
+
+<body>
+
+    <!-- Tela "Privacidade": exclusiva do titular da conta (quem cadastrou a
+         loja). O item do menu é criado por js/privacidade-menu.js. -->
+    <div class="hydro-stock">
+
+        <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+        </button>
+        <div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+
+        <div class="hydro-app">
+
+            <!-- Sidebar -->
+            <aside class="hydro-sidebar" id="hydroSidebar">
+                <a class="hydro-brand" href="controle-estoque.html" aria-label="Ir para o início">
+                    <img src="../img/logo-hydra.png" alt="Hydra PDV">
+                </a>
+
+                <nav class="hydro-menu">
+                    <p class="hydro-menu-label">Menu</p>
+                    <ul>
+                        <li><a href="#" data-view="estoque"><i
+                                    class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
+                        <li><a href="#" data-view="caixa"><i class="hydro-ic hydro-ic-drawer"></i><span>Vendas</span></a>
+                        </li>
+                        <li><a href="#" data-view="dashboard"><i
+                                    class="hydro-ic hydro-ic-home"></i><span>Relatório</span></a></li>
+                    </ul>
+                </nav>
+
+                <div class="hydro-menu hydro-menu-admin">
+                    <p class="hydro-menu-label" id="hydroMenuAdminLabel"><span class="hydro-menu-restricted">Admin</span></p>
+                    <ul>
+                        <li id="hydroLiEquipe"><a href="gerenciar-usuarios.html"><i
+                                    class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
+                        <li id="hydroLiConfig">
+                            <details class="hydro-submenu">
+                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configurações</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
+                                <ul class="hydro-submenu-itens">
+                                    <li><a href="configuracoes-loja.html">Dados da loja</a></li>
+                                    <li><a href="filiais.html">Filiais</a></li>
+                                </ul>
+                            </details>
+                        </li>
+                        <li id="hydroLiCargos"><a href="cargos.html"><i
+                                    class="hydro-ic hydro-ic-shield"></i><span>Cargos</span></a></li>
+                        <li id="hydroLiPromocoes"><a href="promocoes.html"><i
+                                    class="hydro-ic hydro-ic-tag"></i><span>Promoções</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="hydro-menu hydro-menu-bottom">
+                    <p class="hydro-menu-label">Geral</p>
+                    <ul>
+                        <li><a href="#" data-view="sair"><i class="hydro-ic hydro-ic-exit"></i><span>Sair</span></a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Main -->
+            <main class="hydro-main hydro-priv">
+                <header class="hydro-topbar">
+                    <div class="hydro-topbar-title">
+                        <h1>Privacidade</h1>
+                        <span class="hydro-restricted-badge"><i class="hydro-ic hydro-ic-lock"></i> Apenas o titular da conta</span>
+                    </div>
+                    <div class="hydro-topbar-actions">
+                        <button class="hydro-icon-btn" aria-label="Notificações">
+                            <i class="hydro-ic hydro-ic-bell"></i>
+                            <span class="hydro-notif-dot"></span>
+                        </button>
+                        <div class="hydro-user">
+                            <span class="hydro-avatar" id="hydroUserAvatar" role="img" aria-label="Usuário"></span>
+                            <span class="hydro-user-name" id="hydroUserName"></span>
+                        </div>
+                    </div>
+                </header>
+
+                <p class="hydro-settings-intro">Gerencie a assinatura do Hydra e a sua conta. Esta área é exclusiva de quem
+                    cadastrou a loja; os usuários criados na tela Equipe não têm acesso a ela.</p>
+
+                <div class="hydro-priv-alerta" id="hydroPrivAlerta" role="status" aria-live="polite" hidden></div>
+                <p class="hydro-priv-carregando" id="hydroPrivCarregando" role="status">Carregando sua assinatura…</p>
+
+                <div id="hydroPrivConteudo" hidden>
+
+                    <!-- Situação atual -->
+                    <section class="hydro-card" aria-labelledby="hydroPrivResumoTitulo">
+                        <div class="hydro-card-header">
+                            <h2 id="hydroPrivResumoTitulo">Sua assinatura</h2>
+                            <p>Plano em uso pela loja e validade do período pago.</p>
+                        </div>
+                        <div class="hydro-card-body">
+                            <div class="hydro-priv-resumo-topo">
+                                <div>
+                                    <p class="hydro-priv-plano-atual" id="hydroPrivPlanoAtual">—</p>
+                                    <p class="hydro-priv-preco-atual" id="hydroPrivPrecoAtual"></p>
+                                </div>
+                                <span class="hydro-priv-badge" id="hydroPrivSituacao"></span>
+                            </div>
+                            <p class="hydro-priv-texto" id="hydroPrivResumoTexto"></p>
+                            <div class="hydro-priv-pendente" id="hydroPrivPendente" hidden>
+                                <p id="hydroPrivPendenteTexto"></p>
+                                <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroBtnVerificarPagamento">
+                                    Verificar pagamento
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 1. Cancelar Assinatura -->
+                    <section class="hydro-card" id="hydroSecCancelarAssinatura" aria-labelledby="hydroPrivCancelarTitulo">
+                        <div class="hydro-card-header">
+                            <h2 id="hydroPrivCancelarTitulo">Cancelar assinatura</h2>
+                            <p>O plano continua valendo até o fim do período que você já pagou.</p>
+                        </div>
+                        <div class="hydro-card-body">
+                            <p class="hydro-priv-texto" id="hydroPrivCancelarTexto"></p>
+                            <div class="hydro-priv-acoes">
+                                <button type="button" class="hydro-btn hydro-btn-danger-outline" id="hydroBtnCancelarAssinatura" hidden>
+                                    Cancelar assinatura
+                                </button>
+                                <button type="button" class="hydro-btn hydro-btn-primary" id="hydroBtnReativarAssinatura" hidden>
+                                    Manter minha assinatura
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 2. Fazer upgrade de Assinatura -->
+                    <section class="hydro-card" id="hydroSecUpgrade" aria-labelledby="hydroPrivUpgradeTitulo">
+                        <div class="hydro-card-header">
+                            <h2 id="hydroPrivUpgradeTitulo">Fazer upgrade de assinatura</h2>
+                            <p>Pagamento seguro pelo Mercado Pago: PIX, cartão ou boleto. O plano é liberado assim que o
+                                pagamento é confirmado.</p>
+                        </div>
+                        <div class="hydro-card-body">
+                            <p class="hydro-priv-aviso-info" id="hydroPrivPagamentoIndisponivel" hidden>
+                                O pagamento pelo sistema não está disponível no momento. Para contratar ou renovar, fale
+                                com o suporte pelo <a href="tel:+5511958206969">(11) 95820-6969</a>: a equipe Hydra
+                                registra o seu pagamento (PIX ou transferência) e o plano é liberado.
+                            </p>
+                            <ul class="hydro-priv-planos" id="hydroPrivPlanos"></ul>
+                        </div>
+                    </section>
+
+                    <!-- 3. Cancelar Conta -->
+                    <section class="hydro-card hydro-priv-perigo" id="hydroSecCancelarConta" aria-labelledby="hydroPrivContaTitulo">
+                        <div class="hydro-card-header">
+                            <h2 id="hydroPrivContaTitulo">Cancelar conta</h2>
+                            <p>Encerra a conta da loja de forma definitiva.</p>
+                        </div>
+                        <div class="hydro-card-body">
+                            <ul class="hydro-priv-lista">
+                                <li>Você e <strong>toda a equipe</strong> perdem o acesso ao sistema na hora.</li>
+                                <li>Nomes, e-mails, telefones, CNPJ, endereço e logo da loja e das filiais são apagados
+                                    (anonimizados), assim como os dados dos clientes.</li>
+                                <li>O histórico de vendas e de estoque fica guardado sem identificar ninguém.</li>
+                                <li>Se houver assinatura paga, ela é cancelada junto e o restante do período é perdido.</li>
+                                <li><strong>Não é possível desfazer.</strong> Para usar o Hydra de novo, será preciso criar
+                                    um cadastro novo — o seu e-mail fica liberado para isso.</li>
+                            </ul>
+                            <div class="hydro-priv-acoes">
+                                <button type="button" class="hydro-btn hydro-btn-danger" id="hydroBtnEncerrarConta">
+                                    Cancelar minha conta
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 4. Entrar em contato com o Suporte (sempre visível, mesmo
+                     se a assinatura não carregar) -->
+                <section class="hydro-card" id="hydroSecSuporte" aria-labelledby="hydroPrivSuporteTitulo">
+                    <div class="hydro-card-header">
+                        <h2 id="hydroPrivSuporteTitulo">Entrar em contato com o suporte</h2>
+                        <p>Dúvidas sobre plano, pagamento, reembolso ou a sua conta.</p>
+                    </div>
+                    <div class="hydro-card-body">
+                        <div class="hydro-priv-suporte">
+                            <span class="hydro-priv-suporte-icone" aria-hidden="true"><i class="hydro-ic hydro-ic-phone"></i></span>
+                            <div>
+                                <p class="hydro-priv-suporte-rotulo">Telefone e WhatsApp</p>
+                                <a class="hydro-priv-suporte-numero" href="tel:+5511958206969">(11) 95820-6969</a>
+                            </div>
+                        </div>
+                        <div class="hydro-priv-acoes">
+                            <a class="hydro-btn hydro-btn-primary" href="tel:+5511958206969">Ligar para o suporte</a>
+                            <a class="hydro-btn hydro-btn-outline" id="hydroLinkWhatsApp"
+                                href="https://wa.me/5511958206969?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20o%20Hydra%20PDV."
+                                target="_blank" rel="noopener">Conversar no WhatsApp</a>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Confirmação: cancelar assinatura -->
+        <div class="hydro-modal-overlay" id="hydroModalCancelarAssinatura">
+            <div class="hydro-modal" role="dialog" aria-modal="true" aria-labelledby="hydroModalCancelarTitulo">
+                <div class="hydro-modal-header">
+                    <h2 id="hydroModalCancelarTitulo">Cancelar assinatura?</h2>
+                </div>
+                <div class="hydro-modal-body">
+                    <p class="hydro-priv-texto" id="hydroModalCancelarTexto"></p>
+                    <p class="hydro-priv-modal-erro" id="hydroModalCancelarErro" role="alert" hidden></p>
+                </div>
+                <div class="hydro-modal-footer">
+                    <button type="button" class="hydro-btn hydro-btn-outline" data-fechar-modal>Voltar</button>
+                    <button type="button" class="hydro-btn hydro-btn-danger" id="hydroBtnConfirmarCancelamento">Cancelar assinatura</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirmação: cancelar (encerrar) conta -->
+        <div class="hydro-modal-overlay" id="hydroModalEncerrar">
+            <form class="hydro-modal" id="hydroFormEncerrar" role="dialog" aria-modal="true"
+                aria-labelledby="hydroModalEncerrarTitulo" novalidate>
+                <div class="hydro-modal-header">
+                    <h2 id="hydroModalEncerrarTitulo">Cancelar minha conta</h2>
+                </div>
+                <div class="hydro-modal-body">
+                    <p class="hydro-priv-texto">Esta ação <strong>não pode ser desfeita</strong>. A loja será desativada,
+                        toda a equipe perde o acesso e os dados pessoais serão apagados.</p>
+                    <div class="hydro-form-group">
+                        <label for="hydroEncerrarSenha">Sua senha</label>
+                        <input type="password" id="hydroEncerrarSenha" autocomplete="current-password" required>
+                    </div>
+                    <div class="hydro-form-group">
+                        <label for="hydroEncerrarConfirmacao">Para confirmar, digite <strong>ENCERRAR</strong></label>
+                        <input type="text" id="hydroEncerrarConfirmacao" autocomplete="off" autocapitalize="characters"
+                            spellcheck="false" required>
+                    </div>
+                    <p class="hydro-priv-modal-erro" id="hydroModalEncerrarErro" role="alert" hidden></p>
+                </div>
+                <div class="hydro-modal-footer">
+                    <button type="button" class="hydro-btn hydro-btn-outline" data-fechar-modal>Voltar</button>
+                    <button type="submit" class="hydro-btn hydro-btn-danger" id="hydroBtnConfirmarEncerrar" disabled>Cancelar minha conta</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="hydro-toast" id="hydroToast"></div>
+
+    </div>
+
+    <div class="accessibility-widget">
+        <button id="font-plus" data-font-action="increase">A+</button>
+        <button id="font-minus" data-font-action="decrease">A−</button>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/trocar-filial.js"></script>
+    <script src="../js/privacidade-menu.js"></script>
+    <script src="../js/public-demo.js"></script>
+    <script src="../js/font-size.js"></script>
+    <script src="../js/privacidade-conta.js"></script>
+</body>
+
+</html>

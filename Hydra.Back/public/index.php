@@ -48,10 +48,13 @@ use Hydra\Controllers\AuthController;
 use Hydra\Controllers\AlertaController;
 use Hydra\Controllers\CatalogoHortifrutiController;
 use Hydra\Controllers\CargoController;
+use Hydra\Controllers\ContaController;
+use Hydra\Controllers\ContatoController;
 use Hydra\Controllers\EstoqueController;
 use Hydra\Controllers\FilialController;
 use Hydra\Controllers\LojaController;
 use Hydra\Controllers\PlataformaAuthController;
+use Hydra\Controllers\PlataformaAssinaturaController;
 use Hydra\Controllers\PlataformaController;
 use Hydra\Controllers\PlataformaEquipeController;
 use Hydra\Controllers\PixController;
@@ -117,8 +120,9 @@ if ($path === '') {
 // um arquivo de sessão novo a cada verificação, e rotas públicas como
 // /api/catalogo-hortifruti travavam o arquivo à toa. Sem cookie,
 // requireLogin() continua respondendo 401, porque não há usuário na sessão.
-// Webhook e agendador usam autenticação própria e nunca abrem sessão.
-$rotaSemSessao = in_array($path, ['/api/health', '/api/whatsapp/webhook', '/api/interno/alertas/disparar'], true);
+// Webhook e agendador usam autenticação própria e nunca abrem sessão. O
+// formulário de contato da página inicial é público e não usa a sessão.
+$rotaSemSessao = in_array($path, ['/api/health', '/api/whatsapp/webhook', '/api/interno/alertas/disparar', '/api/conta/assinatura/webhook', '/api/contato'], true);
 // ".../auth/me" só LÊ a sessão: sem cookie não há o que ler, e a página
 // inicial chama /api/auth/me em toda visita anônima.
 $rotaDeAutenticacao = (str_starts_with($path, '/api/auth/') || str_starts_with($path, '/api/plataforma/auth/'))
@@ -135,6 +139,7 @@ set_exception_handler(function (Throwable $e): void {
 /** @var array<int,array{0:string,1:string,2:callable}> $routes */
 $routes = [
     ['GET', '#^/api/health$#', fn () => Response::json(['status' => 'ok'])],
+    ['POST', '#^/api/contato$#', fn () => (new ContatoController())->enviar()],
     ['POST', '#^/api/auth/registro$#', fn () => (new AuthController())->registro()],
     ['POST', '#^/api/auth/login$#', fn () => (new AuthController())->login()],
     ['POST', '#^/api/auth/logout$#', fn () => (new AuthController())->logout()],
@@ -160,6 +165,14 @@ $routes = [
     ['GET', '#^/api/plataforma/lojas/(\d+)$#', fn ($id) => (new PlataformaController())->detalheLoja((int) $id)],
     ['POST', '#^/api/plataforma/lojas/(\d+)/suspender$#', fn ($id) => (new PlataformaController())->suspender((int) $id)],
     ['POST', '#^/api/plataforma/lojas/(\d+)/reativar$#', fn ($id) => (new PlataformaController())->reativar((int) $id)],
+    // Assinaturas de todos os mercados (painel da plataforma).
+    ['GET', '#^/api/plataforma/assinaturas$#', fn () => (new PlataformaAssinaturaController())->lista()],
+    ['GET', '#^/api/plataforma/assinaturas/(\d+)$#', fn ($id) => (new PlataformaAssinaturaController())->detalhe((int) $id)],
+    ['POST', '#^/api/plataforma/assinaturas/(\d+)/pagamentos$#', fn ($id) => (new PlataformaAssinaturaController())->registrarPagamento((int) $id)],
+    ['POST', '#^/api/plataforma/assinaturas/(\d+)/ajustar$#', fn ($id) => (new PlataformaAssinaturaController())->ajustar((int) $id)],
+    ['POST', '#^/api/plataforma/assinaturas/(\d+)/cancelar$#', fn ($id) => (new PlataformaAssinaturaController())->cancelar((int) $id)],
+    ['POST', '#^/api/plataforma/assinaturas/(\d+)/reativar$#', fn ($id) => (new PlataformaAssinaturaController())->reativar((int) $id)],
+    ['POST', '#^/api/plataforma/assinaturas/pagamentos/([a-f0-9-]{36})/conferir$#i', fn ($id) => (new PlataformaAssinaturaController())->conferir($id)],
     ['GET', '#^/api/plataforma/cadastros-pendentes$#', fn () => (new PlataformaController())->cadastrosPendentes()],
     ['GET', '#^/api/plataforma/auditoria$#', fn () => (new PlataformaController())->auditoria()],
     ['GET', '#^/api/plataforma/equipe$#', fn () => (new PlataformaEquipeController())->index()],
@@ -174,6 +187,15 @@ $routes = [
 
     ['GET', '#^/api/loja$#', fn () => (new LojaController())->show()],
     ['PUT', '#^/api/loja$#', fn () => (new LojaController())->update()],
+
+    // Tela "Privacidade": só o titular da conta (quem cadastrou a loja).
+    ['GET', '#^/api/conta/assinatura$#', fn () => (new ContaController())->assinatura()],
+    ['POST', '#^/api/conta/assinatura/checkout$#', fn () => (new ContaController())->checkout()],
+    ['POST', '#^/api/conta/assinatura/pagamentos/([a-f0-9-]{36})/verificar$#i', fn ($id) => (new ContaController())->verificar($id)],
+    ['POST', '#^/api/conta/assinatura/cancelar$#', fn () => (new ContaController())->cancelar()],
+    ['POST', '#^/api/conta/assinatura/reativar$#', fn () => (new ContaController())->reativar()],
+    ['POST', '#^/api/conta/assinatura/webhook$#', fn () => (new ContaController())->webhook()],
+    ['POST', '#^/api/conta/encerrar$#', fn () => (new ContaController())->encerrar()],
 
     ['GET', '#^/api/relatorios/resumo$#', fn () => (new RelatorioController())->resumo()],
     ['GET', '#^/api/relatorios/vendas-por-dia$#', fn () => (new RelatorioController())->vendasPorDia()],

@@ -5,6 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hydra PDV — Gestão completa da sua loja em um só lugar</title>
+  <meta name="description"
+    content="Hydra PDV: caixa, estoque, promoções e relatórios numa plataforma simples, sob medida para mercados, padarias e hortifrútis.">
   <link rel="icon" type="image/png" href="../img/logo-hydra.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +18,7 @@
   <link rel="stylesheet" href="../css/font-size.css">
 </head>
 
-<body>
+<body class="landing">
 
   <!-- ===== HEADER ===== -->
   <header class="header">
@@ -25,10 +27,11 @@
         <img src="../img/logo-hydra.png" alt="Hydra PDV">
       </a>
 
-      <nav class="nav" id="nav">
+      <nav class="nav" id="nav" aria-label="Seções da página">
         <a href="#home" class="nav__link nav__link--active" data-nav-link>Home</a>
         <a href="#recursos" class="nav__link" data-nav-link>Recursos</a>
         <a href="#planos" class="nav__link" data-nav-link>Planos</a>
+        <a href="#contato" class="nav__link" data-nav-link>Contato</a>
         <a href="#termos" class="nav__link" data-nav-link>Termos de Uso</a>
         <!-- Ações do cabeçalho repetidas dentro do menu: no celular os botões
              de .header__actions ficam escondidos e só este menu aparece. -->
@@ -42,7 +45,7 @@
       <div class="header__actions">
         <a href="controle-estoque.html" class="btn btn--outline btn--sm">PREVIA PDV</a>
         <a href="login.html" class="btn btn--ghost btn--sm" id="hydroLoginBtn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M12 12a5 5 0 100-10 5 5 0 000 10zM3 22c0-4.97 4.03-9 9-9s9 4.03 9 9" stroke="currentColor"
               stroke-width="2" stroke-linecap="round" />
           </svg>
@@ -61,139 +64,394 @@
   <main>
 
     <!-- ===== HERO ===== -->
-    <section class="hero" id="home">
+    <section class="hero" id="home" aria-labelledby="hero-titulo">
       <div class="container hero__inner">
 
+        <div class="hero__texto">
+          <p class="hero__selo">
+            <span class="hero__selo-ponto" aria-hidden="true"></span>
+            TCC 2026 · Sistemas de Informação · Centro Universitário Senac
+          </p>
 
-        <h1 class="hero__title">
-          Gestão completa da<br>
-          sua loja em <span class="text-accent">um só lugar</span>
-        </h1>
+          <h1 class="hero__title" id="hero-titulo">
+            Gestão completa da sua loja em <span class="text-accent">um só lugar</span>
+          </h1>
 
-        <p class="hero__subtitle">
-          Hydra PDV reúne caixa, estoque, promoções e relatórios numa plataforma simples para
-          pequenos mercados de bairro.
-        </p>
+          <p class="hero__subtitle">
+            O Hydra PDV reúne caixa, estoque, promoções e relatórios numa plataforma simples, sob medida para
+            mercados, padarias e hortifrútis.
+          </p>
 
-        <form class="hero__form" id="hero-form">
-          <input type="email" class="hero__input" placeholder="Insira seu e-mail" required
-            aria-label="Insira seu e-mail">
-          <button type="submit" class="btn btn--primary">
-            <span class="btn__arrow">➜</span> Criar conta grátis
-          </button>
-        </form>
+          <div class="hero__acoes">
+            <a href="cadastro.html" class="btn btn--primary btn--lg">
+              Criar conta grátis
+              <svg class="btn__seta" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </a>
+            <a href="controle-estoque.html" class="btn btn--outline btn--lg">Ver prévia do PDV</a>
+          </div>
 
+          <ul class="hero__garantias">
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" fill="currentColor" />
+                <path d="M7.5 12.3l3 3 6-6.3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+              Plano gratuito para começar
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" fill="currentColor" />
+                <path d="M7.5 12.3l3 3 6-6.3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+              Sem fidelidade
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" fill="currentColor" />
+                <path d="M7.5 12.3l3 3 6-6.3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+              Em conformidade com a LGPD
+            </li>
+          </ul>
+        </div>
+
+        <!-- Mockup do sistema feito só com HTML/CSS. Para leitores de tela é
+             uma imagem com descrição (role="img"); o conteúdo é decorativo. -->
+        <div class="hero__visual" role="img"
+          aria-label="Prévia ilustrativa do painel do Hydra: faturamento, ticket médio, produto mais vendido e gráfico de vendas da semana, com os avisos “8 itens vencem em 3 dias, criar promoção no caixa” e “Estoque mínimo: alerta ativo”.">
+          <div class="mockup">
+            <div class="mockup__barra">
+              <span class="mockup__bolinhas"><i></i><i></i><i></i></span>
+              <span class="mockup__url">hydra.app/painel</span>
+            </div>
+
+            <div class="mockup__corpo">
+              <div class="mockup__lateral">
+                <span class="mockup__icone is-ativo">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2" />
+                    <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2" />
+                    <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2" />
+                    <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2" />
+                  </svg>
+                </span>
+                <span class="mockup__icone">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M3 4h2l1.6 9.6A2 2 0 008.6 15H18a2 2 0 001.95-1.55L21.5 8H6" stroke="currentColor"
+                      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <circle cx="9" cy="19" r="1.4" fill="currentColor" />
+                    <circle cx="17" cy="19" r="1.4" fill="currentColor" />
+                  </svg>
+                </span>
+                <span class="mockup__icone">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M3 7l9-4 9 4-9 4-9-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                    <path d="M3 7v10l9 4 9-4V7" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                  </svg>
+                </span>
+                <span class="mockup__icone">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0L3 13V3h10l7.6 7.6a2 2 0 010 2.8z"
+                      stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                    <circle cx="7.5" cy="7.5" r="1.4" fill="currentColor" />
+                  </svg>
+                </span>
+                <span class="mockup__icone">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" />
+                  </svg>
+                </span>
+              </div>
+
+              <div class="mockup__conteudo">
+                <div class="mockup__topo">
+                  <span class="mockup__titulo">Visão geral</span>
+                  <span class="mockup__periodo">Esta semana</span>
+                </div>
+
+                <div class="mockup__kpis">
+                  <div class="mockup__kpi">
+                    <span class="mockup__kpi-rotulo">Faturamento</span>
+                    <strong class="mockup__kpi-valor">R$ 18.420</strong>
+                    <span class="mockup__kpi-variacao">▲ 12% na semana</span>
+                  </div>
+                  <div class="mockup__kpi">
+                    <span class="mockup__kpi-rotulo">Ticket médio</span>
+                    <strong class="mockup__kpi-valor">R$ 42,80</strong>
+                    <span class="mockup__kpi-variacao">▲ 4% na semana</span>
+                  </div>
+                  <div class="mockup__kpi">
+                    <span class="mockup__kpi-rotulo">Mais vendido</span>
+                    <strong class="mockup__kpi-valor">Pão francês</strong>
+                    <span class="mockup__kpi-variacao mockup__kpi-variacao--neutra">312 vendas</span>
+                  </div>
+                </div>
+
+                <div class="mockup__grafico">
+                  <div class="mockup__grafico-topo">
+                    <span>Vendas da semana</span>
+                    <span class="mockup__legenda">dados ilustrativos</span>
+                  </div>
+                  <div class="mockup__barras">
+                    <div class="mockup__dia"><span class="mockup__coluna"></span><span>Seg</span></div>
+                    <div class="mockup__dia"><span class="mockup__coluna"></span><span>Ter</span></div>
+                    <div class="mockup__dia"><span class="mockup__coluna"></span><span>Qua</span></div>
+                    <div class="mockup__dia"><span class="mockup__coluna"></span><span>Qui</span></div>
+                    <div class="mockup__dia"><span class="mockup__coluna"></span><span>Sex</span></div>
+                    <div class="mockup__dia is-destaque"><span class="mockup__coluna"></span><span>Sáb</span></div>
+                    <div class="mockup__dia"><span class="mockup__coluna"></span><span>Dom</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero__chip hero__chip--validade">
+            <span class="hero__chip-icone">
+              <svg viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
+                <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </span>
+            <span class="hero__chip-texto">
+              <strong>8 itens vencem em 3 dias</strong>
+              <span class="hero__chip-acao">Criar promoção no caixa →</span>
+            </span>
+          </div>
+
+          <div class="hero__chip hero__chip--estoque">
+            <span class="hero__chip-icone hero__chip-icone--azul">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M6 16V11a6 6 0 1112 0v5l2 2H4l2-2zM10 21h4" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <span class="hero__chip-texto">
+              <strong>Estoque mínimo: alerta ativo</strong>
+            </span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===== SOBRE O PROJETO ===== -->
+    <section class="sobre" id="sobre" aria-labelledby="sobre-titulo">
+      <div class="container">
+        <div class="secao-cabecalho">
+          <span class="rotulo">Sobre o projeto</span>
+          <h2 class="section-title" id="sobre-titulo">Do caderno do caixa a um painel de gestão</h2>
+        </div>
+
+        <div class="sobre__grid">
+          <article class="sobre-card">
+            <span class="sobre-card__icone" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M6 3h11a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z" stroke="currentColor"
+                  stroke-width="1.8" />
+                <path d="M8 3v18M11 8h5M11 12h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              </svg>
+            </span>
+            <span class="sobre-card__etapa">01 · O problema</span>
+            <h3>Controle espalhado</h3>
+            <p>Vendas, estoque e validades anotados em cadernos e planilhas separadas.</p>
+          </article>
+
+          <article class="sobre-card">
+            <span class="sobre-card__icone" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 3l9 5-9 5-9-5 9-5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                <path d="M3 13l9 5 9-5M3 17.5l9 5 9-5" stroke="currentColor" stroke-width="1.8"
+                  stroke-linejoin="round" />
+              </svg>
+            </span>
+            <span class="sobre-card__etapa">02 · A solução</span>
+            <h3>Uma plataforma só</h3>
+            <p>PDV, estoque, promoções e relatórios integrados; cada venda atualiza estoque e painel em tempo real.</p>
+          </article>
+
+          <article class="sobre-card sobre-card--destaque">
+            <span class="sobre-card__icone" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" />
+                <path d="M15 7h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </span>
+            <span class="sobre-card__etapa">03 · O resultado</span>
+            <h3>Decisões com dados</h3>
+            <p>Faturamento, ticket médio e produtos parados, agindo antes que o produto vença.</p>
+          </article>
+        </div>
       </div>
     </section>
 
     <!-- ===== FEATURES ===== -->
-    <section class="features" id="recursos">
-      <div class="container features__grid">
+    <section class="features" id="recursos" aria-labelledby="recursos-titulo">
+      <div class="container">
+        <div class="secao-cabecalho">
+          <span class="rotulo">Recursos</span>
+          <h2 class="section-title" id="recursos-titulo">Tudo o que o seu comércio precisa</h2>
+          <p class="section-subtitle">Seis ferramentas integradas, do caixa ao relatório.</p>
+        </div>
 
-        <article class="feature-card">
+        <div class="features__grid">
 
+          <article class="feature-card">
+            <div class="feature-card__deco" aria-hidden="true">
+              <span class="q q1"></span>
+              <span class="q q2"></span>
+              <span class="q q3"></span>
+              <span class="q q4"></span>
+            </div>
+            <span class="feature-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M3 4h2l1.6 9.6A2 2 0 008.6 15H18a2 2 0 001.95-1.55L21.5 8H6" stroke="currentColor"
+                  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="9" cy="19" r="1.4" fill="currentColor" />
+                <circle cx="17" cy="19" r="1.4" fill="currentColor" />
+              </svg>
+            </span>
+            <h3>PDV<br>Inteligente</h3>
+            <p>Finalize vendas rapidamente escolhendo os produtos direto do estoque, com venda por peso, cálculo de troco
+              e várias formas de pagamento.</p>
+          </article>
 
-          <span class="feature-card__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M3 4h2l1.6 9.6A2 2 0 008.6 15H18a2 2 0 001.95-1.55L21.5 8H6" stroke="currentColor"
-                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-              <circle cx="9" cy="19" r="1.4" fill="currentColor" />
-              <circle cx="17" cy="19" r="1.4" fill="currentColor" />
-            </svg>
-          </span>
-          <h2>PDV<br>Inteligente</h2>
-          <p>Finalize vendas rapidamente escolhendo os produtos direto do estoque, com venda por peso, cálculo de troco
-            e várias formas de pagamento.</p>
-        </article>
+          <article class="feature-card">
+            <div class="feature-card__deco" aria-hidden="true">
+              <span class="q q1"></span>
+              <span class="q q2"></span>
+              <span class="q q3"></span>
+              <span class="q q4"></span>
+            </div>
+            <span class="feature-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M3 7l9-4 9 4-9 4-9-4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                <path d="M3 7v10l9 4 9-4V7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                <path d="M12 11v10" stroke="currentColor" stroke-width="1.8" />
+              </svg>
+            </span>
+            <h3>Controle<br>de Estoque</h3>
+            <p>Monitore entradas e saídas, defina estoques mínimos e receba alertas automáticos antes de zerar.</p>
+          </article>
 
-        <article class="feature-card">
+          <article class="feature-card">
+            <div class="feature-card__deco" aria-hidden="true">
+              <span class="q q1"></span>
+              <span class="q q2"></span>
+              <span class="q q3"></span>
+              <span class="q q4"></span>
+            </div>
+            <span class="feature-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="3" width="18" height="18" rx="2.5" stroke="currentColor" stroke-width="1.8" />
+                <path d="M7 15v-3M12 15V8M17 15v-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              </svg>
+            </span>
+            <h3>Dashboard<br>em Tempo Real</h3>
+            <p>Acompanhe KPIs do seu negócio: faturamento, ticket médio, produtos mais vendidos e muito mais.</p>
+          </article>
 
-          <span class="feature-card__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M3 7l9-4 9 4-9 4-9-4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-              <path d="M3 7v10l9 4 9-4V7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-              <path d="M12 11v10" stroke="currentColor" stroke-width="1.8" />
-            </svg>
-          </span>
-          <h2>Controle<br>de Estoque</h2>
-          <p>Monitore entradas e saídas, defina estoques mínimos e receba alertas automáticos antes de zerar.</p>
-        </article>
+          <article class="feature-card">
+            <div class="feature-card__deco" aria-hidden="true">
+              <span class="q q1"></span>
+              <span class="q q2"></span>
+              <span class="q q3"></span>
+              <span class="q q4"></span>
+            </div>
+            <span class="feature-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0L3 13V3h10l7.6 7.6a2 2 0 010 2.8z" stroke="currentColor"
+                  stroke-width="1.8" stroke-linejoin="round" />
+                <circle cx="7.5" cy="7.5" r="1.4" fill="currentColor" />
+              </svg>
+            </span>
+            <h3>Promoções contra<br>o desperdício</h3>
+            <p>Veja os produtos que vencem nos próximos dias e crie promoções que valem no caixa na hora, antes que virem perda.</p>
+          </article>
 
-        <article class="feature-card feature-card--large">
+          <article class="feature-card">
+            <div class="feature-card__deco" aria-hidden="true">
+              <span class="q q1"></span>
+              <span class="q q2"></span>
+              <span class="q q3"></span>
+              <span class="q q4"></span>
+            </div>
+            <span class="feature-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M5 17l4.5-11 4.5 11M6.3 13.5h6.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" />
+                <path d="M16 9l2.5 8M19.8 9l-2.5 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </span>
+            <h3>Acessibilidade<br>A+ A-</h3>
+            <p>Aumente ou diminua a fonte. Ícones intuitivos.</p>
+          </article>
 
-          <div class="feature-card__deco">
-            <span class="q q1"></span>
-            <span class="q q2"></span>
-            <span class="q q3"></span>
-            <span class="q q4"></span>
-          </div>
+          <article class="feature-card">
+            <div class="feature-card__deco" aria-hidden="true">
+              <span class="q q1"></span>
+              <span class="q q2"></span>
+              <span class="q q3"></span>
+              <span class="q q4"></span>
+            </div>
+            <span class="feature-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 3l7 3v5.5c0 4.4-3 7.9-7 9.5-4-1.6-7-5.1-7-9.5V6l7-3z" stroke="currentColor"
+                  stroke-width="1.8" stroke-linejoin="round" />
+                <path d="M9.3 12.2l1.9 1.9 3.5-3.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </span>
+            <h3>Controle<br>de Acesso</h3>
+            <p>Cargos com permissões configuráveis: caixa, estoque, gerência. Cada um vê somente o que precisa.</p>
+          </article>
 
-          <span class="feature-card__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <rect x="3" y="3" width="18" height="18" rx="2.5" stroke="currentColor" stroke-width="1.8" />
-              <path d="M7 15v-3M12 15V8M17 15v-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-            </svg>
-          </span>
-          <h2>Dashboard<br>em Tempo Real</h2>
-          <p>Acompanhe KPIs do seu negócio: faturamento, ticket médio, produtos mais vendidos e muito mais.</p>
-        </article>
-
-        <article class="feature-card feature-card--large">
-
-          <div class="feature-card__deco">
-            <span class="q q1"></span>
-            <span class="q q2"></span>
-            <span class="q q3"></span>
-            <span class="q q4"></span>
-          </div>
-
-          <span class="feature-card__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0L3 13V3h10l7.6 7.6a2 2 0 010 2.8z" stroke="currentColor"
-                stroke-width="1.8" stroke-linejoin="round" />
-              <circle cx="7.5" cy="7.5" r="1.4" fill="currentColor" />
-            </svg>
-          </span>
-          <h2>Promoções contra<br>o desperdício</h2>
-          <p>Veja os produtos que vencem nos próximos dias e crie promoções que valem no caixa na hora, antes que virem perda.</p>
-        </article>
-
-        <article class="feature-card">
-
-          <span class="feature-card__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M5 17l4.5-11 4.5 11M6.3 13.5h6.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-                stroke-linejoin="round" />
-              <path d="M16 9l2.5 8M19.8 9l-2.5 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-                stroke-linejoin="round" />
-            </svg>
-          </span>
-          <h2>Acessibilidade<br>A+ A-</h2>
-          <p>Aumente ou diminua a fonte. Ícones intuitivos.</p>
-        </article>
-
-        <article class="feature-card">
-
-          <span class="feature-card__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M12 3l7 3v5.5c0 4.4-3 7.9-7 9.5-4-1.6-7-5.1-7-9.5V6l7-3z" stroke="currentColor"
-                stroke-width="1.8" stroke-linejoin="round" />
-              <path d="M9.3 12.2l1.9 1.9 3.5-3.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-                stroke-linejoin="round" />
-            </svg>
-          </span>
-          <h2>Controle<br>de Acesso</h2>
-          <p>Cargos com permissões configuráveis: caixa, estoque, gerência. Cada um vê somente o que precisa.</p>
-        </article>
-
+        </div>
       </div>
     </section>
 
     <!-- ===== PLANS ===== -->
-    <section class="plans" id="planos">
+    <!-- Preços dos planos pagos: o seletor Mensal/Anual (script.js) calcula a
+         partir destes dois números os valores por mês e por ano e a economia
+         do anual (12 × Flex − Premium). Se o preço mudar, altere os dois
+         números e também os textos dos cartões abaixo, que são a visão
+         "Mensal" já pronta (a página abre nela e é o que aparece sem
+         JavaScript). -->
+    <section class="plans" id="planos" aria-labelledby="planos-titulo" data-preco-flex="100"
+      data-preco-premium="1000">
       <div class="container">
-        <h2 class="section-title">Plano de Assinaturas<br>Sistema Hydra</h2>
-        <p class="section-subtitle">Sem taxas ocultas. Cancele quando quiser</p>
+        <div class="secao-cabecalho">
+          <span class="rotulo">Planos</span>
+          <h2 class="section-title" id="planos-titulo">Plano de Assinaturas<br>Sistema Hydra</h2>
+          <p class="section-subtitle">Sem taxas ocultas. Cancele quando quiser</p>
+        </div>
+
+        <div class="plans__periodo" id="planos-periodo" hidden>
+          <fieldset class="plans-periodo">
+            <legend class="sr-only">Ver os preços por mês ou por ano</legend>
+            <label class="plans-periodo__opcao">
+              <input type="radio" name="planos-periodo" value="mensal" checked>
+              <span>Mensal</span>
+            </label>
+            <label class="plans-periodo__opcao">
+              <input type="radio" name="planos-periodo" value="anual">
+              <span>Anual</span>
+              <span class="plans-periodo__economia" data-economia><span
+                  class="plans-periodo__verbo">Economize </span><span data-economia-valor>R$ 200</span></span>
+            </label>
+          </fieldset>
+          <p class="plans-periodo__resumo" id="planos-resumo" aria-live="polite"></p>
+        </div>
 
         <div class="plans__grid">
 
@@ -204,17 +462,24 @@
               <span class="plan-card__value">R$ 0,00</span>
             </div>
             <ul class="plan-card__list">
-              <li>Cadastro limitado de produtos</li>
-              <li>Controle básico de estoque</li>
-              <li>Cadastro de até 1 funcionário</li>
-              <li>Relatórios básicos</li>
-              <li>Suporte limitado</li>
+              <li>Cadastro limitado de produtos: até 100 itens</li>
+              <li>Uso grátis por 30 dias</li>
+              <li>Controle de estoque</li>
+              <li>Relatórios</li>
+              <li>Suporte 24 horas</li>
             </ul>
-            <a href="cadastro.html" class="plan-btn">Começar grátis <span class="plan-btn__icon">↗</span></a>
+            <a href="cadastro.html" class="plan-btn">Começar grátis <span class="plan-btn__icon" aria-hidden="true">↗</span></a>
           </div>
 
           <!-- MONTHLY (featured) -->
-          <div class="plan-card plan-card--featured">
+          <div class="plan-card plan-card--featured" data-plano="flex">
+            <span class="plan-card__selo">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor"
+                  d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9L12 2.8z" />
+              </svg>
+              Mais escolhido
+            </span>
             <h3 class="plan-card__name">Plano Mensal – Hydra Flex</h3>
             <div class="plan-card__price">
               <span class="plan-card__value">R$ 100,00</span>
@@ -224,33 +489,33 @@
             <ul class="plan-card__list">
               <li>Cadastro ilimitado de produtos</li>
               <li>Controle completo de estoque</li>
-              <li>Sistema completo</li>
-              <li>Relatórios completos</li>
-              <li>Controle de movimentação de estoque</li>
-              <li>Cadastro de até 5 usuários</li>
-              <li>Backup de informações</li>
+              <li>Controle total do sistema</li>
+              <li>Relatórios semanais</li>
+              <li>Alertas de estoque via WhatsApp</li>
+              <li>Acompanhe todas as movimentações de estoque</li>
+              <li>Cadastre até 5 usuários</li>
             </ul>
-            <a href="cadastro.html" class="plan-btn">Escolher plano <span class="plan-btn__icon">↗</span></a>
+            <a href="cadastro.html" class="plan-btn">Escolher plano <span class="plan-btn__icon" aria-hidden="true">↗</span></a>
           </div>
 
           <!-- YEARLY -->
-          <div class="plan-card">
+          <div class="plan-card" data-plano="premium">
             <h3 class="plan-card__name">Plano Anual – Hydra Premium</h3>
             <div class="plan-card__price">
-              <span class="plan-card__value">R$ 1.000,00</span>
-              <span class="plan-card__times">/ano</span>
+              <span class="plan-card__value">R$ 83,33</span>
+              <span class="plan-card__times">/mês</span>
             </div>
-            <span class="plan-card__note">Equivale a R$ 83,33 por mês</span>
+            <span class="plan-card__note">Pagamento anual de R$ 1.000,00</span>
+            <span class="plan-card__economia" data-economia>Economize <span data-economia-valor>R$ 200</span> por
+              ano</span>
             <ul class="plan-card__list">
               <li>Todas as funcionalidades do plano mensal</li>
               <li>Cadastro de até 20 funcionários</li>
-              <li>Relatórios avançados e dashboards</li>
-              <li>Prioridade no suporte técnico</li>
               <li>Maior capacidade de armazenamento</li>
-              <li>Atualizações premium</li>
+              <li>Prioridade no suporte técnico</li>
               <li>Recursos futuros liberados automaticamente</li>
             </ul>
-            <a href="cadastro.html" class="plan-btn">Escolher plano <span class="plan-btn__icon">↗</span></a>
+            <a href="cadastro.html" class="plan-btn">Escolher plano <span class="plan-btn__icon" aria-hidden="true">↗</span></a>
           </div>
 
         </div>
@@ -258,64 +523,249 @@
     </section>
 
     <!-- ===== FAQ ===== -->
-    <section class="faq" id="faq">
-      <div class="container faq__header">
-        <div>
-          <span class="badge"><span class="badge__dot">✓</span> Perguntas Frequentes</span>
-          <h2 class="section-title section-title--left">Dúvidas Frequentes</h2>
-        </div>
-        <p class="faq__intro">Confira as respostas para <strong>as perguntas frequentes</strong> ou entre em contato
-          conosco:</p>
-      </div>
+    <section class="faq" id="faq" aria-labelledby="faq-titulo">
+      <div class="container faq__layout">
+        <div class="faq__header">
+          <span class="rotulo">Perguntas Frequentes</span>
+          <h2 class="section-title section-title--left" id="faq-titulo">Dúvidas Frequentes</h2>
+          <p class="faq__intro">Confira as respostas para <strong>as perguntas frequentes</strong> ou
+            <a href="#contato" class="faq__link">entre em contato conosco</a>.</p>
 
-      <div class="container">
+          <div class="faq__ajuda">
+            <span class="faq__ajuda-icone" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M21 12a8 8 0 01-11.7 7.1L4 20l1-4.6A8 8 0 1121 12z" stroke="currentColor" stroke-width="1.8"
+                  stroke-linejoin="round" />
+                <path d="M9.5 9.5a2.5 2.5 0 114 2c-.9.5-1.5 1-1.5 2M12 16.5v.01" stroke="currentColor"
+                  stroke-width="1.8" stroke-linecap="round" />
+              </svg>
+            </span>
+            <p><strong>Não achou sua resposta?</strong> A equipe Hydra responde pelo formulário de contato.</p>
+            <a href="#contato" class="btn btn--outline btn--sm">Falar com a equipe</a>
+          </div>
+        </div>
+
         <div class="accordion" id="accordion">
 
           <div class="accordion__item is-open">
-            <button class="accordion__trigger">
-              <span class="accordion__number">01.</span>
-              <span class="accordion__question">O Sistema Hydra funciona para qualquer tipo de comércio?</span>
-              <span class="accordion__icon">＋</span>
-            </button>
-            <div class="accordion__panel">
-              <p>O Sistema Hydra foi pensado para pequenos mercados de bairro e comércios parecidos, como padarias e
-                hortifrútis, auxiliando no registro de vendas, no controle de estoque e no acompanhamento dos resultados.</p>
+            <h3 class="accordion__heading">
+              <button type="button" class="accordion__trigger" id="faq-pergunta-1" aria-expanded="true"
+                aria-controls="faq-resposta-1">
+                <span class="accordion__number">01.</span>
+                <span class="accordion__question">O Sistema Hydra funciona para qualquer tipo de comércio?</span>
+                <span class="accordion__icon" aria-hidden="true"></span>
+              </button>
+            </h3>
+            <div class="accordion__panel" id="faq-resposta-1" role="region" aria-labelledby="faq-pergunta-1">
+              <div class="accordion__content">
+                <p>O Sistema Hydra foi pensado para pequenos mercados de bairro e comércios parecidos, como padarias e
+                  hortifrútis, auxiliando no registro de vendas, no controle de estoque e no acompanhamento dos
+                  resultados.</p>
+              </div>
             </div>
           </div>
 
           <div class="accordion__item">
-            <button class="accordion__trigger">
-              <span class="accordion__number">02.</span>
-              <span class="accordion__question">É possível testar o sistema gratuitamente?</span>
-              <span class="accordion__icon">＋</span>
-            </button>
-            <div class="accordion__panel">
-              <p>Sim. O Hydra disponibiliza um plano gratuito para novos usuários conhecerem as funcionalidades básicas
-                da plataforma antes de contratar um plano pago.</p>
+            <h3 class="accordion__heading">
+              <button type="button" class="accordion__trigger" id="faq-pergunta-2" aria-expanded="false"
+                aria-controls="faq-resposta-2">
+                <span class="accordion__number">02.</span>
+                <span class="accordion__question">É possível testar o sistema gratuitamente?</span>
+                <span class="accordion__icon" aria-hidden="true"></span>
+              </button>
+            </h3>
+            <div class="accordion__panel" id="faq-resposta-2" role="region" aria-labelledby="faq-pergunta-2">
+              <div class="accordion__content">
+                <p>Sim. O plano Hydra Start é gratuito e permite conhecer o PDV, o controle básico de estoque e os
+                  relatórios básicos antes de escolher um plano pago.</p>
+              </div>
             </div>
           </div>
 
           <div class="accordion__item">
-            <button class="accordion__trigger">
-              <span class="accordion__number">03.</span>
-              <span class="accordion__question">O sistema possui controle de estoque?</span>
-              <span class="accordion__icon">＋</span>
-            </button>
-            <div class="accordion__panel">
-              <p>Sim. O sistema permite acompanhar entradas, saídas e quantidade disponível dos produtos, além de emitir
-                alertas para estoque baixo.</p>
+            <h3 class="accordion__heading">
+              <button type="button" class="accordion__trigger" id="faq-pergunta-3" aria-expanded="false"
+                aria-controls="faq-resposta-3">
+                <span class="accordion__number">03.</span>
+                <span class="accordion__question">O sistema possui controle de estoque?</span>
+                <span class="accordion__icon" aria-hidden="true"></span>
+              </button>
+            </h3>
+            <div class="accordion__panel" id="faq-resposta-3" role="region" aria-labelledby="faq-pergunta-3">
+              <div class="accordion__content">
+                <p>Sim. Você registra entradas e saídas, define estoques mínimos e recebe alertas automáticos antes de um
+                  produto zerar. Cada venda no caixa já dá baixa no estoque.</p>
+              </div>
             </div>
           </div>
 
           <div class="accordion__item">
-            <button class="accordion__trigger">
-              <span class="accordion__number">04.</span>
-              <span class="accordion__question">Posso cadastrar funcionários no sistema?</span>
-              <span class="accordion__icon">＋</span>
-            </button>
-            <div class="accordion__panel">
-              <p>Sim. O cadastro de funcionários varia de acordo com o plano contratado, permitindo diferentes níveis de
-                acesso e permissões.</p>
+            <h3 class="accordion__heading">
+              <button type="button" class="accordion__trigger" id="faq-pergunta-4" aria-expanded="false"
+                aria-controls="faq-resposta-4">
+                <span class="accordion__number">04.</span>
+                <span class="accordion__question">Posso cadastrar funcionários no sistema?</span>
+                <span class="accordion__icon" aria-hidden="true"></span>
+              </button>
+            </h3>
+            <div class="accordion__panel" id="faq-resposta-4" role="region" aria-labelledby="faq-pergunta-4">
+              <div class="accordion__content">
+                <p>Sim. Cada funcionário recebe um cargo com permissões próprias (caixa, estoque ou gerência). O limite
+                  varia por plano: 1 no Start, 5 usuários no Flex e até 20 no Premium.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CONTATO ===== -->
+    <section class="contato" id="contato" aria-labelledby="contato-titulo">
+      <div class="container">
+        <div class="contato__caixa">
+
+          <div class="contato__info">
+            <span class="rotulo rotulo--claro">Fale com a gente</span>
+            <h2 class="contato__titulo" id="contato-titulo">Entre em Contato</h2>
+            <p class="contato__texto">Preencha seus dados e nossa equipe retorna para apresentar o Hydra para o seu
+              comércio.</p>
+
+            <ul class="contato__canais">
+              <li>
+                <a href="tel:+5511958206969" class="contato__canal">
+                  <span class="contato__canal-icone" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M5 4h3l2 5-2.5 1.5a11 11 0 005 5L14 13l5 2v3a2 2 0 01-2 2A15 15 0 013 6a2 2 0 012-2z"
+                        stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  <span class="contato__canal-texto">
+                    <span class="contato__canal-rotulo">Telefone e WhatsApp</span>
+                    (11) 95820-6969
+                  </span>
+                </a>
+              </li>
+              <li>
+                <a href="mailto:hydra.pdv@gmail.com" class="contato__canal">
+                  <span class="contato__canal-icone" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8" />
+                      <path d="M3.5 6.5l8.5 6.5 8.5-6.5" stroke="currentColor" stroke-width="1.8"
+                        stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  <span class="contato__canal-texto">
+                    <span class="contato__canal-rotulo">E-mail</span>
+                    hydra.pdv@gmail.com
+                  </span>
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div class="contato__area">
+            <form class="contato__form" id="form-contato" novalidate>
+              <p class="contato__legenda">Campos com <span aria-hidden="true">*</span><span class="sr-only">asterisco</span> são obrigatórios.</p>
+
+              <div class="contato__campos">
+                <div class="campo">
+                  <label for="contato-nome">Nome completo <span class="campo__obrigatorio" aria-hidden="true">*</span></label>
+                  <input type="text" id="contato-nome" name="nome" autocomplete="name" maxlength="100" required
+                    aria-describedby="contato-nome-erro">
+                  <p class="campo__erro" id="contato-nome-erro" hidden></p>
+                </div>
+
+                <div class="campo">
+                  <label for="contato-email">E-mail <span class="campo__obrigatorio" aria-hidden="true">*</span></label>
+                  <input type="email" id="contato-email" name="email" autocomplete="email" maxlength="100" required
+                    spellcheck="false" aria-describedby="contato-email-erro">
+                  <p class="campo__erro" id="contato-email-erro" hidden></p>
+                </div>
+
+                <div class="campo">
+                  <label for="contato-telefone">Telefone/WhatsApp</label>
+                  <input type="tel" id="contato-telefone" name="telefone" autocomplete="tel-national" inputmode="tel"
+                    placeholder="(11) 91234-5678" aria-describedby="contato-telefone-erro">
+                  <p class="campo__erro" id="contato-telefone-erro" hidden></p>
+                </div>
+
+                <div class="campo">
+                  <label for="contato-estabelecimento">Nome do estabelecimento</label>
+                  <input type="text" id="contato-estabelecimento" name="estabelecimento" autocomplete="organization"
+                    maxlength="120" aria-describedby="contato-estabelecimento-erro">
+                  <p class="campo__erro" id="contato-estabelecimento-erro" hidden></p>
+                </div>
+
+                <div class="campo">
+                  <label for="contato-tipo">Tipo de comércio</label>
+                  <select id="contato-tipo" name="tipo_comercio" aria-describedby="contato-tipo-erro">
+                    <option value="">Selecione</option>
+                    <option value="mercado">Mercado de bairro</option>
+                    <option value="padaria">Padaria</option>
+                    <option value="hortifruti">Hortifrúti</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                  <p class="campo__erro" id="contato-tipo-erro" hidden></p>
+                </div>
+
+                <div class="campo">
+                  <label for="contato-plano">Plano de interesse</label>
+                  <select id="contato-plano" name="plano_interesse" aria-describedby="contato-plano-erro">
+                    <option value="nao_sei" selected>Ainda não sei</option>
+                    <option value="start">Hydra Start</option>
+                    <option value="flex">Hydra Flex</option>
+                    <option value="premium">Hydra Premium</option>
+                  </select>
+                  <p class="campo__erro" id="contato-plano-erro" hidden></p>
+                </div>
+
+                <div class="campo campo--inteiro">
+                  <label for="contato-mensagem">Mensagem</label>
+                  <textarea id="contato-mensagem" name="mensagem" rows="4" maxlength="1000"
+                    aria-describedby="contato-mensagem-contador contato-mensagem-erro"></textarea>
+                  <p class="campo__ajuda" id="contato-mensagem-contador">0 de 1000 caracteres</p>
+                  <p class="campo__erro" id="contato-mensagem-erro" hidden></p>
+                </div>
+
+                <!-- Campo-isca contra robôs: escondido de quem usa a página
+                     (visualmente e para leitores de tela) e fora da ordem do Tab. -->
+                <div class="campo-isca" aria-hidden="true">
+                  <label for="contato-site">Deixe este campo em branco</label>
+                  <input type="text" id="contato-site" name="site" tabindex="-1" autocomplete="off">
+                </div>
+
+                <div class="campo campo--inteiro campo--aceite">
+                  <input type="checkbox" id="contato-aceite" name="aceite_lgpd" required
+                    aria-describedby="contato-aceite-erro">
+                  <label for="contato-aceite">Concordo com a <a href="privacidade.html" target="_blank"
+                      rel="noopener">Política de Privacidade<span class="sr-only"> (abre em nova aba)</span></a> e
+                    autorizo o uso dos meus dados para contato, conforme a LGPD. <span class="campo__obrigatorio"
+                      aria-hidden="true">*</span></label>
+                  <p class="campo__erro" id="contato-aceite-erro" hidden></p>
+                </div>
+              </div>
+
+              <p class="contato__erro" id="contato-erro" role="alert" hidden></p>
+              <p class="sr-only" id="contato-status" role="status"></p>
+
+              <button type="submit" class="btn btn--primary btn--lg contato__enviar">
+                <span class="contato__spinner" aria-hidden="true"></span>
+                <span class="contato__enviar-texto">Enviar dados</span>
+              </button>
+            </form>
+
+            <div class="contato__sucesso" id="contato-sucesso" hidden>
+              <span class="contato__sucesso-icone" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M6 12.5l4 4 8-9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                </svg>
+              </span>
+              <h3 id="contato-sucesso-titulo" tabindex="-1">Dados enviados!</h3>
+              <p>Nossa equipe vai entrar em contato em breve.</p>
+              <button type="button" class="btn btn--outline" id="contato-novo">Enviar outra mensagem</button>
             </div>
           </div>
 
@@ -324,10 +774,10 @@
     </section>
 
     <!-- ===== TERMS ===== -->
-    <section class="terms" id="termos">
+    <section class="terms" id="termos" aria-labelledby="termos-titulo">
       <div class="container terms__box">
         <div class="terms__heading">
-          <h2>Termos de Uso e<br>Privacidade</h2>
+          <h2 id="termos-titulo">Termos de Uso e<br>Privacidade</h2>
           <p>Transparência sobre o uso do sistema
             <br>e o tratamento dos seus dados.
           </p>
@@ -335,12 +785,12 @@
 
         <div class="terms__grid">
           <div class="terms__card">
-            <h3><span class="terms__check">✓</span> Termos de Uso</h3>
+            <h3><span class="terms__check" aria-hidden="true">✓</span> Termos de Uso</h3>
             <p>As regras de uso da plataforma: cadastro e acesso, responsabilidades, planos, suspensão e cancelamento.</p>
             <a class="terms__link" href="termos.html">Ler os Termos de Uso ↗</a>
           </div>
           <div class="terms__card">
-            <h3><span class="terms__check">✓</span> Política de Privacidade</h3>
+            <h3><span class="terms__check" aria-hidden="true">✓</span> Política de Privacidade</h3>
             <p>Quais dados o Hydra coleta, para que usa, como protege e como você exerce seus direitos pela LGPD.</p>
             <a class="terms__link" href="privacidade.html">Ler a Política de Privacidade ↗</a>
           </div>
@@ -371,7 +821,11 @@
           <p>Maria Eduarda</p>
         </div>
       </div>
-      <p class="footer__copy">© 2026 Hydra PDV. Todos os direitos reservados.</p>
+      <div class="footer__base">
+        <p class="footer__copy">© 2026 Hydra PDV. Todos os direitos reservados.</p>
+        <span class="footer__separador" aria-hidden="true">·</span>
+        <p class="footer__instituicao">Centro Universitário Senac · Bacharelado em Sistemas de Informação</p>
+      </div>
     </div>
   </footer>
 
@@ -392,6 +846,7 @@
   <script src="../js/public-demo.js"></script>
   <script src="../js/font-size.js"></script>
   <script src="../js/script.js"></script>
+  <script src="../js/landing-contato.js"></script>
 </body>
 
 </html>

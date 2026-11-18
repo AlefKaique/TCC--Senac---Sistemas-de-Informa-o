@@ -64,6 +64,7 @@ final class UsuarioRepository
         $stmt = db()->prepare(
             "SELECT u.id_usuario, u.id_loja, u.nome, u.email, u.perfil, u.id_cargo, u.status,
                     l.status AS status_loja,
+                    (l.id_usuario_titular <=> u.id_usuario) AS titular,
                     (SELECT GROUP_CONCAT(p.codigo ORDER BY p.codigo)
                        FROM cargo_permissoes cp
                        JOIN permissoes p ON p.id_permissao = cp.id_permissao

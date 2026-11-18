@@ -78,6 +78,91 @@ final class MercadoPagoClient
         );
     }
 
+    /* ================= Assinatura do Hydra (tela Privacidade) =================
+     *
+     * Diferente do Pix do Caixa: lá o dinheiro vai para a conta Mercado Pago
+     * de CADA mercado (OAuth, tokens por loja). A assinatura é paga à Hydra,
+     * então usa a credencial da própria conta Hydra, MERCADOPAGO_ACCESS_TOKEN
+     * (Painel do desenvolvedor > Credenciais). Com credencial de teste
+     * ("TEST-..."), o pagamento abre no ambiente de testes (sandbox).
+     */
+
+    public static function assinaturaConfigurada(): bool
+    {
+        return self::tokenAssinatura() !== '';
+    }
+
+    /**
+     * Cria a preferência do Checkout Pro (PIX, cartão ou boleto, a critério
+     * do Mercado Pago) e devolve a URL para onde o navegador deve ir.
+     *
+     * @param array<string,mixed> $preferencia corpo de POST /checkout/preferences
+     * @return array{id:string,url:string}
+     */
+    public static function criarPreferenciaAssinatura(array $preferencia, string $idempotencyKey): array
+    {
+        $token = self::exigirTokenAssinatura();
+        $resposta = self::solicitar(
+            'POST',
+            'https://api.mercadopago.com/checkout/preferences',
+            $preferencia,
+            false,
+            $token,
+            $idempotencyKey
+        );
+        $url = str_starts_with($token, 'TEST-')
+            ? (string) ($resposta['sandbox_init_point'] ?? '')
+            : (string) ($resposta['init_point'] ?? '');
+        if (empty($resposta['id']) || $url === '') {
+            throw new RuntimeException('O Mercado Pago não devolveu o endereço de pagamento.');
+        }
+        return ['id' => (string) $resposta['id'], 'url' => $url];
+    }
+
+    /** @return array<string,mixed> pagamento da conta Hydra (GET /v1/payments/{id}) */
+    public static function consultarPagamentoAssinatura(string $idPagamento): array
+    {
+        return self::consultarPagamento(self::exigirTokenAssinatura(), $idPagamento);
+    }
+
+    /**
+     * Pagamentos da conta Hydra com esta external_reference, do mais novo
+     * para o mais antigo. Serve para conferir um pagamento quando o
+     * navegador não voltou do Mercado Pago (ex.: PIX pago pelo celular).
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public static function buscarPagamentosAssinatura(string $externalReference): array
+    {
+        $resposta = self::solicitar(
+            'GET',
+            'https://api.mercadopago.com/v1/payments/search?' . http_build_query([
+                'external_reference' => $externalReference,
+                'sort' => 'date_created',
+                'criteria' => 'desc',
+                'limit' => 20,
+            ]),
+            [],
+            false,
+            self::exigirTokenAssinatura()
+        );
+        return is_array($resposta['results'] ?? null) ? $resposta['results'] : [];
+    }
+
+    private static function tokenAssinatura(): string
+    {
+        return trim((string) Env::get('MERCADOPAGO_ACCESS_TOKEN', ''));
+    }
+
+    private static function exigirTokenAssinatura(): string
+    {
+        $token = self::tokenAssinatura();
+        if ($token === '') {
+            throw new RuntimeException('Pagamento da assinatura indisponível: configure MERCADOPAGO_ACCESS_TOKEN.');
+        }
+        return $token;
+    }
+
     public static function criptografar(string $valor): string
     {
         $key = self::chaveCriptografia();

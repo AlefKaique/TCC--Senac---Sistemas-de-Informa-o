@@ -12,6 +12,7 @@ use Hydra\Repositories\UsuarioRepository;
 use Hydra\Support\Auth;
 use Hydra\Support\Env;
 use Hydra\Support\Mailer;
+use Hydra\Support\Migracoes;
 use Hydra\Support\PasswordPolicy;
 use Hydra\Support\RateLimit;
 use Hydra\Support\Request;
@@ -163,7 +164,9 @@ final class AuthController
     ): ?int {
         // Fora da transação: dentro dela a migração do catálogo não pode ser
         // registrada (DDL faz commit implícito) e rodaria em todo cadastro.
+        // O mesmo vale para a coluna do titular, gravada logo abaixo.
         $this->cargos->garantirCatalogoGlobal();
+        Migracoes::garantirAssinaturas();
         $catalogo = $importarHortifruti ? new CatalogoHortifrutiRepository() : null;
         if ($importarHortifruti) {
             new ProdutoRepository();
@@ -188,6 +191,9 @@ final class AuthController
             $idCargoAdmin = $this->cargos->idCargoSistema($idLoja, 'Administrador');
             // O e-mail já foi confirmado pelo código: a conta nasce verificada.
             $idUsuario = $this->usuarios->create($idLoja, $nome, $email, $senhaHash, 'administrador', $idCargoAdmin, true);
+            // Quem fez o Cadastro é o titular: só ele vê a tela Privacidade
+            // (assinatura e encerramento da conta).
+            $this->lojas->definirTitular($idLoja, $idUsuario);
             // O Administrador não precisa do vínculo (acessa todas as
             // filiais), mas o mantém caso um dia deixe de ser Administrador
             // — o mesmo que sql/migracao_filiais.sql faz.

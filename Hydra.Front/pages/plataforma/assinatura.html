@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hydra · Assinatura do mercado</title>
+  <link rel="icon" type="image/png" href="../../img/logo-hydra.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/dashboard.css">
+  <link rel="stylesheet" href="../../css/menu-submenu.css">
+  <link rel="stylesheet" href="../../css/plataforma.css">
+</head>
+
+<body data-niveis="administrador,proprietario,gestor,analista">
+  <div class="hydro-dash plataforma-shell" data-page="assinatura">
+    <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+    <div class="hydro-app">
+      <aside class="hydro-sidebar" id="hydroSidebar">
+        <a class="hydro-brand" href="visao-geral.html" aria-label="Hydra Plataforma">
+          <img src="../../img/logo-hydra.png" alt="Hydra"><span class="plataforma-brand-label">Plataforma</span>
+        </a>
+        <nav class="hydro-menu">
+          <p class="hydro-menu-label">Painel</p>
+          <ul>
+            <li><a href="visao-geral.html"><i class="hydro-ic hydro-ic-home"></i><span>Visão geral</span></a></li>
+            <li><a href="mercados.html"><i class="hydro-ic hydro-ic-inventory"></i><span>Mercados</span></a></li>
+            <li><a class="hydro-active" href="assinaturas.html"><i class="hydro-ic hydro-ic-card"></i><span>Assinaturas</span></a></li>
+            <li><a href="rendimento.html"><i class="hydro-ic hydro-ic-chart"></i><span>Rendimento</span></a></li>
+            <li><a href="cadastros-pendentes.html"><i class="hydro-ic hydro-ic-users"></i><span>Cadastros pendentes</span></a></li>
+            <li data-niveis="administrador,proprietario,gestor"><a href="auditoria.html"><i class="hydro-ic hydro-ic-lock"></i><span>Auditoria</span></a></li>
+            <li data-niveis="administrador,proprietario"><a href="equipe.html"><i class="hydro-ic hydro-ic-users"></i><span>Equipe Hydra</span></a></li>
+          </ul>
+        </nav>
+      </aside>
+      <main class="hydro-main">
+        <header class="hydro-topbar">
+          <h1>Assinatura do mercado</h1>
+          <div class="hydro-topbar-actions">
+            <div class="plataforma-user"><div class="plataforma-user-meta"><span class="plataforma-user-name" id="plataforma-admin-nome">Carregando…</span><span class="plataforma-level" id="plataforma-admin-nivel"></span></div></div>
+            <button type="button" class="plataforma-btn" id="plataforma-sair">Sair</button>
+          </div>
+        </header>
+        <div class="plataforma-content">
+          <div id="plataforma-erro" role="alert"></div>
+          <div id="plataforma-sucesso" role="status"></div>
+          <div id="detalhe-assinatura"><p class="plataforma-loading">Carregando a assinatura…</p></div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Registrar pagamento recebido fora do Mercado Pago -->
+    <div class="plataforma-dialog" id="modal-pagamento" hidden>
+      <div class="plataforma-dialog-backdrop" data-fechar-modal></div>
+      <section class="plataforma-dialog-content is-wide" role="dialog" aria-modal="true" aria-labelledby="modal-pagamento-titulo">
+        <h2 id="modal-pagamento-titulo">Registrar pagamento</h2>
+        <p>Use quando o mercado pagou fora do Mercado Pago (PIX direto, transferência, dinheiro...). O plano é liberado na hora e o pagamento fica no histórico.</p>
+        <form class="plataforma-form" id="form-pagamento" novalidate>
+          <div class="plataforma-form-grid">
+            <label class="plataforma-field">Plano
+              <select name="plano" id="pagamento-plano" required></select>
+            </label>
+            <label class="plataforma-field">Período pago
+              <select name="periodos" id="pagamento-periodos" required></select>
+            </label>
+            <label class="plataforma-field">Forma de pagamento
+              <select name="forma" id="pagamento-forma" required></select>
+            </label>
+            <label class="plataforma-field">Valor recebido (R$)
+              <input type="text" inputmode="decimal" name="valor" id="pagamento-valor" autocomplete="off" required>
+            </label>
+            <label class="plataforma-field">Data do pagamento
+              <input type="date" name="pago_em" id="pagamento-data" required>
+            </label>
+          </div>
+          <fieldset class="plataforma-opcoes" id="pagamento-inicio" hidden>
+            <legend>A assinatura está atrasada. O período pago começa:</legend>
+            <label class="plataforma-opcao"><input type="radio" name="inicio" value="vencimento" checked>
+              <span><strong id="pagamento-inicio-vencimento">No vencimento</strong><small>O pagamento cobre os dias em atraso, em que o mercado continuou usando o sistema.</small></span>
+            </label>
+            <label class="plataforma-opcao"><input type="radio" name="inicio" value="hoje">
+              <span><strong>Hoje</strong><small>Os dias em atraso não são cobrados.</small></span>
+            </label>
+          </fieldset>
+          <label class="plataforma-field">Observação <small id="pagamento-observacao-ajuda">(opcional; obrigatória na cortesia)</small>
+            <textarea name="observacao" id="pagamento-observacao" rows="2" maxlength="200" placeholder="Ex.: PIX recebido no banco, comprovante enviado por WhatsApp"></textarea>
+          </label>
+          <p class="plataforma-previa" id="pagamento-previa" aria-live="polite"></p>
+          <div id="pagamento-erro" role="alert"></div>
+          <div class="plataforma-actions">
+            <button type="button" class="plataforma-btn" data-fechar-modal>Voltar</button>
+            <button type="submit" class="plataforma-btn plataforma-btn-success" id="pagamento-confirmar">Registrar pagamento</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <!-- Alterar plano ou vencimento (correção manual) -->
+    <div class="plataforma-dialog" id="modal-ajuste" hidden>
+      <div class="plataforma-dialog-backdrop" data-fechar-modal></div>
+      <section class="plataforma-dialog-content is-wide" role="dialog" aria-modal="true" aria-labelledby="modal-ajuste-titulo">
+        <h2 id="modal-ajuste-titulo">Alterar plano ou vencimento</h2>
+        <p>Para corrigir um lançamento, dar dias de cortesia ou trocar o plano. Não registra pagamento: para isso, use "Registrar pagamento".</p>
+        <form class="plataforma-form" id="form-ajuste" novalidate>
+          <div class="plataforma-form-grid">
+            <label class="plataforma-field">Plano
+              <select name="plano" id="ajuste-plano" required></select>
+            </label>
+            <label class="plataforma-field" id="ajuste-vencimento-campo">Vale até (inclusive)
+              <input type="date" name="valido_ate" id="ajuste-vencimento">
+            </label>
+          </div>
+          <p class="plataforma-previa" id="ajuste-previa" aria-live="polite"></p>
+          <label class="plataforma-field">Motivo (10 a 200 caracteres)
+            <textarea name="motivo" id="ajuste-motivo" rows="3" minlength="10" maxlength="200" required></textarea>
+          </label>
+          <div id="ajuste-erro" role="alert"></div>
+          <div class="plataforma-actions">
+            <button type="button" class="plataforma-btn" data-fechar-modal>Voltar</button>
+            <button type="submit" class="plataforma-btn plataforma-btn-primary" id="ajuste-confirmar">Salvar alteração</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <!-- Confirmação com motivo: cancelar, desfazer cancelamento, suspender/reativar mercado -->
+    <div class="plataforma-dialog" id="modal-confirmar" hidden>
+      <div class="plataforma-dialog-backdrop" data-fechar-modal></div>
+      <section class="plataforma-dialog-content" role="dialog" aria-modal="true" aria-labelledby="modal-confirmar-titulo">
+        <h2 id="modal-confirmar-titulo">Confirmar</h2>
+        <p id="modal-confirmar-texto"></p>
+        <form class="plataforma-form" id="form-confirmar" novalidate>
+          <label class="plataforma-field" id="confirmar-motivo-campo">Motivo (10 a 200 caracteres)
+            <textarea name="motivo" id="confirmar-motivo" rows="3" maxlength="200"></textarea>
+          </label>
+          <div id="confirmar-erro" role="alert"></div>
+          <div class="plataforma-actions">
+            <button type="button" class="plataforma-btn" data-fechar-modal>Voltar</button>
+            <button type="submit" class="plataforma-btn plataforma-btn-danger" id="confirmar-acao">Confirmar</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div>
+  <script src="../../js/api.js"></script>
+  <script src="../../js/plataforma-guard.js"></script>
+  <script src="../../js/plataforma-app.js"></script>
+  <script src="../../js/plataforma-assinaturas.js"></script>
+</body>
+
+</html>

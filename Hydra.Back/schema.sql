@@ -15,6 +15,9 @@
 --   - Gerenciar Usuários        -> CRUD em usuarios (perfil = operador_caixa/estoquista)
 --   - Configurações da Loja     -> UPDATE em lojas + CRUD em filiais (seção Filiais)
 --   - Trocar Filial             -> SELECT em filiais/usuario_filiais + UPDATE usuarios.id_ultima_filial
+--   - Privacidade (titular)     -> lojas.plano/plano_valido_ate + assinatura_pagamentos (Mercado Pago)
+--                                  + encerramento da conta (anonimização, lojas.conta_encerrada_em)
+--   - Página inicial (Contato)  -> INSERT em contatos (formulário "Entre em Contato")
 --
 -- Banco JÁ EM USO, criado antes do módulo de Filiais: rode
 -- sql/migracao_filiais.sql (faça backup antes — instruções no arquivo).
@@ -49,7 +52,21 @@ CREATE TABLE IF NOT EXISTS lojas (
     status          ENUM('ativa', 'inativa', 'suspensa') NOT NULL DEFAULT 'ativa',
     motivo_status   VARCHAR(255) NULL,
     status_alterado_em DATETIME NULL,
-    data_criacao    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    data_criacao    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    -- Tela "Privacidade" (só o titular). id_usuario_titular = quem fez o
+    -- Cadastro; fica sem FK de propósito, porque usuarios já aponta para
+    -- lojas com ON DELETE CASCADE (ver Migracoes::garantirAssinaturas).
+    -- O plano pago vale até plano_valido_ate; depois disso, a loja volta ao
+    -- 'start' (gratuito). assinatura_cancelada_em = titular cancelou (não
+    -- renova). conta_encerrada_em = titular encerrou a conta (status
+    -- 'inativa' e dados pessoais anonimizados).
+    id_usuario_titular      INT NULL,
+    plano                   ENUM('start', 'flex', 'premium') NOT NULL DEFAULT 'start',
+    plano_valido_ate        DATETIME NULL,
+    assinatura_cancelada_em DATETIME NULL,
+    conta_encerrada_em      DATETIME NULL,
+    INDEX idx_lojas_titular (id_usuario_titular)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
@@ -991,6 +1008,75 @@ CREATE TABLE IF NOT EXISTS cadastros_pendentes (
     codigo_expira_em DATETIME     NOT NULL,
     criado_em        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_cadastros_pendentes_criado (criado_em)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ============================================================
+-- Pagamentos da assinatura
+--   origem = 'mercado_pago': um registro por checkout do Mercado Pago
+--   (Checkout Pro, na conta da própria Hydra), aberto pelo titular na tela
+--   Privacidade. id_pagamento é a external_reference enviada ao Mercado
+--   Pago; o plano só é liberado depois que o pagamento é relido na API dele
+--   como aprovado (ConferenciaAssinatura).
+--   origem = 'manual': pagamento recebido por fora (PIX direto,
+--   transferência, cortesia...) e lançado pela equipe Hydra no painel da
+--   plataforma, em Assinaturas; id_admin = quem lançou.
+--   Aprovado com valido_de vazio = pago depois do encerramento da conta:
+--   não liberou plano e precisa ser devolvido. Ver AssinaturaRepository.
+--
+-- Em um banco já em uso, a tabela e as colunas são criadas sozinhas na
+-- primeira requisição (Migracoes::garantirAssinaturas).
+-- ============================================================
+CREATE TABLE IF NOT EXISTS assinatura_pagamentos (
+    id_pagamento   CHAR(36) PRIMARY KEY,
+    id_loja        INT NOT NULL,
+    id_usuario     INT NULL,
+    plano          ENUM('flex', 'premium') NOT NULL,
+    valor          DECIMAL(10,2) NOT NULL,
+    meses          TINYINT UNSIGNED NOT NULL,
+    origem         ENUM('mercado_pago', 'manual') NOT NULL DEFAULT 'mercado_pago',
+    forma          VARCHAR(20) NULL,
+    id_preferencia VARCHAR(80) NULL,
+    id_mp          VARCHAR(40) NULL UNIQUE,
+    status         ENUM('criando', 'pendente', 'aprovado', 'rejeitado', 'cancelado') NOT NULL DEFAULT 'criando',
+    pago_em        DATETIME NULL,
+    valido_de      DATETIME NULL,
+    valido_ate     DATETIME NULL,
+    observacao     VARCHAR(255) NULL,
+    id_admin       INT NULL,
+    criado_em      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_assinatura_pag_loja_status (id_loja, status, criado_em),
+    INDEX idx_assinatura_pag_status_pago (status, pago_em),
+    CONSTRAINT fk_assinatura_pag_loja
+        FOREIGN KEY (id_loja) REFERENCES lojas(id_loja) ON DELETE CASCADE,
+    CONSTRAINT fk_assinatura_pag_usuario
+        FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ============================================================
+-- Contatos do formulário "Entre em Contato" da página inicial
+--   (POST /api/contato, ContatoController). Telefone só com dígitos;
+--   aceite_lgpd = marcou a concordância com a Política de Privacidade
+--   (o envio é recusado sem ela) e criado_em é o momento do aceite.
+--
+-- Em um banco já em uso, esta tabela NÃO é criada sozinha: rode
+-- sql/criar_tabela_contatos.sql (o mesmo CREATE TABLE abaixo).
+-- ============================================================
+CREATE TABLE IF NOT EXISTS contatos (
+    id_contato       INT AUTO_INCREMENT PRIMARY KEY,
+    nome             VARCHAR(100)  NOT NULL,
+    email            VARCHAR(100)  NOT NULL,
+    telefone         VARCHAR(11)   NULL,
+    estabelecimento  VARCHAR(120)  NULL,
+    tipo_comercio    ENUM('mercado', 'padaria', 'hortifruti', 'outro') NULL,
+    plano_interesse  ENUM('nao_sei', 'start', 'flex', 'premium') NOT NULL DEFAULT 'nao_sei',
+    mensagem         VARCHAR(1000) NULL,
+    aceite_lgpd      TINYINT(1)    NOT NULL DEFAULT 0,
+    criado_em        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_contatos_criado (criado_em),
+    INDEX idx_contatos_email_criado (email, criado_em)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 

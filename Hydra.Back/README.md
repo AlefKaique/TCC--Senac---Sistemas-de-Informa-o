@@ -47,6 +47,7 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | Método | Rota | Permissão exigida | Descrição |
 |--------|------|-------------------|-----------|
 | GET    | `/api/health`                        | pública | Verificação de saúde (usada pelo Render) |
+| POST   | `/api/contato`                       | pública | Formulário "Entre em Contato" da página inicial: grava o contato na tabela `contatos` (ver "Formulário de contato") |
 | POST   | `/api/auth/registro`                 | pública | Onboarding: cria loja + usuário administrador (Fig. 13) e envia o código de confirmação do e-mail; não abre sessão |
 | POST   | `/api/auth/verificar-email`          | pública (via código) | Confirma o e-mail da conta recém-criada; depois o front redireciona para o Login |
 | POST   | `/api/auth/reenviar-verificacao`     | pública | Reenvia o código de confirmação do e-mail |
@@ -103,6 +104,13 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | POST   | `/api/vendas/{id}/cancelar`          | `vendas.operar` **ou** `vendas.historico` + autorização acima | Cancela a venda (`{ "motivo": "..." }`), devolve os itens ao estoque e grava quem autorizou |
 | GET    | `/api/loja`                          | `loja.configurar` | Dados da loja (Configurações da Loja) |
 | PUT    | `/api/loja`                          | `loja.configurar` | Atualiza dados da loja |
+| GET    | `/api/conta/assinatura`              | titular da conta | Plano atual, situação (gratuito/ativa/cancelada/atrasada/finalizada), planos disponíveis e checkout pendente (tela Privacidade) |
+| POST   | `/api/conta/assinatura/checkout`     | titular da conta | Cria o checkout do Mercado Pago (`{ "plano": "flex"\|"premium", "retorno": "<url da tela>" }`) e devolve `checkout_url` |
+| POST   | `/api/conta/assinatura/pagamentos/{id}/verificar` | titular da conta | Confere o pagamento no Mercado Pago (`payment_id` opcional) e libera o plano se aprovado |
+| POST   | `/api/conta/assinatura/cancelar`     | titular da conta | Cancela a assinatura; o plano vale até o fim do período pago (em atraso, encerra a cobrança) |
+| POST   | `/api/conta/assinatura/reativar`     | titular da conta | Desfaz o cancelamento dentro do período pago |
+| POST   | `/api/conta/assinatura/webhook`      | pública (relê o pagamento no Mercado Pago) | Notificação de pagamento do Mercado Pago |
+| POST   | `/api/conta/encerrar`                | titular da conta + senha | Encerra a conta (`{ "senha": "...", "confirmacao": "ENCERRAR" }`): desativa a loja e anonimiza os dados pessoais |
 | GET    | `/api/filiais/minhas`                | logado | Filiais ativas que o usuário pode acessar e a filial ativa da sessão |
 | POST   | `/api/filiais/trocar`                | logado | Troca a filial ativa (`{ "id_filial": N }`): 403 sem acesso, 404 inexistente, 422 inativa |
 | GET    | `/api/filiais`                       | `loja.configurar` **ou** `equipe.gerenciar` | Todas as filiais da loja (seção Filiais e tela Equipe) |
@@ -126,6 +134,30 @@ O custo histórico é gravado em cada item da venda; vendas anteriores à
 migração recebem o custo atual do cadastro marcado como estimado. O percentual
 de cancelamentos considera o valor cancelado dividido pelo total concluído
 mais cancelado no período.
+
+### Formulário de contato (página inicial)
+
+A seção "Entre em Contato" da página inicial envia `POST /api/contato` com
+JSON: `nome` e `email` (obrigatórios), `telefone`, `estabelecimento`,
+`tipo_comercio` (`mercado`, `padaria`, `hortifruti` ou `outro`),
+`plano_interesse` (`nao_sei`, `start`, `flex` ou `premium`), `mensagem`
+(até 1000 caracteres) e `aceite_lgpd` (precisa ser `true`). Resposta `201`
+quando grava; `422` com `erro` e `campo` quando um campo é inválido (o mesmo
+formato do cadastro).
+
+A tabela **não é criada automaticamente**: rode uma vez o script
+`sql/criar_tabela_contatos.sql` (instruções no próprio arquivo). Enquanto ela
+não existir, a rota responde `503` com `codigo: contato_indisponivel`, e a tela
+mostra o WhatsApp e o e-mail da equipe. Os contatos recebidos ficam só no banco
+(`SELECT * FROM contatos ORDER BY criado_em DESC`).
+
+Contra abuso, o limite não usa o IP, porque atrás do proxy do Render todos os
+visitantes chegam com o IP do proxy. São três proteções:
+
+- um campo-isca invisível (`site`): quando ele vem preenchido, a rota responde
+  como se tivesse gravado, mas não grava nada;
+- no máximo 3 envios do mesmo e-mail por hora;
+- no máximo 60 envios por hora no total.
 
 ### Catálogo hortifrúti e balança
 
@@ -184,11 +216,63 @@ Para habilitar:
 4. No Caixa, escolha **Pix com QR Code**. O operador deve manter a sessão
    aberta até o status aprovado para concluir a venda automaticamente.
 
-Não configure um Access Token único compartilhado: cada loja conecta a própria
-conta e os tokens OAuth são criptografados em repouso. Em desenvolvimento, o
+Não use um Access Token único compartilhado para o Pix do Caixa: cada loja
+conecta a própria conta e os tokens OAuth são criptografados em repouso. (O
+`MERCADOPAGO_ACCESS_TOKEN` da seção seguinte é outra coisa: a conta da própria
+Hydra, que recebe as assinaturas.) Em desenvolvimento, o
 retorno OAuth precisa chegar ao navegador e à API usando um endereço permitido
 no painel do Mercado Pago; se o celular não alcançar o servidor local, use um
 túnel HTTPS como ngrok. Não há webhook para apontar ao `localhost`.
+
+### Tela Privacidade: assinatura e conta do titular
+
+O item **Privacidade** (acima de **Trocar Filial**, na barra lateral) só aparece
+para o **titular da conta**: quem fez o Cadastro da loja
+(`lojas.id_usuario_titular`; em bancos antigos, o primeiro usuário de cada
+loja). Funcionários criados na tela Equipe não veem o item, nem com o cargo
+Administrador, e a API responde 403 (`Auth::requireTitular`). Também por isso
+nenhum outro usuário consegue editar o cadastro do titular na tela Equipe:
+trocar o e-mail dele permitiria assumir a conta pelo "Esqueci minha senha".
+
+- **Fazer upgrade de assinatura:** abre o Checkout Pro do Mercado Pago (PIX,
+  cartão ou boleto) na conta da Hydra. Cada pagamento aprovado libera o plano
+  por um período: Hydra Flex R$ 100,00 por 1 mês, Hydra Premium R$ 1.000,00
+  por 12 meses. Não há cobrança automática no cartão: para continuar, o
+  titular renova pela mesma tela. Renovar antes do vencimento (ou passar do
+  Flex para o Premium) soma o período novo ao fim do atual.
+- **Cancelar assinatura:** registra que ela não será renovada; o plano vale
+  até o fim do período pago e depois a loja volta ao Hydra Start. Dentro do
+  período, o titular pode desfazer ("Manter minha assinatura"). Se a
+  assinatura já estiver atrasada, cancelar encerra a cobrança na hora.
+- **Cancelar conta:** pede a senha e a palavra ENCERRAR. Desativa a loja e
+  as filiais, inativa todos os usuários e anonimiza nomes, e-mails,
+  telefones, CNPJ, endereço, logo e dados de clientes; vendas e estoque
+  continuam guardados sem identificar ninguém (`ContaRepository::encerrar`).
+  O e-mail do titular fica livre para um cadastro novo.
+- **Suporte:** telefone e WhatsApp (11) 95820-6969.
+
+O pagamento é confirmado de três formas, todas relendo o pagamento na API do
+Mercado Pago com a credencial da Hydra (nada vindo do navegador é aceito como
+prova): o retorno do navegador à tela, o botão **Verificar pagamento** e, se
+configurado, o webhook.
+
+Para habilitar o pagamento:
+
+1. No painel de desenvolvedores do Mercado Pago, copie o **Access Token** da
+   conta Hydra (`TEST-...` para testes, que abre o checkout de sandbox, ou
+   `APP_USR-...` em produção) para `MERCADOPAGO_ACCESS_TOKEN`.
+2. Opcional, recomendado em produção: `MERCADOPAGO_ASSINATURA_WEBHOOK_URL` =
+   `https://SEU-DOMINIO/api/conta/assinatura/webhook` (precisa ser https e
+   público). Sem ele, o plano é liberado quando o titular volta à tela ou
+   clica em **Verificar pagamento**.
+3. O endereço de volta do checkout precisa estar entre as origens conhecidas
+   do sistema: `CORS_ALLOWED_ORIGIN`, `APP_URL`, `HYDRA_FRONTEND_URL` ou o
+   próprio domínio da API.
+
+Sem `MERCADOPAGO_ACCESS_TOKEN`, a tela continua funcionando e mostra o contato
+do suporte no lugar do botão de pagamento; nesse caso, a equipe Hydra lança
+os pagamentos no painel da plataforma (ver "Assinaturas" abaixo). As colunas e a tabela novas são
+criadas sozinhas na primeira requisição (`Migracoes::garantirAssinaturas`).
 
 ### Plataforma Hydra
 
@@ -196,7 +280,7 @@ As telas administrativas ficam em `Hydra.Front/pages/plataforma/`. A
 autenticação da plataforma é separada das sessões de mercado: o login exige
 senha e código por e-mail, e os endpoints validam o nível do membro no
 servidor. Os níveis são **Analista** (consulta), **Gestor** (consulta,
-auditoria e suspensão/reativação), **Proprietário** e **Administrador**
+auditoria, suspensão/reativação e controle das assinaturas), **Proprietário** e **Administrador**
 (ambos com acesso total e gestão da equipe). A plataforma sempre mantém pelo
 menos um Proprietário ou Administrador ativo.
 
@@ -214,6 +298,13 @@ menos um Proprietário ou Administrador ativo.
 | GET | `/api/plataforma/lojas/{id}` | plataforma autenticada | Detalhes agregados de um mercado |
 | POST | `/api/plataforma/lojas/{id}/suspender` | Administrador, Proprietário ou Gestor | Suspende o mercado com motivo obrigatório |
 | POST | `/api/plataforma/lojas/{id}/reativar` | Administrador, Proprietário ou Gestor | Reativa o mercado com motivo obrigatório |
+| GET | `/api/plataforma/assinaturas` | plataforma autenticada | Assinaturas de todos os mercados com indicadores (ativas, vencendo, atrasadas, receita) e filtros `situacao`, `plano`, `busca`, `ordem` |
+| GET | `/api/plataforma/assinaturas/{id}` | plataforma autenticada | Assinatura de um mercado: situação, pagamentos (Mercado Pago e manuais), histórico e contato do titular |
+| POST | `/api/plataforma/assinaturas/{id}/pagamentos` | Administrador, Proprietário ou Gestor | Lança pagamento recebido por fora (`plano`, `periodos`, `valor`, `forma`, `pago_em`, `observacao`, `inicio`) e estende o período |
+| POST | `/api/plataforma/assinaturas/{id}/ajustar` | Administrador, Proprietário ou Gestor | Altera plano e/ou vencimento (`plano`, `valido_ate`, `motivo`) |
+| POST | `/api/plataforma/assinaturas/{id}/cancelar` | Administrador, Proprietário ou Gestor | Cancela (vale até o vencimento) ou, se atrasada, encerra a cobrança (`motivo`) |
+| POST | `/api/plataforma/assinaturas/{id}/reativar` | Administrador, Proprietário ou Gestor | Desfaz o cancelamento dentro do período pago |
+| POST | `/api/plataforma/assinaturas/pagamentos/{id}/conferir` | Administrador, Proprietário ou Gestor | Relê no Mercado Pago um checkout do titular e libera o plano se estiver pago |
 | GET | `/api/plataforma/cadastros-pendentes` | plataforma autenticada | Lista cadastros que ainda aguardam confirmação |
 | GET | `/api/plataforma/auditoria` | Administrador, Proprietário ou Gestor | Consulta o histórico de ações administrativas |
 | GET/POST | `/api/plataforma/equipe` | Administrador ou Proprietário | Lista membros ou envia um convite |
@@ -227,6 +318,43 @@ não exibe a senha enquanto ela é digitada. Em bancos existentes, as colunas
 da equipe, o status de suspensão e os índices necessários são aplicados
 automaticamente na primeira requisição da plataforma; não é necessário
 recriar o banco nem reaplicar `schema.sql`.
+
+#### Assinaturas (controle de cobrança)
+
+A tela **Assinaturas** (`pages/plataforma/assinaturas.html`) mostra a
+assinatura de todos os mercados, com indicadores (ativas, vencem em 7 dias,
+atrasadas e valor em aberto, receita recorrente por mês, recebido no mês) e
+filtros. A ordem padrão põe as **atrasadas** primeiro, da mais antiga para a
+mais nova, e depois as ativas que vencem antes.
+
+Situações (`AssinaturaRepository::SQL_SITUACAO`): **ativa**; **cancelada**
+(não renova, mas ainda está no período pago); **atrasada** (o período
+terminou sem renovação nem cancelamento; enquanto isso o mercado usa o Hydra
+Start); **finalizada** (cancelada e com o período já terminado); **plano
+gratuito**; **conta encerrada**.
+
+Ao abrir um mercado (`assinatura.html?id=`), Administrador, Proprietário e
+Gestor podem:
+
+- **Registrar pagamento** recebido fora do Mercado Pago (PIX direto,
+  transferência, dinheiro, cortesia...). O período é somado ao vencimento
+  atual; se a assinatura estiver atrasada, a equipe escolhe se o pagamento
+  cobre os dias em atraso (começa no vencimento) ou começa hoje.
+- **Alterar plano ou vencimento**, com motivo, para corrigir lançamentos ou
+  dar dias de cortesia. Escolher o Hydra Start tira o mercado do plano pago.
+- **Cancelar assinatura** (vale até o vencimento) ou, se atrasada,
+  **encerrar a cobrança** (o mercado fica no plano gratuito); **desfazer o
+  cancelamento** dentro do período.
+- **Suspender / reativar o mercado** por falta de pagamento (mesma rota da
+  tela do mercado).
+- **Conferir no Mercado Pago** um checkout do titular, caso o webhook tenha
+  falhado e ele não tenha voltado à tela.
+
+O Analista só consulta. Toda ação vai para a auditoria com o membro que a
+fez. Pagamentos aprovados no Mercado Pago depois de o titular encerrar a
+conta aparecem com o selo **Devolver valor**. Os indicadores principais
+também aparecem na Visão geral, e a tela de cada mercado tem um resumo da
+assinatura com o botão **Gerenciar assinatura**.
 
 #### Administrador sem código por e-mail (apresentação)
 

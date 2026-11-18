@@ -48,6 +48,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     mercado_suspenso: 'Suspendeu o mercado', mercado_reativado: 'Reativou o mercado',
     equipe_convidada: 'Convidou um membro', equipe_alterada: 'Alterou um membro',
     equipe_convite_reenviado: 'Reenviou convite', equipe_primeiro_acesso: 'Concluiu primeiro acesso',
+    // Ações do titular do mercado na tela Privacidade (sem membro da equipe).
+    assinatura_paga_titular: 'Assinatura paga pelo titular',
+    assinatura_cancelada_titular: 'Titular cancelou a assinatura',
+    assinatura_reativada_titular: 'Titular manteve a assinatura',
+    conta_encerrada_titular: 'Titular encerrou a conta',
+    // Ações da equipe Hydra em Assinaturas.
+    assinatura_pagamento_registrado: 'Registrou pagamento da assinatura',
+    assinatura_ajustada: 'Alterou plano ou vencimento',
+    assinatura_cancelada_plataforma: 'Cancelou a assinatura',
+    assinatura_reativada_plataforma: 'Desfez cancelamento da assinatura',
+    assinatura_pagamento_conferido: 'Conferiu pagamento no Mercado Pago',
+  };
+  const labelsSituacaoAssinatura = {
+    ativa: 'Ativa', atrasada: 'Atrasada', cancelada: 'Cancelada', finalizada: 'Finalizada',
+    gratuito: 'Plano gratuito', conta_encerrada: 'Conta encerrada',
   };
 
   async function carregar(url, options) {
@@ -181,6 +196,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       const path = filter === 'pendentes' ? 'cadastros-pendentes.html' : `mercados.html${filter ? `?status=${filter}` : ''}`;
       return `<a class="plataforma-card" href="${path}"><span class="plataforma-card-label">${label}</span><strong class="plataforma-card-value">${Number(count || 0).toLocaleString('pt-BR')}</strong><span class="plataforma-card-help">Abrir ${label.toLowerCase()}</span></a>`;
     }).join('');
+    const assinaturas = data.assinaturas;
+    const assinaturasCards = document.getElementById('assinaturas-resumo');
+    if (assinaturas && assinaturasCards) {
+      assinaturasCards.innerHTML = [
+        ['Assinaturas ativas', Number(assinaturas.ativas || 0).toLocaleString('pt-BR'), 'assinaturas.html?situacao=ativa', 'Pagas e dentro do período', ''],
+        ['Vencem em 7 dias', Number(assinaturas.vencendo_7_dias || 0).toLocaleString('pt-BR'), 'assinaturas.html?situacao=vencendo', 'Lembre o titular de renovar', ''],
+        ['Atrasadas', Number(assinaturas.atrasadas || 0).toLocaleString('pt-BR'), 'assinaturas.html?situacao=atrasada', `${currency(assinaturas.valor_em_atraso)} em aberto`, ''],
+        ['Receita recorrente / mês', currency(assinaturas.receita_mensal), 'assinaturas.html', 'Assinaturas ativas', ' plataforma-kpi-small'],
+      ].map(([label, value, path, help, extra]) => `<a class="plataforma-card" href="${path}"><span class="plataforma-card-label">${label}</span><strong class="plataforma-card-value${extra}">${value}</strong><span class="plataforma-card-help">${escapeHtml(help)}</span></a>`).join('');
+    }
     document.getElementById('cadastros-chart').innerHTML = data.novos_cadastros_por_mes.length
       ? drawChart(data.novos_cadastros_por_mes)
       : '<p class="plataforma-empty">Ainda não há cadastros para mostrar neste período.</p>';
@@ -262,6 +287,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="plataforma-card"><span class="plataforma-card-label">Vendas em 30 dias</span><strong class="plataforma-card-value">${data.vendas_30_dias.quantidade}</strong></div>
         <div class="plataforma-card"><span class="plataforma-card-label">Faturamento em 30 dias</span><strong class="plataforma-card-value plataforma-kpi-small">${currency(data.vendas_30_dias.total)}</strong></div>
       </section>
+      ${data.assinatura ? `<section class="plataforma-panel"><div class="plataforma-panel-heading"><div><h2>Assinatura</h2><p>Pagamentos, vencimento e cancelamento ficam em Assinaturas.</p></div><a class="plataforma-btn plataforma-btn-primary" href="assinatura.html?id=${encodeURIComponent(id)}">Gerenciar assinatura</a></div><div class="plataforma-info-grid">
+        <div class="plataforma-info"><span>Plano</span><strong>${escapeHtml(data.assinatura.nome_plano_contratado)}</strong></div>
+        <div class="plataforma-info"><span>Situação</span><strong><span class="plataforma-badge sit-${escapeHtml(data.assinatura.situacao)}">${escapeHtml(labelsSituacaoAssinatura[data.assinatura.situacao] || data.assinatura.situacao)}</span></strong></div>
+        <div class="plataforma-info"><span>Vencimento</span><strong>${data.assinatura.valido_ate ? dateOnly(data.assinatura.valido_ate) : '—'}</strong></div>
+      </div></section>` : ''}
       <div class="plataforma-grid-2">
         <section class="plataforma-panel"><h2>Dados do mercado</h2><div class="plataforma-info-grid">
           ${[['CNPJ', market.cnpj], ['Telefone', market.telefone], ['Endereço', market.endereco], ['Cidade / UF', [market.cidade, market.uf].filter(Boolean).join(' / ')], ['CEP', market.cep], ['Cadastro', dateTime(market.data_criacao)]].map(([label, value]) => `<div class="plataforma-info"><span>${label}</span><strong>${escapeHtml(value || '—')}</strong></div>`).join('')}
@@ -330,7 +360,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     fields.id_admin.value = params.get('id_admin') || '';
     const tbody = document.getElementById('auditoria-body');
     document.getElementById('auditoria-vazio').hidden = data.registros.length > 0;
-    tbody.innerHTML = data.registros.map((row) => `<tr><td>${dateTime(row.data)}</td><td>${escapeHtml(row.membro || 'Membro inativo/removido')}</td><td>${escapeHtml(actionLabels[row.acao] || row.acao)}</td><td>${escapeHtml(row.mercado || '—')}</td><td>${escapeHtml(row.detalhe || '—')}</td><td>${escapeHtml(row.ip || '—')}</td></tr>`).join('');
+    tbody.innerHTML = data.registros.map((row) => `<tr><td>${dateTime(row.data)}</td><td>${escapeHtml(row.membro || (String(row.acao || '').endsWith('_titular') ? 'Titular do mercado' : 'Membro inativo/removido'))}</td><td>${escapeHtml(actionLabels[row.acao] || row.acao)}</td><td>${escapeHtml(row.mercado || '—')}</td><td>${escapeHtml(row.detalhe || '—')}</td><td>${escapeHtml(row.ip || '—')}</td></tr>`).join('');
     const pageData = data.paginacao;
     document.getElementById('auditoria-paginacao').innerHTML = `<span>${pageData.total.toLocaleString('pt-BR')} registro(s) · página ${pageData.pagina} de ${Math.max(1, pageData.total_paginas)}</span><div class="plataforma-actions"><button class="plataforma-btn" type="button" data-auditoria-pagina="${pageData.pagina - 1}" ${pageData.pagina <= 1 ? 'disabled' : ''}>Anterior</button><button class="plataforma-btn" type="button" data-auditoria-pagina="${pageData.pagina + 1}" ${pageData.pagina >= pageData.total_paginas ? 'disabled' : ''}>Próxima</button></div>`;
   }

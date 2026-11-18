@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hydra · Assinaturas</title>
+  <link rel="icon" type="image/png" href="../../img/logo-hydra.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/dashboard.css">
+  <link rel="stylesheet" href="../../css/menu-submenu.css">
+  <link rel="stylesheet" href="../../css/plataforma.css">
+</head>
+
+<body data-niveis="administrador,proprietario,gestor,analista">
+  <div class="hydro-dash plataforma-shell" data-page="assinaturas">
+    <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+    <div class="hydro-app">
+      <aside class="hydro-sidebar" id="hydroSidebar">
+        <a class="hydro-brand" href="visao-geral.html" aria-label="Hydra Plataforma">
+          <img src="../../img/logo-hydra.png" alt="Hydra"><span class="plataforma-brand-label">Plataforma</span>
+        </a>
+        <nav class="hydro-menu">
+          <p class="hydro-menu-label">Painel</p>
+          <ul>
+            <li><a href="visao-geral.html"><i class="hydro-ic hydro-ic-home"></i><span>Visão geral</span></a></li>
+            <li><a href="mercados.html"><i class="hydro-ic hydro-ic-inventory"></i><span>Mercados</span></a></li>
+            <li><a class="hydro-active" href="assinaturas.html" aria-current="page"><i class="hydro-ic hydro-ic-card"></i><span>Assinaturas</span></a></li>
+            <li><a href="rendimento.html"><i class="hydro-ic hydro-ic-chart"></i><span>Rendimento</span></a></li>
+            <li><a href="cadastros-pendentes.html"><i class="hydro-ic hydro-ic-users"></i><span>Cadastros pendentes</span></a></li>
+            <li data-niveis="administrador,proprietario,gestor"><a href="auditoria.html"><i class="hydro-ic hydro-ic-lock"></i><span>Auditoria</span></a></li>
+            <li data-niveis="administrador,proprietario"><a href="equipe.html"><i class="hydro-ic hydro-ic-users"></i><span>Equipe Hydra</span></a></li>
+          </ul>
+        </nav>
+      </aside>
+      <main class="hydro-main">
+        <header class="hydro-topbar">
+          <h1>Assinaturas</h1>
+          <div class="hydro-topbar-actions">
+            <div class="plataforma-user"><div class="plataforma-user-meta"><span class="plataforma-user-name" id="plataforma-admin-nome">Carregando…</span><span class="plataforma-level" id="plataforma-admin-nivel"></span></div></div>
+            <button type="button" class="plataforma-btn" id="plataforma-sair">Sair</button>
+          </div>
+        </header>
+        <div class="plataforma-content">
+          <div class="plataforma-page-heading">
+            <div>
+              <h2>Assinaturas dos mercados</h2>
+              <p>Acompanhe quem está em dia, quem vence logo e quem está com o pagamento atrasado. Abra um mercado para lançar um pagamento, mudar o plano ou o vencimento, ou cancelar a assinatura.</p>
+            </div>
+          </div>
+          <div id="plataforma-erro" role="alert"></div>
+          <div id="assinaturas-devolver" class="plataforma-alerta" hidden></div>
+
+          <section class="plataforma-cards" id="assinaturas-cards" aria-label="Indicadores das assinaturas">
+            <p class="plataforma-loading">Carregando indicadores…</p>
+          </section>
+
+          <section class="plataforma-panel">
+            <form class="plataforma-toolbar" id="filtros-assinaturas">
+              <label class="plataforma-field plataforma-search">Buscar mercado, CNPJ ou titular
+                <input type="search" name="busca" id="filtro-busca" placeholder="Ex.: Mercado Central, CNPJ ou e-mail do titular">
+              </label>
+              <label class="plataforma-field">Plano
+                <select name="plano" id="filtro-plano">
+                  <option value="">Todos os planos</option>
+                  <option value="flex">Hydra Flex</option>
+                  <option value="premium">Hydra Premium</option>
+                  <option value="start">Hydra Start (gratuito)</option>
+                </select>
+              </label>
+              <label class="plataforma-field">Ordenar por
+                <select name="ordem" id="filtro-ordem">
+                  <option value="prioridade">Prioridade (atrasadas primeiro)</option>
+                  <option value="vencimento">Vencimento</option>
+                  <option value="nome">Nome do mercado</option>
+                  <option value="recentes">Cadastro mais recente</option>
+                </select>
+              </label>
+              <button class="plataforma-btn plataforma-btn-primary" type="submit">Aplicar filtros</button>
+              <button class="plataforma-btn" type="button" id="limpar-filtros">Limpar</button>
+              <div class="plataforma-filter-chips" id="filtro-situacao" role="group" aria-label="Filtrar por situação"></div>
+            </form>
+            <div class="plataforma-table-wrap">
+              <table class="plataforma-table">
+                <thead>
+                  <tr><th>Mercado e titular</th><th>Plano</th><th>Situação</th><th>Vencimento</th><th>Último pagamento</th></tr>
+                </thead>
+                <tbody id="assinaturas-body"></tbody>
+              </table>
+            </div>
+            <div id="assinaturas-vazio" class="plataforma-empty" hidden>Nenhuma assinatura encontrada com esses filtros. Ajuste a busca ou limpe os filtros.</div>
+            <div class="plataforma-pagination" id="assinaturas-paginacao"></div>
+          </section>
+          <p class="plataforma-note">Não há cobrança automática: cada pagamento libera o plano por um período (Hydra Flex: 1 mês por R$ 100,00; Hydra Premium: 12 meses por R$ 1.000,00). Quando o período termina sem renovação, a assinatura aparece como <strong>atrasada</strong> e o mercado passa a usar o Hydra Start (gratuito) até pagar.</p>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../../js/api.js"></script>
+  <script src="../../js/plataforma-guard.js"></script>
+  <script src="../../js/plataforma-app.js"></script>
+  <script src="../../js/plataforma-assinaturas.js"></script>
+</body>
+
+</html>
