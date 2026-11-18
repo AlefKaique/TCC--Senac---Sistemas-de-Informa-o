@@ -25,4 +25,18 @@ final class AuditoriaPlataformaRepository
             'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
         ]);
     }
+
+    /**
+     * Para registros que não podem desfazer a ação já concluída (ex.: o
+     * pagamento do titular confirmado pelo Mercado Pago): uma falha aqui vai
+     * só para o log do servidor.
+     */
+    public static function registrarSemFalhar(?int $idAdmin, string $acao, ?int $idLoja = null, ?string $detalhe = null): void
+    {
+        try {
+            (new self())->registrar($idAdmin, $acao, $idLoja, $detalhe === null ? null : mb_substr($detalhe, 0, 255));
+        } catch (\Throwable $e) {
+            error_log('[Hydra] Falha ao registrar auditoria (' . $acao . '): ' . $e->getMessage());
+        }
+    }
 }

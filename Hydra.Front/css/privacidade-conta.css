@@ -1,0 +1,374 @@
+/* ===================================================================
+   Tela "Privacidade" (pages/privacidade-conta.html). Complementa
+   controle-estoque.css + gerenciar-usuarios.css + configuracoes-loja.css
+   (cartões .hydro-card). Escopado em ".hydro-stock" como os demais, e só
+   com variáveis de cor, para o tema escuro valer sem regra própria.
+   =================================================================== */
+
+.hydro-stock .hydro-priv {
+    max-width: 980px;
+}
+
+.hydro-stock .hydro-priv .hydro-settings-intro {
+    margin: 0 0 22px;
+}
+
+.hydro-stock .hydro-priv .hydro-card-body p {
+    margin: 0;
+}
+
+.hydro-stock .hydro-priv-texto {
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--ink);
+}
+
+.hydro-stock .hydro-priv-carregando {
+    font-size: 14.5px;
+    color: var(--muted);
+    margin: 0 0 20px;
+}
+
+.hydro-stock .hydro-priv-carregando a,
+.hydro-stock .hydro-priv-alerta a,
+.hydro-stock .hydro-priv-aviso-info a,
+.hydro-stock .hydro-priv-modal-erro a {
+    text-decoration: underline;
+    font-weight: 600;
+}
+
+/* ---------- Aviso no topo (retorno do pagamento, erros) ---------- */
+.hydro-stock .hydro-priv-alerta {
+    margin: 0 0 20px;
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--blue-bg);
+    color: var(--ink);
+    font-size: 14.5px;
+    line-height: 1.5;
+}
+
+.hydro-stock .hydro-priv-alerta--sucesso {
+    background: var(--green-bg);
+    border-color: var(--green);
+}
+
+.hydro-stock .hydro-priv-alerta--erro {
+    background: var(--red-bg);
+    border-color: var(--red-border);
+}
+
+/* ---------- Sua assinatura ---------- */
+.hydro-stock .hydro-priv-resumo-topo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.hydro-stock .hydro-priv-plano-atual {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--navy-900);
+}
+
+.hydro-stock .hydro-priv-preco-atual {
+    font-size: 14px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+/* Situação: texto sempre presente, a cor só reforça. */
+.hydro-stock .hydro-priv-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: var(--soft);
+    color: var(--ink);
+}
+
+.hydro-stock .hydro-priv-badge--ok {
+    background: var(--green-bg);
+    color: var(--green);
+}
+
+.hydro-stock .hydro-priv-badge--atencao {
+    background: var(--amber-bg);
+    color: var(--amber);
+}
+
+.hydro-stock .hydro-priv-badge--erro {
+    background: var(--red-bg);
+    color: var(--red);
+}
+
+.hydro-stock .hydro-priv-pendente {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    border: 1px solid var(--amber-border);
+    border-radius: var(--radius-md);
+    background: var(--amber-bg);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink);
+}
+
+.hydro-stock .hydro-priv-pendente p {
+    flex: 1 1 320px;
+}
+
+/* ---------- Botões ---------- */
+.hydro-stock .hydro-priv-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.hydro-stock .hydro-priv .hydro-btn,
+.hydro-stock .hydro-modal .hydro-btn {
+    min-height: 44px;
+    justify-content: center;
+}
+
+/* "Ligar para o suporte" é um <a>: ".hydro-stock a { color: inherit }"
+   venceria o branco de .hydro-btn-primary. */
+.hydro-stock .hydro-priv a.hydro-btn-primary {
+    color: #fff;
+}
+
+.hydro-stock .hydro-btn-danger-outline {
+    background: var(--card);
+    color: var(--red);
+    border-color: var(--red-border);
+}
+
+.hydro-stock .hydro-btn-danger-outline:hover {
+    background: var(--red-bg);
+}
+
+.hydro-stock .hydro-btn-danger:hover {
+    filter: brightness(1.06);
+}
+
+.hydro-stock .hydro-btn:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    filter: none;
+}
+
+.hydro-stock .hydro-btn:focus-visible {
+    outline: 3px solid #5e81f4;
+    outline-offset: 2px;
+}
+
+/* ---------- Planos ---------- */
+.hydro-stock .hydro-priv-aviso-info {
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--blue-bg);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink);
+}
+
+.hydro-stock .hydro-priv-planos {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.hydro-stock .hydro-priv-plano {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--card);
+}
+
+.hydro-stock .hydro-priv-plano--atual {
+    border: 2px solid var(--navy-900);
+    padding: 19px;
+}
+
+.hydro-stock .hydro-priv-plano-topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.hydro-stock .hydro-priv-plano-topo h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--navy-900);
+}
+
+.hydro-stock .hydro-priv-plano-periodo {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.hydro-stock .hydro-priv .hydro-priv-plano-preco {
+    margin-top: 6px;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--ink);
+}
+
+.hydro-stock .hydro-priv-plano-nota,
+.hydro-stock .hydro-priv-plano-obs {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.hydro-stock .hydro-priv-recursos {
+    list-style: none;
+    margin: 10px 0 14px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.hydro-stock .hydro-priv-recursos li {
+    position: relative;
+    padding-left: 24px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--ink);
+}
+
+.hydro-stock .hydro-priv-recursos li::before {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 4px;
+    width: 12px;
+    height: 7px;
+    border-left: 2.5px solid var(--green);
+    border-bottom: 2.5px solid var(--green);
+    transform: rotate(-45deg);
+}
+
+.hydro-stock .hydro-priv-plano-btn {
+    width: 100%;
+    white-space: normal;
+    text-align: center;
+}
+
+/* ---------- Cancelar conta ---------- */
+.hydro-stock .hydro-priv-perigo {
+    border-color: var(--red-border);
+}
+
+.hydro-stock .hydro-priv-perigo .hydro-card-header h2 {
+    color: var(--red);
+}
+
+.hydro-stock .hydro-priv-lista {
+    margin: 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--ink);
+}
+
+/* ---------- Suporte ---------- */
+.hydro-stock .hydro-priv-suporte {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.hydro-stock .hydro-priv-suporte-icone {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--green-bg);
+    color: var(--green);
+    flex-shrink: 0;
+}
+
+.hydro-stock .hydro-priv-suporte-icone .hydro-ic {
+    width: 22px;
+    height: 22px;
+}
+
+.hydro-stock .hydro-priv-suporte-rotulo {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.hydro-stock .hydro-priv-suporte-numero {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--navy-900);
+    letter-spacing: .01em;
+}
+
+/* ---------- Janelas ---------- */
+.hydro-stock .hydro-modal .hydro-form-group input {
+    background: var(--input-bg, #fff);
+    min-height: 44px;
+    font-size: 15px;
+}
+
+.hydro-stock .hydro-priv-modal-erro {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--red-bg);
+    color: var(--red);
+    font-size: 13.5px;
+    font-weight: 600;
+}
+
+/* ---------- Celular ---------- */
+@media (max-width: 720px) {
+    .hydro-stock .hydro-priv-planos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .hydro-stock .hydro-priv-acoes .hydro-btn {
+        flex: 1 1 100%;
+    }
+
+    .hydro-stock .hydro-priv-pendente .hydro-btn {
+        width: 100%;
+    }
+
+    .hydro-stock .hydro-modal-footer {
+        flex-direction: column-reverse;
+    }
+
+    .hydro-stock .hydro-modal-footer .hydro-btn {
+        width: 100%;
+    }
+}

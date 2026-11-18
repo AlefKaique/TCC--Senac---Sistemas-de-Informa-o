@@ -17,6 +17,8 @@ final class PlataformaRepository
                  WHERE v.id_loja = l.id_loja AND v.status <> 'cancelada') AS ultima_venda,
                CASE
                    WHEN l.status = 'suspensa' THEN 'suspenso'
+                   -- Conta encerrada pelo titular (tela Privacidade).
+                   WHEN l.status = 'inativa' THEN 'inativo'
                    WHEN NOT EXISTS (SELECT 1 FROM vendas vn
                                      WHERE vn.id_loja = l.id_loja AND vn.status <> 'cancelada') THEN 'novo'
                    WHEN GREATEST(
@@ -37,6 +39,7 @@ final class PlataformaRepository
     public function __construct()
     {
         Migracoes::garantirAdminsPlataforma();
+        Migracoes::garantirAssinaturas();
     }
 
     /** @return array<string,mixed> */
@@ -107,6 +110,8 @@ final class PlataformaRepository
 
         return [
             'mercados' => $status,
+            // Indicadores da tela Assinaturas (ativas, atrasadas, receita...).
+            'assinaturas' => (new PlataformaAssinaturaRepository())->resumo(),
             'cadastros_pendentes' => $pendentes,
             'filiais_ativas' => $filiais,
             'usuarios_ativos' => $usuarios,
@@ -319,11 +324,22 @@ final class PlataformaRepository
 
         $stmt = db()->prepare(
             "SELECT acao, detalhe, data FROM auditoria_plataforma
-              WHERE id_loja = :id_loja AND acao IN ('mercado_suspenso', 'mercado_reativado')
+              WHERE id_loja = :id_loja AND acao IN (
+                    'mercado_suspenso', 'mercado_reativado',
+                    'assinatura_paga_titular', 'assinatura_cancelada_titular',
+                    'assinatura_reativada_titular', 'conta_encerrada_titular',
+                    'assinatura_pagamento_registrado', 'assinatura_ajustada',
+                    'assinatura_cancelada_plataforma', 'assinatura_reativada_plataforma')
               ORDER BY data DESC LIMIT 10"
         );
         $stmt->execute(['id_loja' => $idLoja]);
         $alteracoesStatus = $stmt->fetchAll();
+
+        // Resumo da assinatura; o controle completo fica em Assinaturas.
+        $assinatura = (new AssinaturaRepository())->estado($idLoja);
+        if ($assinatura !== null) {
+            $assinatura['nome_plano_contratado'] = AssinaturaRepository::PLANOS[$assinatura['plano_contratado']]['nome'];
+        }
         $stmtTimeline = db()->prepare(
             "SELECT (SELECT MIN(data_venda) FROM vendas
                       WHERE id_loja = :id_loja_vendas AND status <> 'cancelada') AS primeira_venda,
@@ -337,6 +353,7 @@ final class PlataformaRepository
             'administradores' => $admins,
             'filiais' => $filiais,
             'usuarios_por_cargo' => $usuariosPorCargo,
+            'assinatura' => $assinatura,
             'produtos_ativos' => $produtosAtivos,
             'vendas_30_dias' => [
                 'quantidade' => (int) $vendas30Dias['quantidade'],

@@ -392,6 +392,93 @@ final class Migracoes
         });
     }
 
+    /**
+     * Tela "Privacidade" (titular da conta): quem é o titular de cada loja,
+     * o plano contratado e os pagamentos da assinatura pelo Mercado Pago.
+     *
+     * "id_usuario_titular" fica SEM chave estrangeira de propósito: usuarios
+     * já aponta para lojas com ON DELETE CASCADE, e o ciclo lojas <-> usuarios
+     * faria o DELETE de uma loja abandonada (LojaRepository::remover) esbarrar
+     * no SET NULL da própria linha que está sendo apagada.
+     *
+     * O titular das lojas que já existiam é o primeiro usuário de cada uma:
+     * o Cadastro cria a loja e o Administrador na mesma transação, antes de
+     * qualquer funcionário (AuthController::criarConta).
+     */
+    public static function garantirAssinaturas(): void
+    {
+        self::garantir('assinaturas_v1', static function (): void {
+            foreach ([
+                'id_usuario_titular' => 'INT NULL',
+                'plano' => "ENUM('start','flex','premium') NOT NULL DEFAULT 'start'",
+                'plano_valido_ate' => 'DATETIME NULL',
+                'assinatura_cancelada_em' => 'DATETIME NULL',
+                'conta_encerrada_em' => 'DATETIME NULL',
+            ] as $coluna => $definicao) {
+                if (!self::colunaExiste('lojas', $coluna)) {
+                    db()->exec("ALTER TABLE lojas ADD COLUMN {$coluna} {$definicao}");
+                }
+            }
+            self::criarIndiceSeFaltar('lojas', 'idx_lojas_titular', 'id_usuario_titular');
+
+            db()->exec(
+                'UPDATE lojas l
+                   JOIN (SELECT id_loja, MIN(id_usuario) AS id_usuario
+                           FROM usuarios
+                          GROUP BY id_loja) primeiro ON primeiro.id_loja = l.id_loja
+                    SET l.id_usuario_titular = primeiro.id_usuario
+                  WHERE l.id_usuario_titular IS NULL'
+            );
+
+            db()->exec(
+                "CREATE TABLE IF NOT EXISTS assinatura_pagamentos (
+                    id_pagamento   CHAR(36) PRIMARY KEY,
+                    id_loja        INT NOT NULL,
+                    id_usuario     INT NULL,
+                    plano          ENUM('flex','premium') NOT NULL,
+                    valor          DECIMAL(10,2) NOT NULL,
+                    meses          TINYINT UNSIGNED NOT NULL,
+                    id_preferencia VARCHAR(80) NULL,
+                    id_mp          VARCHAR(40) NULL UNIQUE,
+                    status         ENUM('criando','pendente','aprovado','rejeitado','cancelado') NOT NULL DEFAULT 'criando',
+                    valido_de      DATETIME NULL,
+                    valido_ate     DATETIME NULL,
+                    criado_em      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    atualizado_em  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_assinatura_pag_loja_status (id_loja, status, criado_em),
+                    CONSTRAINT fk_assinatura_pag_loja
+                        FOREIGN KEY (id_loja) REFERENCES lojas(id_loja) ON DELETE CASCADE,
+                    CONSTRAINT fk_assinatura_pag_usuario
+                        FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            );
+        });
+
+        // Painel da plataforma (Assinaturas): a equipe Hydra também lança
+        // pagamentos recebidos fora do Mercado Pago (PIX direto, transferência,
+        // cortesia). id_admin = membro que lançou; sem FK, como a auditoria
+        // não depende de admins_plataforma já existir nesta ordem.
+        self::garantir('assinaturas_plataforma_v1', static function (): void {
+            foreach ([
+                'origem' => "ENUM('mercado_pago','manual') NOT NULL DEFAULT 'mercado_pago' AFTER meses",
+                'forma' => 'VARCHAR(20) NULL AFTER origem',
+                'pago_em' => 'DATETIME NULL AFTER status',
+                'observacao' => 'VARCHAR(255) NULL AFTER valido_ate',
+                'id_admin' => 'INT NULL AFTER observacao',
+            ] as $coluna => $definicao) {
+                if (!self::colunaExiste('assinatura_pagamentos', $coluna)) {
+                    db()->exec("ALTER TABLE assinatura_pagamentos ADD COLUMN {$coluna} {$definicao}");
+                }
+            }
+            db()->exec(
+                "UPDATE assinatura_pagamentos
+                    SET pago_em = COALESCE(valido_de, atualizado_em)
+                  WHERE status = 'aprovado' AND pago_em IS NULL"
+            );
+            self::criarIndiceSeFaltar('assinatura_pagamentos', 'idx_assinatura_pag_status_pago', 'status, pago_em');
+        });
+    }
+
     /** @internal usado por garantirCancelamentoDeVendas() */
     public static function aplicarCancelamentoDeVendas(): void
     {

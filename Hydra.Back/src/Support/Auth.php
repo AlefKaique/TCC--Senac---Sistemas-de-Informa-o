@@ -97,8 +97,9 @@ final class Auth
             ? (new CargoRepository())->permissoesDoCargo($_SESSION['id_cargo'])
             : [];
         // Sem isto, logar com outra conta no mesmo navegador (sem passar
-        // pelo "Sair") herdaria a filial escolhida pela conta anterior.
-        unset($_SESSION['id_filial']);
+        // pelo "Sair") herdaria a filial escolhida pela conta anterior. O
+        // "titular" é relido do banco por requireLogin() na primeira chamada.
+        unset($_SESSION['id_filial'], $_SESSION['titular']);
     }
 
     /** Inicia uma sessão exclusiva da plataforma, sem contexto de loja ou filial. */
@@ -118,6 +119,7 @@ final class Auth
             $_SESSION['email'],
             $_SESSION['id_cargo'],
             $_SESSION['permissoes'],
+            $_SESSION['titular'],
             $_SESSION['login_pendente'],
             $_SESSION['login_pendente_plataforma']
         );
@@ -248,7 +250,7 @@ final class Auth
         return isset($_SESSION['id_usuario']);
     }
 
-    /** @return array{id_usuario:int,id_loja:int,id_filial:?int,perfil:string,nome:string,email:string,id_cargo:?int,permissoes:string[]}|null */
+    /** @return array{id_usuario:int,id_loja:int,id_filial:?int,perfil:string,nome:string,email:string,id_cargo:?int,permissoes:string[],titular:bool}|null */
     public static function user(): ?array
     {
         if (!self::check()) {
@@ -263,7 +265,29 @@ final class Auth
             'email' => $_SESSION['email'],
             'id_cargo' => $_SESSION['id_cargo'] ?? null,
             'permissoes' => $_SESSION['permissoes'] ?? [],
+            // Quem cadastrou a loja (lojas.id_usuario_titular). Só ele vê a
+            // tela "Privacidade": assinatura e encerramento da conta.
+            'titular' => (bool) ($_SESSION['titular'] ?? false),
         ];
+    }
+
+    /**
+     * Encerra com 403 se o usuário logado não for o titular da conta — quem
+     * cadastrou a loja. Funcionários criados na tela Equipe nunca são
+     * titulares, nem com o cargo Administrador: cancelar a assinatura ou
+     * encerrar a conta é decisão de quem contratou o Hydra.
+     */
+    public static function requireTitular(): array
+    {
+        $user = self::requireLogin();
+        if (!$user['titular']) {
+            Response::json([
+                'erro' => 'Somente o titular da conta (quem cadastrou a loja) pode acessar esta área.',
+                'codigo' => 'nao_titular',
+            ], 403);
+            exit;
+        }
+        return $user;
     }
 
     /**
@@ -378,6 +402,10 @@ final class Auth
         // ser gravado, a sessão é reaberta só para isso.
         self::liberarSessao();
 
+        // A consulta abaixo lê lojas.id_usuario_titular: garante a coluna em
+        // bancos já em uso (no caso normal, só um file_exists).
+        Migracoes::garantirAssinaturas();
+
         // Usuário, permissões e acesso à filial da sessão numa consulta só
         // (ver UsuarioRepository::estadoDaSessao()).
         $idFilial = (int) ($_SESSION['id_filial'] ?? 0);
@@ -407,6 +435,7 @@ final class Auth
             'permissoes' => $idCargo !== null && $atual['permissoes'] !== null
                 ? explode(',', (string) $atual['permissoes'])
                 : [],
+            'titular' => (int) $atual['titular'] === 1,
         ];
         $mudou = false;
         foreach ($estado as $chave => $valor) {

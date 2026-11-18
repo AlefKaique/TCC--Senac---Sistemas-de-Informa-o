@@ -138,7 +138,6 @@ html[data-hydra-theme="dark"] .plataforma-first-access,
 html[data-hydra-theme="dark"] .terms__card,
 html[data-hydra-theme="dark"] .plan-card,
 html[data-hydra-theme="dark"] .feature-card,
-html[data-hydra-theme="dark"] .accordion__panel,
 html[data-hydra-theme="dark"] .hydro-font-panel,
 html[data-hydra-theme="dark"] .hydro-filial-modal,
 html[data-hydra-theme="dark"] .hydro-demo-card {
@@ -747,4 +746,197 @@ html[data-hydra-theme="dark"] .hydro-pwd-toggle:hover {
 html[data-hydra-theme="dark"] .hydro-avatar {
   --avatar-bg: var(--theme-raised);
   --avatar-fg: var(--theme-muted);
+}
+
+/* Plataforma → Assinaturas: selos de situação, avisos e janelas. */
+html[data-hydra-theme="dark"] .plataforma-badge.sit-ativa { background: #193d31; color: #82ddb2; }
+html[data-hydra-theme="dark"] .plataforma-badge.sit-vencendo { background: #40351f; color: #f1cc7d; }
+html[data-hydra-theme="dark"] .plataforma-badge.sit-atrasada { background: #442831; color: #ffabb4; }
+html[data-hydra-theme="dark"] .plataforma-badge.sit-cancelada { background: #45301f; color: #ffc49a; }
+html[data-hydra-theme="dark"] .plataforma-badge.sit-finalizada { background: #303746; color: #bbc5d4; }
+html[data-hydra-theme="dark"] .plataforma-badge.sit-gratuito { background: #223453; color: #a9c5ff; }
+html[data-hydra-theme="dark"] .plataforma-badge.sit-conta_encerrada { background: #2a2f3a; color: #c7ceda; }
+
+html[data-hydra-theme="dark"] .plataforma-alerta,
+html[data-hydra-theme="dark"] .plataforma-dialog [role="alert"]:not(:empty) {
+  border-color: #69404a;
+  background: #41252e;
+  color: #ffabb4;
+}
+
+html[data-hydra-theme="dark"] .plataforma-alerta-aviso,
+html[data-hydra-theme="dark"] .plataforma-previa.is-alerta {
+  border-color: #5c4a26;
+  background: #40351f;
+  color: #f1cc7d;
+}
+
+html[data-hydra-theme="dark"] .plataforma-alerta-info,
+html[data-hydra-theme="dark"] .plataforma-previa,
+html[data-hydra-theme="dark"] #plataforma-sucesso.is-info:not(:empty) {
+  border-color: #33466b;
+  background: #223453;
+  color: #a9c5ff;
+}
+
+html[data-hydra-theme="dark"] #plataforma-sucesso:not(:empty) {
+  background: #193d31;
+  color: #82ddb2;
+}
+
+html[data-hydra-theme="dark"] .plataforma-atraso {
+  color: #ffabb4;
+}
+
+html[data-hydra-theme="dark"] .plataforma-opcao {
+  border-color: var(--theme-border);
+}
+
+html[data-hydra-theme="dark"] .plataforma-opcao:has(input:checked) {
+  background: var(--theme-raised);
+}
+
+html[data-hydra-theme="dark"] .plataforma-chip .plataforma-chip-total {
+  background: var(--theme-raised);
+  color: var(--theme-text);
+}
+
+/* ============================================================
+   Página inicial (index.html, body.landing)
+   Os fundos azuis da página usam --navy-fill (e não --navy, que aqui vira
+   cor de texto); os tokens abaixo os mantêm escuros e o texto legível.
+   ============================================================ */
+html[data-hydra-theme="dark"] .landing {
+  --navy-fill: #26385f;
+  --navy-fill-dark: #172039;
+  --on-navy: #f4f6fb;
+  --on-navy-muted: #b8c3d6;
+  --surface: var(--theme-surface);
+  --surface-soft: var(--theme-input);
+  --orange-title: #f2994a;
+  --orange-ink: #f2994a;
+  --orange-soft: #3b2a1c;
+  --navy-soft: #253453;
+  --success: #6ee7a0;
+  --success-soft: #173a30;
+  --danger: #ff9b91;
+  --danger-soft: #41252e;
+  --danger-border: #69404a;
+  --shadow-card: 0 14px 36px rgba(0, 0, 0, .28);
+  --shadow-lift: 0 30px 70px rgba(0, 0, 0, .45);
+}
+
+html[data-hydra-theme="dark"] .hero {
+  background:
+    radial-gradient(520px 420px at 6% 8%, rgba(242, 153, 74, .12), transparent 70%),
+    radial-gradient(680px 560px at 94% 30%, rgba(94, 119, 203, .2), transparent 70%),
+    radial-gradient(520px 380px at 55% 105%, rgba(242, 153, 74, .06), transparent 70%);
+}
+
+/* Link ativo do menu: o azul fixo do tema claro (#1E3A8A) sumia no fundo
+   escuro. */
+html[data-hydra-theme="dark"] .nav__link--active {
+  color: #c3d1ff;
+}
+
+/* Botões em pílula também no escuro (a regra geral do tema os deixa com
+   cantos de 8px). O azul é um pouco mais escuro que o das telas internas
+   para o texto branco passar de 4,5:1. */
+html[data-hydra-theme="dark"] .landing .btn {
+  border-radius: 999px;
+}
+
+html[data-hydra-theme="dark"] .landing .btn--primary {
+  border-color: #6f86d8;
+  background-color: #4f68bd !important;
+  color: #fff !important;
+}
+
+html[data-hydra-theme="dark"] .landing .btn--primary:hover {
+  background-color: #4a62b6 !important;
+}
+
+/* Mockup do topo: cartões um tom acima do fundo da janela. */
+html[data-hydra-theme="dark"] .mockup__kpi,
+html[data-hydra-theme="dark"] .mockup__grafico {
+  background: var(--theme-raised);
+}
+
+html[data-hydra-theme="dark"] .mockup__coluna {
+  background: linear-gradient(180deg, #8ea3f0, #4f68bd);
+}
+
+html[data-hydra-theme="dark"] .mockup__dia.is-destaque .mockup__coluna {
+  background: linear-gradient(180deg, #f7b983, #f2994a);
+}
+
+html[data-hydra-theme="dark"] .hero__chip {
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .45);
+}
+
+/* Planos: a regra geral de cartões pinta todos com a mesma superfície; o
+   Flex continua em destaque (o degradê azul fica por cima da cor). */
+html[data-hydra-theme="dark"] .plan-card.plan-card--featured {
+  border-color: #4f68bd;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, .5);
+}
+
+html[data-hydra-theme="dark"] .plan-btn {
+  border-color: #8291a8;
+  background: transparent;
+  color: #dbe4f5;
+}
+
+html[data-hydra-theme="dark"] .plan-btn:hover,
+html[data-hydra-theme="dark"] .plan-btn:focus-visible {
+  border-color: #8195e4;
+  background: #4f68bd;
+  color: #fff;
+}
+
+html[data-hydra-theme="dark"] .plan-card--featured .plan-btn {
+  border-color: #f2994a;
+  background: #f2994a;
+  color: #131f4d;
+}
+
+html[data-hydra-theme="dark"] .plan-card--featured .plan-btn:hover,
+html[data-hydra-theme="dark"] .plan-card--featured .plan-btn:focus-visible {
+  border-color: #fff;
+  background: #fff;
+  color: #131f4d;
+}
+
+/* Formulário de contato. */
+html[data-hydra-theme="dark"] .campo input:not([type="checkbox"]):hover,
+html[data-hydra-theme="dark"] .campo select:hover,
+html[data-hydra-theme="dark"] .campo textarea:hover {
+  border-color: #55637a;
+}
+
+html[data-hydra-theme="dark"] .campo input:not([type="checkbox"]):focus,
+html[data-hydra-theme="dark"] .campo select:focus,
+html[data-hydra-theme="dark"] .campo textarea:focus {
+  box-shadow: 0 0 0 4px rgba(157, 180, 255, .22);
+}
+
+html[data-hydra-theme="dark"] .campo [aria-invalid="true"]:not([type="checkbox"]):focus {
+  box-shadow: 0 0 0 4px rgba(255, 155, 145, .2);
+}
+
+html[data-hydra-theme="dark"] .campo input::placeholder,
+html[data-hydra-theme="dark"] .campo textarea::placeholder {
+  color: #8f9bb0;
+}
+
+html[data-hydra-theme="dark"] .campo select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9b5c8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+html[data-hydra-theme="dark"] .campo--aceite input {
+  accent-color: #9db4ff;
+}
+
+html[data-hydra-theme="dark"] .campo__erro::before {
+  color: #2a1418;
 }

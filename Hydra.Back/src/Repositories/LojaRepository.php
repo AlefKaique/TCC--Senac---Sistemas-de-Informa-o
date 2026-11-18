@@ -73,6 +73,22 @@ final class LojaRepository
         return (bool) $stmt->fetchColumn();
     }
 
+    /** Grava o titular da conta (quem fez o Cadastro). Ver Migracoes::garantirAssinaturas(). */
+    public function definirTitular(int $idLoja, int $idUsuario): void
+    {
+        db()->prepare('UPDATE lojas SET id_usuario_titular = :id_usuario WHERE id_loja = :id_loja')
+            ->execute(['id_usuario' => $idUsuario, 'id_loja' => $idLoja]);
+    }
+
+    /** Id do titular da conta da loja, ou null se não houver registro. */
+    public function idTitular(int $idLoja): ?int
+    {
+        $stmt = db()->prepare('SELECT id_usuario_titular FROM lojas WHERE id_loja = :id_loja');
+        $stmt->execute(['id_loja' => $idLoja]);
+        $id = $stmt->fetchColumn();
+        return $id !== false && $id !== null ? (int) $id : null;
+    }
+
     /** Logo da loja como data URL (ou null para remover). Ver LojaController::update(). */
     public function atualizarLogo(int $idLoja, ?string $logo): void
     {

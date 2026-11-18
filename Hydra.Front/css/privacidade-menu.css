@@ -1,0 +1,24 @@
+/* ===================================================================
+   Item "Privacidade" da barra lateral (js/privacidade-menu.js), usado por
+   todas as telas internas. O link herda o visual de ".hydro-menu a" do CSS
+   de cada tela (cores, hover, item ativo, tema escuro); aqui fica só o que
+   é próprio dele.
+   =================================================================== */
+
+/* Algumas telas não carregam a regra global "[hidden] { display: none }". */
+.hydra-privacidade-item[hidden] {
+    display: none !important;
+}
+
+.hydra-privacidade-link {
+    text-decoration: none;
+}
+
+.hydra-privacidade-link svg {
+    flex: 0 0 18px;
+}
+
+.hydra-privacidade-link:focus-visible {
+    outline: 3px solid #5e81f4;
+    outline-offset: 2px;
+}

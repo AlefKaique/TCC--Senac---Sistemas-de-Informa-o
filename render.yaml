@@ -62,3 +62,10 @@ services:
         sync: false
       - key: APP_URL
         value: https://hydra.onrender.com
+      # Assinatura do Hydra (tela Privacidade): Access Token da conta
+      # Mercado Pago da propria Hydra. Sem ele, a tela mostra o contato do
+      # suporte no lugar do pagamento.
+      - key: MERCADOPAGO_ACCESS_TOKEN
+        sync: false
+      - key: MERCADOPAGO_ASSINATURA_WEBHOOK_URL
+        value: https://hydra.onrender.com/api/conta/assinatura/webhook

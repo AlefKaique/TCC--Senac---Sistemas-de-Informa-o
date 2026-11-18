@@ -4,6 +4,7 @@ namespace Hydra\Controllers;
 
 use Hydra\Repositories\CargoRepository;
 use Hydra\Repositories\FilialRepository;
+use Hydra\Repositories\LojaRepository;
 use Hydra\Repositories\UsuarioRepository;
 use Hydra\Support\Auth;
 use Hydra\Support\Migracoes;
@@ -197,6 +198,16 @@ final class UsuarioController
         $usuario = $this->usuarios->findInLoja($id, $admin['id_loja']);
         if ($usuario === null) {
             Response::json(['erro' => 'Usuário não encontrado'], 404);
+            return;
+        }
+        // O titular (quem cadastrou a loja) é o único que cancela a
+        // assinatura e encerra a conta. Se outro administrador pudesse trocar
+        // o e-mail dele aqui, bastaria um "Esqueci minha senha" para assumir
+        // a conta do titular e contornar essa regra.
+        if ($id !== $admin['id_usuario'] && $id === (new LojaRepository())->idTitular($admin['id_loja'])) {
+            Response::json([
+                'erro' => 'Os dados do titular da conta (quem cadastrou a loja) só podem ser alterados por ele mesmo.',
+            ], 403);
             return;
         }
 
