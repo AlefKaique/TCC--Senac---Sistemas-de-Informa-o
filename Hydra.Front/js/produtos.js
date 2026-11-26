@@ -208,16 +208,33 @@
 
     /* ================= Validação ================= */
     function clearErrors() {
-        form.querySelectorAll('.hydro-invalid').forEach((el) => el.classList.remove('hydro-invalid'));
+        form.querySelectorAll('.hydro-invalid').forEach((el) => {
+            el.classList.remove('hydro-invalid');
+            el.removeAttribute('aria-invalid');
+        });
         form.querySelectorAll('.hydro-field-error').forEach((el) => (el.textContent = ''));
     }
 
     function setError(inputId, message) {
         const input = document.getElementById(inputId);
         const errorEl = form.querySelector(`[data-error-for="${inputId}"]`);
-        if (input) input.classList.add('hydro-invalid');
+        if (input) {
+            input.classList.add('hydro-invalid');
+            input.setAttribute('aria-invalid', 'true');
+        }
         if (errorEl) errorEl.textContent = message;
     }
+
+    // O destaque vermelho de um campo some assim que ele é corrigido, sem
+    // esperar um novo "Salvar" — fica claro o que ainda falta preencher.
+    form.addEventListener('input', (event) => {
+        const campo = event.target;
+        if (!campo.classList || !campo.classList.contains('hydro-invalid')) return;
+        campo.classList.remove('hydro-invalid');
+        campo.removeAttribute('aria-invalid');
+        const errorEl = form.querySelector(`[data-error-for="${campo.id}"]`);
+        if (errorEl) errorEl.textContent = '';
+    });
 
     function validate(data) {
         clearErrors();
@@ -330,7 +347,12 @@
         e.preventDefault();
         const data = getFormData();
         if (!validate(data)) {
-            showToast('Verifique os campos destacados', true);
+            // Nem todo erro é campo vazio (ex.: código de barras com 5
+            // dígitos), por isso a mensagem não fala só em obrigatórios.
+            showToast('Corrija os campos destacados em vermelho', true);
+            // Leva o cursor ao primeiro campo com problema.
+            const primeiroInvalido = form.querySelector('.hydro-invalid');
+            if (primeiroInvalido) primeiroInvalido.focus();
             return;
         }
 

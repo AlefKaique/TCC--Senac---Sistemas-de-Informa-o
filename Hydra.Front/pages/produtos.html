@@ -106,17 +106,22 @@
                         <div class="hydro-card-heading">
                             <h2>Novo Produto</h2>
                             <p>Preencha as informações do produto para cadastrá-lo no sistema.</p>
+                            <!-- O asterisco é só visual (aria-hidden): leitores de tela já
+                                 anunciam "obrigatório" pelo atributo required de cada campo. -->
+                            <p class="hydro-required-legend">
+                                Campos marcados com <span class="hydro-required" aria-hidden="true">*</span> são obrigatórios.
+                            </p>
                         </div>
 
                         <div class="hydro-form-group">
-                            <label for="hydroProdName">Nome do produto</label>
+                            <label for="hydroProdName">Nome do produto <span class="hydro-required" aria-hidden="true">*</span></label>
                             <input type="text" id="hydroProdName" name="nome" placeholder="Ex.: Arroz Tipo 1 5kg" required>
                             <span class="hydro-field-error" data-error-for="hydroProdName"></span>
                         </div>
 
                         <div class="hydro-form-row">
                             <div class="hydro-form-group">
-                                <label for="hydroProdCategory">Categoria</label>
+                                <label for="hydroProdCategory">Categoria <span class="hydro-required" aria-hidden="true">*</span></label>
                                 <input type="text" id="hydroProdCategory" name="categoria" list="hydroCategoryList"
                                     placeholder="Ex.: Bebidas" maxlength="60" autocomplete="off" required>
                                 <datalist id="hydroCategoryList"></datalist>
@@ -129,7 +134,7 @@
 
                         <div class="hydro-form-row">
                             <div class="hydro-form-group">
-                                <label for="hydroProdCode">Código próprio de hortifrúti (opcional)</label>
+                                <label for="hydroProdCode">Código próprio de hortifrúti <span class="hydro-optional">(opcional)</span></label>
                                 <input type="number" id="hydroProdCode" name="codigo" min="500" max="599" step="1"
                                     inputmode="numeric" placeholder="500 a 599">
                                 <span class="hydro-field-hint">Faixa reservada para códigos criados pelo mercado.</span>
@@ -138,7 +143,7 @@
                         </div>
 
                         <div class="hydro-form-group">
-                            <label for="hydroProdBarcode">Código de barras (opcional)</label>
+                            <label for="hydroProdBarcode">Código de barras <span class="hydro-optional">(opcional)</span></label>
                             <div class="hydro-barcode-input-row">
                                 <input type="text" id="hydroProdBarcode" name="codigo_barras" inputmode="numeric"
                                     autocomplete="off" minlength="8" maxlength="14" pattern="[0-9]{8,14}"
@@ -147,20 +152,20 @@
                                     <i class="hydro-ic hydro-ic-camera" aria-hidden="true"></i> Ler com câmera
                                 </button>
                             </div>
-                            <span class="hydro-field-hint">O código é opcional. Se informado, use de 8 a 14 números.</span>
+                            <span class="hydro-field-hint">Se informado, use de 8 a 14 números.</span>
                             <span class="hydro-field-error" data-error-for="hydroProdBarcode"></span>
                         </div>
 
                         <div class="hydro-form-row">
                             <div class="hydro-form-group">
-                                <label for="hydroProdCostPrice">Preço de custo</label>
+                                <label for="hydroProdCostPrice">Preço de custo <span class="hydro-optional">(opcional)</span></label>
                                 <div class="hydro-input-prefix">
                                     <span>R$</span>
                                     <input type="number" id="hydroProdCostPrice" name="precoCusto" placeholder="0,00" min="0" step="0.01">
                                 </div>
                             </div>
                             <div class="hydro-form-group">
-                                <label for="hydroProdSalePrice">Preço de venda</label>
+                                <label for="hydroProdSalePrice">Preço de venda <span class="hydro-required" aria-hidden="true">*</span></label>
                                 <div class="hydro-input-prefix">
                                     <span>R$</span>
                                     <input type="number" id="hydroProdSalePrice" name="precoVenda" placeholder="0,00" min="0" step="0.01" required>
@@ -171,12 +176,12 @@
 
                         <div class="hydro-form-row">
                             <div class="hydro-form-group">
-                                <label for="hydroProdQty">Quantidade em estoque</label>
+                                <label for="hydroProdQty">Quantidade em estoque <span class="hydro-required" aria-hidden="true">*</span></label>
                                 <input type="number" id="hydroProdQty" name="quantidade" placeholder="0" min="0" step="1" required>
                                 <span class="hydro-field-error" data-error-for="hydroProdQty"></span>
                             </div>
                             <div class="hydro-form-group">
-                                <label for="hydroProdMinStock">Estoque mínimo</label>
+                                <label for="hydroProdMinStock">Estoque mínimo <span class="hydro-required" aria-hidden="true">*</span></label>
                                 <input type="number" id="hydroProdMinStock" name="estoqueMinimo" placeholder="0" min="0" step="1" required>
                                 <span class="hydro-field-hint">Abaixo disso o produto entra nos alertas de reposição. Use 0 para não alertar.</span>
                                 <span class="hydro-field-error" data-error-for="hydroProdMinStock"></span>
@@ -215,7 +220,7 @@
                                 </div>
                             </div>
                             <div class="hydro-form-group">
-                                <label for="hydroProdExpiry">Data de validade</label>
+                                <label for="hydroProdExpiry">Data de validade <span class="hydro-optional">(opcional)</span></label>
                                 <input type="date" id="hydroProdExpiry" name="validade">
                                 <span class="hydro-field-hint">Deixe em branco se o produto não vencer</span>
                                 <span class="hydro-field-error" data-error-for="hydroProdExpiry"></span>
@@ -224,9 +229,9 @@
 
                         <div class="hydro-form-row">
                             <div class="hydro-form-group">
-                                <label for="hydroProdLote">Lote</label>
+                                <label for="hydroProdLote">Lote <span class="hydro-optional">(opcional)</span></label>
                                 <input type="text" id="hydroProdLote" name="lote" maxlength="50" placeholder="Ex.: L2026-0042">
-                                <span class="hydro-field-hint">Opcional — identificação da remessa do fornecedor</span>
+                                <span class="hydro-field-hint">Identificação da remessa do fornecedor</span>
                             </div>
                         </div>
                     </section>

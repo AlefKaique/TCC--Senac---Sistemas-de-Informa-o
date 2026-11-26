@@ -527,6 +527,25 @@ body {
     color: var(--ink);
 }
 
+/* Campos obrigatórios x opcionais (tela Cadastro de Produto): asterisco
+   vermelho nos obrigatórios, "(opcional)" discreto nos demais e uma
+   legenda no topo do formulário explicando o asterisco. */
+.hydro-required {
+    color: var(--red);
+    font-weight: 700;
+    margin-left: 2px;
+}
+
+.hydro-optional {
+    font-weight: 500;
+    color: var(--muted, #6b7280);
+}
+
+.hydro-card-heading .hydro-required-legend {
+    margin-top: 6px;
+    font-size: 12.5px;
+}
+
 .hydro-form-group input,
 .hydro-form-group select {
     padding: 10px 12px;
