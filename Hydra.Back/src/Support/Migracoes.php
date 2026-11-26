@@ -107,6 +107,32 @@ final class Migracoes
         self::garantir('cancelamento_vendas_v1', [self::class, 'aplicarCancelamentoDeVendas']);
     }
 
+    /**
+     * Apaga os códigos de 6 dígitos gravados em TEXTO PURO antes de eles
+     * passarem a ser guardados como hash (Seguranca::hashCodigo, 64
+     * caracteres hexadecimais). A mudança só vale para códigos novos: um
+     * código antigo nunca usado ficava legível no banco para sempre, mesmo
+     * vencido. São temporários (15 min), então apagá-los não tira nada de
+     * ninguém — quem precisar pede um código novo.
+     */
+    public static function garantirCodigosComHash(): void
+    {
+        self::garantir('codigos_com_hash_v1', static function (): void {
+            db()->exec(
+                "UPDATE usuarios
+                    SET reset_token = NULL, reset_token_expira_em = NULL
+                  WHERE reset_token IS NOT NULL
+                    AND (CHAR_LENGTH(reset_token) <> 64 OR reset_token NOT REGEXP '^[0-9a-f]+$')"
+            );
+            db()->exec(
+                "UPDATE usuarios
+                    SET codigo_acesso = NULL, codigo_acesso_expira_em = NULL
+                  WHERE codigo_acesso IS NOT NULL
+                    AND (CHAR_LENGTH(codigo_acesso) <> 64 OR codigo_acesso NOT REGEXP '^[0-9a-f]+$')"
+            );
+        });
+    }
+
     /** Registra o custo na época da venda e cria índices para os relatórios. */
     public static function garantirRelatoriosReais(): void
     {

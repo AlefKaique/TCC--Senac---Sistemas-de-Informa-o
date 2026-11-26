@@ -407,6 +407,8 @@ final class Auth
         // A consulta abaixo lê lojas.id_usuario_titular: garante a coluna em
         // bancos já em uso (no caso normal, só um file_exists).
         Migracoes::garantirAssinaturas();
+        // Limpa os códigos de e-mail antigos em texto puro (uma vez por banco).
+        Migracoes::garantirCodigosComHash();
 
         // Usuário, permissões e acesso à filial da sessão numa consulta só
         // (ver UsuarioRepository::estadoDaSessao()).
