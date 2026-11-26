@@ -38,6 +38,11 @@ services:
         value: "-03:00"
       - key: BREVO_API_KEY
         sync: false
+      # 32 bytes em Base64: php -r "echo base64_encode(random_bytes(32)), PHP_EOL;"
+      # Protege os tokens Mercado Pago (AES-256-GCM) e os códigos de 6
+      # dígitos enviados por e-mail, que o banco guarda só como HMAC.
+      - key: HYDRA_ENCRYPTION_KEY
+        sync: false
       - key: MAIL_FROM
         sync: false
       - key: MAIL_FROM_NAME

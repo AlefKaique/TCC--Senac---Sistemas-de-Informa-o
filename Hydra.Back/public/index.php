@@ -66,6 +66,7 @@ use Hydra\Controllers\VendaController;
 use Hydra\Support\Auth;
 use Hydra\Support\Env;
 use Hydra\Support\Response;
+use Hydra\Support\Seguranca;
 
 // ----- CORS -----
 // CORS_ALLOWED_ORIGIN aceita uma lista separada por vírgula com as origens
@@ -94,6 +95,9 @@ if ($origin !== null) {
     // Origem desconhecida em produção: nenhum header CORS é enviado e o
     // próprio navegador bloqueia a leitura da resposta.
 }
+
+// Cabeçalhos de segurança (nosniff, anti-iframe, CSP, HSTS em HTTPS).
+Seguranca::enviarCabecalhosApi();
 
 header('Access-Control-Allow-Headers: Content-Type, X-Cron-Token, X-Hub-Signature-256');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');

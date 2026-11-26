@@ -2,6 +2,8 @@
 
 namespace Hydra\Repositories;
 
+use Hydra\Support\Seguranca;
+
 final class UsuarioRepository
 {
     public function emailExists(string $email): bool
@@ -210,12 +212,20 @@ final class UsuarioRepository
         return $stmt->fetchAll();
     }
 
+    /*
+     * Os códigos de 6 dígitos (reset_token e codigo_acesso) são gravados
+     * como hash (Seguranca::hashCodigo), nunca em texto puro: quem obtiver
+     * uma cópia do banco não consegue usar um código ainda válido para
+     * trocar a senha ou passar pelo segundo fator de outra pessoa. A
+     * conferência calcula o hash do código digitado e compara hash com hash.
+     */
+
     public function setResetToken(int $idUsuario, string $token, string $expiraEm): void
     {
         $stmt = db()->prepare(
             'UPDATE usuarios SET reset_token = :token, reset_token_expira_em = :expira WHERE id_usuario = :id'
         );
-        $stmt->execute(['token' => $token, 'expira' => $expiraEm, 'id' => $idUsuario]);
+        $stmt->execute(['token' => Seguranca::hashCodigo($token), 'expira' => $expiraEm, 'id' => $idUsuario]);
     }
 
     /** Valida o código de recuperação (RN05) exigindo também o e-mail, já que o código tem só 6 dígitos. */
@@ -224,7 +234,7 @@ final class UsuarioRepository
         $stmt = db()->prepare(
             'SELECT * FROM usuarios WHERE email = :email AND reset_token = :token AND reset_token_expira_em > NOW()'
         );
-        $stmt->execute(['email' => $email, 'token' => $code]);
+        $stmt->execute(['email' => $email, 'token' => Seguranca::hashCodigo($code)]);
         $row = $stmt->fetch();
         return $row ?: null;
     }
@@ -244,7 +254,7 @@ final class UsuarioRepository
         $stmt = db()->prepare(
             'UPDATE usuarios SET codigo_acesso = :codigo, codigo_acesso_expira_em = :expira WHERE id_usuario = :id'
         );
-        $stmt->execute(['codigo' => $codigo, 'expira' => $expiraEm, 'id' => $idUsuario]);
+        $stmt->execute(['codigo' => Seguranca::hashCodigo($codigo), 'expira' => $expiraEm, 'id' => $idUsuario]);
     }
 
     public function findByValidCodigoAcesso(int $idUsuario, string $codigo): ?array
@@ -253,7 +263,7 @@ final class UsuarioRepository
             'SELECT * FROM usuarios
              WHERE id_usuario = :id AND codigo_acesso = :codigo AND codigo_acesso_expira_em > NOW()'
         );
-        $stmt->execute(['id' => $idUsuario, 'codigo' => $codigo]);
+        $stmt->execute(['id' => $idUsuario, 'codigo' => Seguranca::hashCodigo($codigo)]);
         $row = $stmt->fetch();
         return $row ?: null;
     }

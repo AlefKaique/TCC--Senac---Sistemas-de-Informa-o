@@ -8,7 +8,29 @@ RewriteRule ^$ /pages/index.html [R=302,L]
 # em cache: um deploy novo chega a todos em no máximo uma hora. Imagens e
 # fontes mudam raramente e ficam 7 dias. HTML continua sem cache, para que
 # a tela sempre venha da versão publicada.
+# Cabeçalhos de segurança de todas as respostas (páginas, arquivos e API).
+# "setifempty" não sobrescreve o que o PHP já mandou: a API envia a própria
+# CSP, mais restrita (default-src 'none'), em Seguranca::enviarCabecalhosApi().
 <IfModule mod_headers.c>
+    # Impede o navegador de "adivinhar" o tipo de um arquivo e executá-lo.
+    Header setifempty X-Content-Type-Options "nosniff"
+    # Nenhum outro site pode abrir o Hydra dentro de um iframe (clickjacking).
+    # frame-ancestors, na CSP abaixo, faz o mesmo nos navegadores atuais.
+    Header setifempty X-Frame-Options "DENY"
+    # Links para fora não levam o caminho completo da página no Referer.
+    Header setifempty Referrer-Policy "strict-origin-when-cross-origin"
+    # Content Security Policy: segunda barreira contra XSS. Scripts só do
+    # próprio domínio (nenhum script inline, eval ou CDN); fontes do Google
+    # Fonts; fetch só para a própria API e para a BrasilAPI (consulta de
+    # CNPJ). Estilos inline continuam liberados porque o JS das telas ajusta
+    # element.style e a impressão A4 do caixa usa <style> na janela aberta.
+    # Imagens data:/blob: cobrem o QR Code do Pix e a prévia da logo.
+    Header setifempty Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://brasilapi.com.br; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    # HSTS: depois do primeiro acesso por HTTPS, o navegador recusa HTTP
+    # neste domínio por 1 ano. Só em HTTPS — no Render ele termina no proxy,
+    # por isso o X-Forwarded-Proto.
+    Header setifempty Strict-Transport-Security "max-age=31536000" "expr=%{HTTPS} == 'on' || %{HTTP:X-Forwarded-Proto} == 'https'"
+
     <FilesMatch "\.(css|js)$">
         Header set Cache-Control "public, max-age=3600"
     </FilesMatch>

@@ -43,9 +43,11 @@ final class Auth
                 // Fora do alcance de JavaScript, para que um XSS não consiga
                 // ler o identificador de sessão.
                 'httponly' => true,
-                // Só exige HTTPS quando a requisição já chegou por HTTPS, para
-                // não quebrar o desenvolvimento local em http://localhost.
-                'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+                // Cookie só trafega por HTTPS. Antes a flag dependia só de
+                // $_SERVER['HTTPS'], que fica vazio atrás do proxy do Render
+                // (o HTTPS termina nele): em produção o cookie saía SEM
+                // Secure. Ver Seguranca::cookieSeguro().
+                'secure' => Seguranca::cookieSeguro(),
                 'samesite' => 'Lax',
             ]);
             session_start();
