@@ -4,12 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hydra · Relatório</title>
+    <title>Hydra · Relatório de Vendas</title>
     <link rel="icon" type="image/png" href="../img/logo-hydra.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/relatorio-vendas.css?v=2026112601">
     <link rel="stylesheet" href="../css/menu-submenu.css?v=2026112606">
     <link rel="stylesheet" href="../css/public-demo.css">
     <link rel="stylesheet" href="../css/font-size.css">
@@ -80,7 +81,7 @@
             <!-- Main -->
             <main class="hydro-main">
                 <header class="hydro-topbar">
-                    <h1>Relatório</h1>
+                    <h1>Relatório de Vendas</h1>
                     <div class="hydro-topbar-actions">
                         <a class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroAlertasSettingsLink"
                             href="configuracoes-loja.html#alertas" hidden>Configurar alertas</a>
@@ -95,194 +96,118 @@
                     </div>
                 </header>
 
-                <!-- Filtro de período -->
-                <section class="hydro-card hydro-period-bar" aria-label="Filtro de período">
-                    <div class="hydro-period-title">
-                        <span>Período do relatório</span>
-                        <span class="hydro-info" tabindex="0" role="img" aria-label="Ajuda"
-                            data-tip="Escolha um período para ver as vendas, o lucro bruto, o ticket médio e os produtos mais vendidos somente nessas datas. Os alertas de estoque e de validade mostram sempre a situação atual, sem depender do período.">i</span>
-                    </div>
-                    <div class="hydro-period-presets" id="hydroPeriodPresets">
-                        <button type="button" class="hydro-period-preset" data-preset="hoje">Hoje</button>
-                        <button type="button" class="hydro-period-preset" data-preset="7">7 dias</button>
-                        <button type="button" class="hydro-period-preset" data-preset="30">30 dias</button>
-                        <button type="button" class="hydro-period-preset" data-preset="mes">Este mês</button>
-                        <button type="button" class="hydro-period-preset" data-preset="mes-passado">Mês passado</button>
-                    </div>
-                    <div class="hydro-period-range">
-                        <label for="hydroPeriodFrom">De</label>
-                        <input type="date" id="hydroPeriodFrom">
-                        <label for="hydroPeriodTo">Até</label>
-                        <input type="date" id="hydroPeriodTo">
-                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroPeriodClear"
-                            hidden>Limpar filtro</button>
-                    </div>
-                </section>
+                <div class="rv" id="rv">
 
-                <section class="hydro-card report-today" id="reportToday" data-report-section="today">
-                    <h2>Hoje</h2><p>Vendas de hoje e comparação com o mesmo dia da semana passada.</p>
-                    <div id="reportTodayContent"></div><p class="report-state" data-report-state>Carregando…</p>
-                </section>
-                <section class="report-kpis" id="reportKpis" data-report-section="summary">
-                    <p class="report-state" data-report-state>Carregando…</p>
-                    <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm report-export-summary" data-export="summary">Exportar resumo CSV</button>
-                    <div id="reportKpiContent"></div><div id="reportWarnings"></div>
-                </section>
-                <section class="hydro-card report-section" id="reportDaily" data-report-section="daily">
-                    <div class="report-section-heading"><div><h2>Como as vendas andaram?</h2><p>Faturamento diário e comparação com o período anterior.</p></div>
-                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="daily">Exportar CSV</button></div>
-                    <div class="report-chart" id="reportDailyChart"></div><p class="report-state" data-report-state>Carregando…</p>
-                </section>
-                <section class="report-two-columns">
-                    <section class="hydro-card report-section" id="reportPayments" data-report-section="payments">
-                        <div class="report-section-heading"><h2>Como meus clientes pagam?</h2>
-                            <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="payments">Exportar CSV</button></div>
-                        <div id="reportPaymentsContent"></div><p class="report-state" data-report-state>Carregando…</p>
-                    </section>
-                    <section class="hydro-card report-section" id="reportHours" data-report-section="hours">
-                        <div class="report-section-heading"><h2>Quando a loja enche?</h2>
-                            <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="hours">Exportar CSV</button></div>
-                        <p id="reportPeak"></p><div class="report-heatmap" id="reportHeatmap"></div>
-                        <p class="report-state" data-report-state>Carregando…</p>
-                    </section>
-                </section>
-                <section class="hydro-card report-section" id="reportProducts" data-report-section="products">
-                    <div class="report-section-heading"><div><h2>O que mais vende e o que dá lucro?</h2><p id="reportAbcSummary"></p></div>
-                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="products">Exportar CSV</button></div>
-                    <div class="report-tabs" role="tablist">
-                        <button type="button" class="hydro-period-preset hydro-active" data-product-tab="top_faturamento">Mais vendidos</button>
-                        <button type="button" class="hydro-period-preset" data-product-tab="top_lucro">Mais lucrativos</button>
-                        <button type="button" class="hydro-period-preset" data-product-tab="menor_margem">Margem baixa</button>
-                    </div><div id="reportProductsContent"></div><p class="report-state" data-report-state>Carregando…</p>
-                </section>
-                <section class="hydro-card report-section" id="reportRupture" data-report-section="rupture">
-                    <div class="report-section-heading"><div><h2>O que vai faltar?</h2><p>Estimativa baseada nas vendas dos últimos 30 dias.</p></div>
-                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="rupture">Exportar CSV</button>
-                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="reportPrintPurchase">Imprimir lista de compras</button></div>
-                    <div id="reportRuptureContent"></div><p class="report-state" data-report-state>Carregando…</p>
-                </section>
-                <section class="hydro-card report-section" id="reportStock" data-report-section="stock">
-                    <h2>Dinheiro parado no estoque</h2><div id="reportStockTotals"></div>
-                    <div class="report-section-heading"><h3>Sem venda nos últimos 30 dias</h3>
-                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="stagnant">Exportar CSV</button></div>
-                    <div id="reportStagnantContent"></div><p class="report-state" data-report-state>Carregando…</p>
-                </section>
-                <section class="hydro-card report-section" id="reportInventoryAlerts" data-report-section="inventory">
-                    <h2>Alertas atuais de estoque mínimo e validade</h2>
-                    <div id="reportInventoryContent"></div><p class="report-state" data-report-state>Carregando…</p>
-                    <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="reportPrintExpiry">Imprimir relatório de validade</button>
-                </section>
-                <section class="hydro-card report-section" id="reportCancellations" data-report-section="cancellations">
-                    <div class="report-section-heading"><div><h2>Cancelamentos</h2><div id="reportCancellationSummary"></div></div>
-                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="cancellations">Exportar CSV</button></div>
-                    <div class="report-two-columns"><div id="reportCancelByOperator"></div><div id="reportCancelByAuthorizer"></div></div>
-                    <h3>Últimos cancelamentos</h3><div id="reportCancellationTable"></div><p class="report-state" data-report-state>Carregando…</p>
-                </section>
-                <section class="hydro-card report-section" id="reportOperators" data-report-section="operators">
-                    <div class="report-section-heading"><h2>Desempenho da equipe</h2>
-                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" data-export="operators">Exportar CSV</button></div>
-                    <div id="reportOperatorsContent"></div><p class="report-state" data-report-state>Carregando…</p>
-                </section>
-
-                <!-- Relatórios antigos preservados apenas para compatibilidade visual; ocultos na página atual. -->
-                <section class="hydro-kpi-grid" id="hydroKpiGrid"></section>
-
-                <!-- Gráficos -->
-                <section class="hydro-charts-grid">
-
-                    <div class="hydro-card hydro-chart-card">
-                        <div class="hydro-chart-header">
-                            <h2>Produtos que mais faturaram
-                                <span class="hydro-info" tabindex="0" role="img" aria-label="Ajuda"
-                                    data-tip="Os 8 produtos que mais renderam em vendas, com a quantidade vendida de cada um. Sem filtro, considera os últimos 30 dias; com filtro, o período escolhido.">i</span>
-                            </h2>
-                            <span class="hydro-chart-period" id="hydroTopPeriod">Últimos 30 dias</span>
+                    <!-- ===== Filtro: período, detalhes, filial, imprimir e exportar ===== -->
+                    <section class="rv-card rv-filtro" aria-label="Escolha o que o relatório vai mostrar">
+                        <div class="rv-filtro-topo">
+                            <div class="rv-campo">
+                                <label for="rvFilial">Filial</label>
+                                <select id="rvFilial" disabled>
+                                    <option>Carregando…</option>
+                                </select>
+                            </div>
+                            <div class="rv-filtro-acoes">
+                                <button type="button" class="rv-btn rv-btn-contorno" id="rvImprimir">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V3h10v6M7 18H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v7H7z" /></svg>
+                                    Imprimir
+                                </button>
+                                <button type="button" class="rv-btn rv-btn-contorno" id="rvExportar">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v3h16v-3" /></svg>
+                                    Exportar Excel
+                                </button>
+                            </div>
                         </div>
-                        <div class="hydro-chart-body" id="hydroTopChart"></div>
-                    </div>
-                </section>
 
-                <!-- Alertas de estoque -->
-                <section class="hydro-card hydro-alerts-card">
-                    <div class="hydro-alerts-header">
-                        <h2>Alertas de estoque
-                            <span class="hydro-info" tabindex="0" role="img" aria-label="Ajuda"
-                                data-tip="Produtos que precisam de reposição agora. Esgotado: quantidade zero. Crítico: até 40% do estoque mínimo. Baixo: abaixo do mínimo. Atenção: no mínimo ou até 20% acima dele. A tabela mostra os 6 piores; a lista de compras impressa traz todos os status marcados.">i</span>
-                        </h2>
-                        <div class="hydro-print-tools">
-                        <fieldset class="hydro-print-filter" id="hydroPrintFilter">
-                            <legend>Incluir na lista:</legend>
-                            <label><input type="checkbox" value="empty" checked> Esgotado</label>
-                            <label><input type="checkbox" value="critical" checked> Crítico</label>
-                            <label><input type="checkbox" value="low" checked> Baixo</label>
-                            <label><input type="checkbox" value="warning" checked> Atenção</label>
+                        <fieldset class="rv-passo">
+                            <legend><span class="rv-passo-numero" aria-hidden="true">1</span> Passo 1 — Período</legend>
+                            <p class="rv-passo-ajuda">Escolha de quando você quer ver as vendas.</p>
+                            <div class="rv-periodos">
+                                <button type="button" class="rv-periodo" data-periodo="hoje" aria-pressed="false">Hoje</button>
+                                <button type="button" class="rv-periodo" data-periodo="ontem" aria-pressed="false">Ontem</button>
+                                <button type="button" class="rv-periodo" data-periodo="7dias" aria-pressed="true">Últimos 7 dias</button>
+                                <button type="button" class="rv-periodo" data-periodo="mes" aria-pressed="false">Este mês</button>
+                                <button type="button" class="rv-periodo" data-periodo="mes-passado" aria-pressed="false">Mês passado</button>
+                                <button type="button" class="rv-periodo" data-periodo="escolher" aria-pressed="false"
+                                    aria-expanded="false" aria-controls="rvDatas">Escolher datas…</button>
+                            </div>
+                            <div class="rv-datas" id="rvDatas" hidden>
+                                <div class="rv-campo">
+                                    <label for="rvDataInicio">Do dia</label>
+                                    <input type="date" id="rvDataInicio">
+                                </div>
+                                <div class="rv-campo">
+                                    <label for="rvDataFim">Até o dia</label>
+                                    <input type="date" id="rvDataFim">
+                                </div>
+                                <button type="button" class="rv-btn rv-btn-cheio" id="rvAplicarDatas">Ver essas datas</button>
+                                <p class="rv-passo-ajuda rv-datas-ajuda" id="rvDatasAjuda">Você pode escolher até 90 dias de uma vez.</p>
+                            </div>
                         </fieldset>
-                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroPrintPurchase"
-                            title="Imprimir a lista de compras com os produtos dos status marcados">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                <path d="M7 9V3h10v6M7 18H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v7H7z"
-                                    stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-                            </svg>
-                            Imprimir lista de compras
-                        </button>
-                        </div>
-                    </div>
-                    <div class="hydro-table-scroll">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Produto</th>
-                                    <th>Estoque Atual</th>
-                                    <th>Estoque Mínimo</th>
-                                    <th>Status</th>
-                                    <th class="hydro-col-actions">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody id="hydroAlertsBody"></tbody>
-                        </table>
-                    </div>
-                    <p class="hydro-alerts-empty" id="hydroAlertsEmpty" hidden>Nenhum alerta no momento — todos os produtos estão com estoque saudável.</p>
-                </section>
 
-                <!-- Alertas de validade -->
-                <section class="hydro-card hydro-alerts-card">
-                    <div class="hydro-alerts-header">
-                        <h2>Produtos vencidos ou a vencer
-                            <span class="hydro-info" tabindex="0" role="img" aria-label="Ajuda"
-                                data-tip="Produtos já vencidos ou com validade nos próximos 30 dias. Vencidos devem ser retirados da venda. A tabela mostra 6; o relatório impresso traz todos os status marcados.">i</span>
-                        </h2>
-                        <div class="hydro-print-tools">
-                        <fieldset class="hydro-print-filter" id="hydroPrintExpiryFilter">
-                            <legend>Incluir no relatório:</legend>
-                            <label><input type="checkbox" value="expired" checked> Vencido</label>
-                            <label><input type="checkbox" value="warning" checked> Vence em breve</label>
+                        <fieldset class="rv-passo">
+                            <legend><span class="rv-passo-numero" aria-hidden="true">2</span> Passo 2 — O que você quer ver na tela</legend>
+                            <p class="rv-passo-ajuda">Toque para ligar ou desligar cada parte. A tela lembra a sua escolha na próxima vez.</p>
+                            <div class="rv-chips" id="rvChips">
+                                <label class="rv-chip"><input type="checkbox" value="mais_vendidos"><span>Produtos que mais venderam</span></label>
+                                <label class="rv-chip"><input type="checkbox" value="dia_a_dia"><span>Dia a dia (campeão de cada data)</span></label>
+                                <label class="rv-chip"><input type="checkbox" value="horarios"><span>Horário de movimento</span></label>
+                                <label class="rv-chip"><input type="checkbox" value="pagamentos"><span>Formas de pagamento</span></label>
+                                <label class="rv-chip"><input type="checkbox" value="parados"><span>Produtos que pararam de vender</span></label>
+                                <label class="rv-chip"><input type="checkbox" value="vai_acabar"><span>Vai acabar logo</span></label>
+                                <label class="rv-chip" id="rvChipOperadores"><input type="checkbox" value="operadores"><span>Vendas por operador</span></label>
+                            </div>
+                            <div class="rv-atalhos">
+                                <button type="button" class="rv-btn rv-btn-contorno" id="rvMarcarTudo">Marcar tudo</button>
+                                <button type="button" class="rv-btn rv-btn-contorno" id="rvSoEssencial">Só o essencial</button>
+                            </div>
                         </fieldset>
-                        <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroPrintExpiry"
-                            title="Imprimir o relatório com os produtos vencidos ou a vencer dos status marcados">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                <path d="M7 9V3h10v6M7 18H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v7H7z"
-                                    stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-                            </svg>
-                            Imprimir relatório de validade
-                        </button>
+                    </section>
+
+                    <p class="rv-confirmacao" id="rvConfirmacao" aria-live="polite"></p>
+                    <div class="rv-situacao" id="rvSituacao" role="status" aria-live="polite"></div>
+
+                    <!-- ===== Resumo fixo (sempre visível) ===== -->
+                    <section class="rv-resumo" id="rvResumo" aria-labelledby="rvResumoTitulo">
+                        <h2 class="rv-titulo-secao" id="rvResumoTitulo">Resumo do período</h2>
+                        <p class="rv-comparando" id="rvComparando"></p>
+                        <div class="rv-cartoes" id="rvCartoes"></div>
+                        <p class="rv-aviso" id="rvAvisoCusto" hidden></p>
+                    </section>
+
+                    <section class="rv-card rv-bloco" id="rvComparacao" aria-labelledby="rvComparacaoTitulo" hidden>
+                        <h2 id="rvComparacaoTitulo">Comparação entre filiais</h2>
+                        <p class="rv-bloco-ajuda">Quanto cada filial vendeu no mesmo período.</p>
+                        <div id="rvComparacaoConteudo"></div>
+                    </section>
+
+                    <!-- ===== Blocos escolhidos no Passo 2 (montados pelo js/relatorio-vendas.js) ===== -->
+                    <div class="rv-blocos" id="rvBlocos"></div>
+
+                    <div class="rv-card rv-nenhum" id="rvNenhumBloco" hidden>
+                        <h2>Nenhum detalhe marcado</h2>
+                        <p>O resumo lá em cima continua aparecendo. Para ver mais informações aqui embaixo, vá ao
+                            <strong>Passo 2</strong> e toque em um dos botões, por exemplo
+                            <strong>“Produtos que mais venderam”</strong>, ou toque em <strong>“Só o essencial”</strong>.</p>
+                    </div>
+
+                    <section class="rv-card rv-bloco" id="rvCancelamentos" aria-labelledby="rvCancelamentosTitulo" hidden>
+                        <h2 id="rvCancelamentosTitulo">Vendas canceladas</h2>
+                        <p class="rv-bloco-ajuda">Vendas canceladas no período, com quem vendeu e quem autorizou o cancelamento.</p>
+                        <div id="rvCancelamentosConteudo"></div>
+                    </section>
+
+                    <!-- ===== Ferramentas mantidas da tela anterior ===== -->
+                    <section class="rv-card rv-ferramentas" aria-labelledby="rvFerramentasTitulo">
+                        <h2 id="rvFerramentasTitulo">Impressões e cancelamentos</h2>
+                        <p class="rv-bloco-ajuda">A lista de compras e o relatório de validade mostram a situação de agora, sem depender do período. Os cancelamentos seguem o período escolhido no Passo 1.</p>
+                        <div class="rv-ferramentas-botoes">
+                            <button type="button" class="rv-btn rv-btn-contorno" id="rvImprimirCompras">Imprimir lista de compras</button>
+                            <button type="button" class="rv-btn rv-btn-contorno" id="rvImprimirValidade">Imprimir relatório de validade</button>
+                            <button type="button" class="rv-btn rv-btn-contorno" id="rvVerCancelamentos" hidden aria-controls="rvCancelamentos">Ver vendas canceladas</button>
                         </div>
-                    </div>
-                    <div class="hydro-table-scroll">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Produto</th>
-                                    <th>Quantidade</th>
-                                    <th>Validade</th>
-                                    <th>Status</th>
-                                    <th class="hydro-col-actions">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody id="hydroExpiryBody"></tbody>
-                        </table>
-                    </div>
-                    <p class="hydro-alerts-empty" id="hydroExpiryEmpty" hidden>Nenhum produto vencido ou próximo do vencimento no momento.</p>
-                </section>
+                    </section>
+                </div>
             </main>
         </div>
 
@@ -295,7 +220,6 @@
         <button id="font-minus" data-font-action="decrease">A−</button>
     </div>
 
-    <script src="../js/hydro-store.js"></script>
     <script src="../js/api.js?v=2026112604"></script>
     <script src="../js/menu-submenu.js?v=2026112605"></script>
     <script src="../js/notificacoes.js?v=20261126"></script>
@@ -303,7 +227,7 @@
     <script src="../js/privacidade-menu.js"></script>
     <script src="../js/public-demo.js"></script>
     <script src="../js/font-size.js"></script>
-    <script src="../js/relatorios-dashboard.js"></script>
+    <script src="../js/relatorio-vendas.js?v=2026112601"></script>
 </body>
 
 </html>

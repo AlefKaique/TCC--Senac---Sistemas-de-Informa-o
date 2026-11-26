@@ -83,6 +83,9 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | GET    | `/api/relatorios/estoque`             | `relatorios.visualizar` | Valoração atual, risco de ruptura, estoque sem giro e alertas de validade/mínimo |
 | GET    | `/api/relatorios/cancelamentos`       | `relatorios.visualizar` | Cancelamentos do período, responsáveis e motivos |
 | GET    | `/api/relatorios/operadores`          | `relatorios.visualizar` | Vendas, faturamento, ticket médio e cancelamentos por operador |
+| GET    | `/api/relatorios/vendas`              | `relatorios.visualizar` (operadores, cancelamentos e lucro: Gerente/ADM) | Tela Relatório de Vendas: resumo, período anterior e só os blocos pedidos (ver abaixo) |
+| GET    | `/api/relatorios/preferencias`        | `relatorios.visualizar` | Blocos salvos do usuário, o que o cargo pode ver e as filiais do seletor |
+| PUT    | `/api/relatorios/preferencias`        | `relatorios.visualizar` | Salva os blocos marcados: `{"blocos": ["mais_vendidos", "dia_a_dia"]}` |
 | GET    | `/api/alertas/preferencias`           | `loja.configurar` | Preferências de alertas e os últimos 10 envios do administrador |
 | PUT    | `/api/alertas/preferencias`           | `loja.configurar` | Salva canais e tipos de alerta |
 | POST   | `/api/alertas/destinatarios`          | `loja.configurar` | Adiciona o celular pessoal do administrador, com consentimento explícito |
@@ -119,7 +122,39 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | GET    | `/api/catalogo-hortifruti`           | pública | Lista o catálogo padrão de códigos hortifrúti |
 | POST   | `/api/catalogo-hortifruti/importar`  | `produtos.importar_catalogo` | Importa para a filial ativa sem sobrescrever códigos existentes |
 
-As rotas `/api/relatorios/*` aceitam `?de=AAAA-MM-DD&ate=AAAA-MM-DD`; sem
+### Relatório de Vendas (`GET /api/relatorios/vendas`)
+
+É a rota da tela Relatório (`pages/dashboard.html` + `js/relatorio-vendas.js`).
+Parâmetros:
+
+| Parâmetro | Obrigatório | Valores |
+|---|---|---|
+| `data_inicio`, `data_fim` | sim | `AAAA-MM-DD`, no máximo 90 dias |
+| `id_filial` | não | número da filial ou `todas` (só ADM). Padrão: `todas` para ADM, a filial da sessão para os demais |
+| `blocos` | não | separados por vírgula: `mais_vendidos`, `dia_a_dia`, `horarios`, `pagamentos`, `parados`, `vai_acabar`, `operadores`, e os botões da seção de impressões: `cancelamentos`, `lista_compras`, `validade` |
+| `resumo` | não | `0` para não calcular os cartões (usado ao paginar e ao imprimir) |
+| `produtos_pagina` | não | `0` = os 5 primeiros; `1`, `2`… = lista completa, 20 por página |
+
+Só as consultas dos blocos pedidos são executadas. A resposta traz
+`periodo`, `periodo_anterior` (com o texto da comparação, como "na semana
+anterior"), `filial`, `acesso`, `resumo`, `resumo_anterior`,
+`comparacao_filiais` (ADM com `todas`) e uma chave por bloco pedido.
+
+Quem vê o quê, conferido no back-end:
+
+- **ADM** (cargo com "Equipe e Cargos" ou "Configuração da Loja"): todas as
+  filiais ativas, a comparação entre elas, operadores, cancelamentos e lucro.
+- **Gerente** (cargo com a permissão "Relatório Completo",
+  `relatorios.completo`): só a filial da sessão, com operadores,
+  cancelamentos e lucro.
+- **Funcionário** (só "Relatórios"): só a filial da sessão; pedir
+  `operadores` ou `cancelamentos` responde 403 e o resumo vem sem lucro.
+
+Para ter um Gerente, crie um cargo na tela Cargos com "Relatórios" e
+"Relatório Completo" marcados. Tabela das preferências e índices:
+`sql/migracao_relatorio_vendas.sql` (o back-end também cria sozinho).
+
+As demais rotas `/api/relatorios/*` aceitam `?de=AAAA-MM-DD&ate=AAAA-MM-DD`; sem
 datas, usam os últimos 30 dias. O limite é 366 dias e todas as consultas usam
 a filial ativa da sessão. O validador local das agregações pode ser executado
 somente com `APP_ENV=local` e banco em `localhost`/loopback; ele exige

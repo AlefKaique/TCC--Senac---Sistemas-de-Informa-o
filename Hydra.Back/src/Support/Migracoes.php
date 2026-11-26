@@ -186,6 +186,31 @@ final class Migracoes
     }
 
     /**
+     * Relatório de Vendas: a tabela das preferências (blocos que cada
+     * usuário deixa marcados) e os índices de data e filial das consultas.
+     * Os índices vêm de garantirRelatoriosReais(): vendas
+     * (id_filial, status, data_venda) e (id_filial, status,
+     * data_cancelamento), itens_venda (id_venda, id_produto), pagamentos
+     * (id_venda) e produtos (id_filial, status). Mesmo conteúdo de
+     * sql/migracao_relatorio_vendas.sql.
+     */
+    public static function garantirRelatorioVendas(): void
+    {
+        self::garantirRelatoriosReais();
+        self::garantir('relatorio_preferencia_v1', static function (): void {
+            db()->exec(
+                'CREATE TABLE IF NOT EXISTS relatorio_preferencia (
+                    id_usuario     INT PRIMARY KEY,
+                    blocos         JSON NOT NULL,
+                    atualizado_em  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
+                        ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+            );
+        });
+    }
+
+    /**
      * CREATE INDEX só se o índice ainda não existir. Para uso dentro de uma
      * migração (Migracoes::garantir), que já roda uma única vez por banco.
      * Nomes e colunas são constantes do código, nunca entrada do usuário.

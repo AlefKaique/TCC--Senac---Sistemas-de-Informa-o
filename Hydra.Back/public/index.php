@@ -62,6 +62,7 @@ use Hydra\Controllers\PixController;
 use Hydra\Controllers\ProdutoController;
 use Hydra\Controllers\PromocaoController;
 use Hydra\Controllers\RelatorioController;
+use Hydra\Controllers\RelatorioVendasController;
 use Hydra\Controllers\UsuarioController;
 use Hydra\Controllers\VendaController;
 use Hydra\Support\Auth;
@@ -210,6 +211,10 @@ $routes = [
     ['GET', '#^/api/relatorios/estoque$#', fn () => (new RelatorioController())->estoque()],
     ['GET', '#^/api/relatorios/cancelamentos$#', fn () => (new RelatorioController())->cancelamentos()],
     ['GET', '#^/api/relatorios/operadores$#', fn () => (new RelatorioController())->operadores()],
+    // Tela Relatório de Vendas (pages/dashboard.html).
+    ['GET', '#^/api/relatorios/vendas$#', fn () => (new RelatorioVendasController())->vendas()],
+    ['GET', '#^/api/relatorios/preferencias$#', fn () => (new RelatorioVendasController())->preferencias()],
+    ['PUT', '#^/api/relatorios/preferencias$#', fn () => (new RelatorioVendasController())->salvarPreferencias()],
 
     ['GET', '#^/api/alertas/preferencias$#', fn () => (new AlertaController())->preferencias()],
     ['PUT', '#^/api/alertas/preferencias$#', fn () => (new AlertaController())->salvarPreferencias()],
