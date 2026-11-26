@@ -822,70 +822,6 @@
         });
     }
 
-    /* ---- Entrada / Saída modal (global) ---- */
-    function openMovementModal(type) {
-        const isEntrada = type === 'entrada';
-        const options = products
-            .filter((p) => p.status !== 'inativo')
-            .map((p) => `<option value="${p.id}">${escapeHtml(p.name)} (${formatQuantity(p.quantity, p.unit)})</option>`)
-            .join('');
-
-        openModal({
-            title: isEntrada ? 'Entrada de estoque' : 'Saída de estoque',
-            bodyHtml: `
-        <div class="hydro-form-group">
-          <label for="hydroMoveProduct">Produto</label>
-          <select id="hydroMoveProduct">${options}</select>
-        </div>
-        <div class="hydro-form-group">
-          <label for="hydroMoveQty">Quantidade</label>
-          <input type="number" id="hydroMoveQty" min="1" value="10">
-        </div>
-      `,
-            footerHtml: `
-        <button class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroModalCancelBtn">Cancelar</button>
-        <button class="hydro-btn ${isEntrada ? 'hydro-btn-primary' : 'hydro-btn-danger'} hydro-btn-sm" id="hydroModalConfirmBtn">Confirmar ${isEntrada ? 'entrada' : 'saída'}</button>
-      `,
-        });
-
-        document.getElementById('hydroModalCancelBtn').addEventListener('click', closeModal);
-        document.getElementById('hydroModalConfirmBtn').addEventListener('click', async () => {
-            const productId = Number(document.getElementById('hydroMoveProduct').value);
-            const qty = Math.max(1, Number(document.getElementById('hydroMoveQty').value) || 0);
-            const p = products.find((x) => x.id === productId);
-            if (!p) return;
-
-            if (!isEntrada && qty > p.quantity) {
-                showToast('Quantidade maior que o estoque disponível');
-                return;
-            }
-
-            if (usingRealApi) {
-                const confirmBtn = document.getElementById('hydroModalConfirmBtn');
-                confirmBtn.disabled = true;
-                try {
-                    const { produto } = await window.hydraApi('/estoque/movimentacoes', {
-                        method: 'POST',
-                        body: { id_produto: p.id, tipo: isEntrada ? 'entrada' : 'saida', quantidade: qty },
-                    });
-                    Object.assign(p, mapApiProduct(produto));
-                } catch (err) {
-                    showToast(err.message);
-                    confirmBtn.disabled = false;
-                    return;
-                }
-            } else if (isEntrada) {
-                p.quantity += qty;
-            } else {
-                p.quantity -= qty;
-            }
-
-            closeModal();
-            refreshAll();
-            showToast(isEntrada ? `Entrada registrada para "${p.name}"` : `Saída registrada para "${p.name}"`);
-        });
-    }
-
     /* ================= Toast ================= */
     let toastTimer = null;
     function showToast(message) {
@@ -938,8 +874,6 @@
     });
 
     document.getElementById('hydroBtnNovoProduto').addEventListener('click', () => { window.location.href = 'produtos.html'; });
-    document.getElementById('hydroBtnEntrada').addEventListener('click', () => openMovementModal('entrada'));
-    document.getElementById('hydroBtnSaida').addEventListener('click', () => openMovementModal('saida'));
 
     /* ================= Sidebar nav (cosmético, demo de página única) ================= */
     document.querySelectorAll('.hydro-menu a[data-view]').forEach((link) => {
@@ -1059,10 +993,9 @@
        tela de leitura, sem cadastrar produto nem lançar movimentação. */
     function aplicarBotoesPorPermissao() {
         const podeCadastrar = usuarioPermissoes.includes('produtos.gerenciar');
-        const podeLancar = usuarioPermissoes.includes('estoque.lancar');
+        // Entrada e saída de estoque ficam na barra lateral, abaixo de "Estoque"
+        // (telas entrada-estoque.html e saida-estoque.html).
         document.getElementById('hydroBtnNovoProduto').hidden = !podeCadastrar;
-        document.getElementById('hydroBtnEntrada').hidden = !podeLancar;
-        document.getElementById('hydroBtnSaida').hidden = !podeLancar;
     }
 
     /* ================= Mobile sidebar ================= */

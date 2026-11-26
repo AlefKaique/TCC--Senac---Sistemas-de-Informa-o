@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="../css/gerenciar-usuarios.css">
     <link rel="stylesheet" href="../css/configuracoes-loja.css?v=20261126">
     <link rel="stylesheet" href="../css/privacidade-conta.css">
-    <link rel="stylesheet" href="../css/menu-submenu.css">
+    <link rel="stylesheet" href="../css/menu-submenu.css?v=2026112605">
     <link rel="stylesheet" href="../css/public-demo.css">
     <link rel="stylesheet" href="../css/font-size.css">
     <link rel="stylesheet" href="../css/avatar.css">
@@ -43,8 +43,13 @@
                 <nav class="hydro-menu">
                     <p class="hydro-menu-label">Menu</p>
                     <ul>
-                        <li><a href="#" data-view="estoque"><i
-                                    class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
+                        <li>
+                            <a href="#" data-view="estoque"><i class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span><i class="hydro-submenu-seta" aria-hidden="true"></i></a>
+                            <ul class="hydro-submenu-itens" id="hydroSubmenuEstoque" aria-label="Movimentar estoque" data-hydro-recolhivel hidden>
+                                <li id="hydroLiEntradaEstoque"><a href="entrada-estoque.html">Entrada de estoque</a></li>
+                                <li id="hydroLiSaidaEstoque"><a href="saida-estoque.html">Saída de estoque</a></li>
+                            </ul>
+                        </li>
                         <li><a href="#" data-view="caixa"><i class="hydro-ic hydro-ic-drawer"></i><span>Vendas</span></a>
                         </li>
                         <li><a href="#" data-view="dashboard"><i
@@ -58,13 +63,13 @@
                         <li id="hydroLiEquipe"><a href="gerenciar-usuarios.html"><i
                                     class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
                         <li id="hydroLiConfig">
-                            <details class="hydro-submenu">
-                                <summary><i class="hydro-ic hydro-ic-gear"></i><span>Configurações</span><i class="hydro-submenu-seta" aria-hidden="true"></i></summary>
-                                <ul class="hydro-submenu-itens">
+                            <div class="hydro-submenu">
+                                <button type="button" class="hydro-submenu-toggle" aria-expanded="false" aria-controls="hydroSubmenuConfig" data-demo-allow><i class="hydro-ic hydro-ic-gear"></i><span>Configurações</span><i class="hydro-submenu-seta" aria-hidden="true"></i></button>
+                                <ul class="hydro-submenu-itens" id="hydroSubmenuConfig" hidden>
                                     <li><a href="configuracoes-loja.html">Dados da loja</a></li>
                                     <li><a href="filiais.html">Filiais</a></li>
                                 </ul>
-                            </details>
+                            </div>
                         </li>
                         <li id="hydroLiCargos"><a href="cargos.html"><i
                                     class="hydro-ic hydro-ic-shield"></i><span>Cargos</span></a></li>
@@ -274,7 +279,10 @@
         <button id="font-minus" data-font-action="decrease">A−</button>
     </div>
 
-    <script src="../js/api.js"></script>
+    <script src="../js/api.js?v=2026112603"></script>
+    <script src="../js/menu-submenu.js?v=2026112604"></script>
+
+    <script src="../js/notificacoes.js?v=20261126"></script>
     <script src="../js/trocar-filial.js?v=20261126"></script>
     <script src="../js/privacidade-menu.js"></script>
     <script src="../js/public-demo.js"></script>

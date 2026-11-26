@@ -97,7 +97,7 @@ function hydraMenuLateral() {
   toggle.setAttribute('aria-expanded', 'false');
   toggle.addEventListener('click', () => definir(!sidebar.classList.contains('hydro-open')));
   if (overlay) overlay.addEventListener('click', () => definir(false));
-  // Ao escolher uma tela no menu, ele fecha (os submenus usam <summary>, não <a>).
+  // Ao escolher uma tela no menu, ele fecha (o título dos submenus é um <button>, não <a>).
   sidebar.addEventListener('click', (event) => {
     if (event.target.closest('a[href]')) definir(false);
   });
@@ -285,6 +285,9 @@ const HYDRA_TELAS = [
   { pagina: 'controle-estoque.html', view: 'estoque', permissoes: ['estoque.consultar'] },
   { pagina: 'caixa.html', view: 'caixa', permissoes: ['vendas.operar', 'vendas.historico'] },
   { pagina: 'dashboard.html', view: 'dashboard', permissoes: ['relatorios.visualizar'] },
+  // "Entrada de estoque" e "Saída de estoque", logo abaixo de Estoque (bloco "Menu", não "Admin").
+  { pagina: 'entrada-estoque.html', li: 'hydroLiEntradaEstoque', menu: true, permissoes: ['estoque.lancar'] },
+  { pagina: 'saida-estoque.html', li: 'hydroLiSaidaEstoque', menu: true, permissoes: ['estoque.lancar'] },
   { pagina: 'gerenciar-usuarios.html', li: 'hydroLiEquipe', permissoes: ['equipe.gerenciar'] },
   { pagina: 'configuracoes-loja.html', li: 'hydroLiConfig', permissoes: ['loja.configurar'] },
   { pagina: 'cargos.html', li: 'hydroLiCargos', permissoes: ['equipe.gerenciar'] },
@@ -336,7 +339,7 @@ window.hydraAplicarMenuPorPermissao = function hydraAplicarMenuPorPermissao(usua
 
     const pode = window.hydraPode(usuario, tela.permissoes);
     el.style.display = pode ? '' : 'none';
-    if (pode && tela.li) algumAdminVisivel = true;
+    if (pode && tela.li && !tela.menu) algumAdminVisivel = true;
   }
 
   // O rotulo "Admin" so faz sentido se sobrou algum item embaixo dele.
