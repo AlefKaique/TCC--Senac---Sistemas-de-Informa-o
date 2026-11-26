@@ -5,7 +5,9 @@ namespace Hydra\Controllers;
 use Hydra\Repositories\MovimentacaoEstoqueRepository;
 use Hydra\Repositories\ProdutoRepository;
 use Hydra\Repositories\PromocaoRepository;
+use Hydra\Repositories\SkuRepository;
 use Hydra\Support\Auth;
+use Hydra\Support\LimiteSkuException;
 use Hydra\Support\Request;
 use Hydra\Support\Response;
 
@@ -23,11 +25,13 @@ final class ProdutoController
 {
     private ProdutoRepository $produtos;
     private MovimentacaoEstoqueRepository $movimentacoes;
+    private SkuRepository $skus;
 
     public function __construct()
     {
         $this->produtos = new ProdutoRepository();
         $this->movimentacoes = new MovimentacaoEstoqueRepository();
+        $this->skus = new SkuRepository();
     }
 
     /**
@@ -39,6 +43,9 @@ final class ProdutoController
     public function index(): void
     {
         $user = Auth::requirePermissionNaFilial('estoque.consultar');
+        // Produtos antigos ou importados do catálogo ganham SKU aqui (uma
+        // consulta rápida quando não falta nenhum).
+        $this->skus->preencherFaltantes($user['id_loja'], $user['id_filial']);
         $produtos = $this->produtos->listByFilial($user['id_filial']);
 
         // Promoção vigente hoje (tela Promoções): o Caixa cobra este preço no
@@ -52,6 +59,29 @@ final class ProdutoController
         unset($produto);
 
         Response::json(['produtos' => $produtos]);
+    }
+
+    /**
+     * GET /api/produtos/proximo-sku?categoria=...
+     * Prévia do SKU que o produto vai receber, para a tela de cadastro
+     * mostrar assim que a categoria é escolhida. Não reserva nada: o SKU
+     * definitivo é gerado em store(), na mesma transação do cadastro.
+     */
+    public function proximoSku(): void
+    {
+        $user = Auth::requirePermissionNaFilial('produtos.gerenciar');
+        $categoria = trim((string) ($_GET['categoria'] ?? ''));
+        if ($categoria === '' || mb_strlen($categoria) > 60) {
+            Response::json(['erro' => 'Informe a categoria do produto', 'campo' => 'categoria'], 422);
+            return;
+        }
+        try {
+            $proximo = $this->skus->proximo($user['id_loja'], $user['id_filial'], $categoria, false);
+        } catch (LimiteSkuException $e) {
+            Response::json(['erro' => $e->getMessage(), 'campo' => 'categoria'], 422);
+            return;
+        }
+        Response::json(['sku' => $proximo['sku']]);
     }
 
     /** GET /api/produtos/codigo-barras/{codigo} */
@@ -98,6 +128,8 @@ final class ProdutoController
         $pdo->beginTransaction();
         try {
             $id = $this->produtos->create($user['id_loja'], $user['id_filial'], $campos);
+            $sku = $this->skus->proximo($user['id_loja'], $user['id_filial'], $campos['categoria'], true);
+            $this->skus->gravar($id, $sku['sku'], $sku['numero']);
             if ($campos['quantidade'] > 0) {
                 $this->movimentacoes->create(
                     $user['id_loja'],
@@ -111,6 +143,11 @@ final class ProdutoController
                 );
             }
             $pdo->commit();
+        } catch (LimiteSkuException $e) {
+            // Categoria com os 1.000 SKUs ocupados (SkuRepository::proximo).
+            $pdo->rollBack();
+            Response::json(['erro' => $e->getMessage(), 'campo' => 'categoria'], 422);
+            return;
         } catch (\PDOException $e) {
             $pdo->rollBack();
             if ($e->getCode() === '23000' && (int) ($e->errorInfo[1] ?? 0) === 1062) {
@@ -190,8 +227,15 @@ final class ProdutoController
 
         $pdo = db();
         $pdo->beginTransaction();
+        // O SKU segue a categoria (prefixo e faixa): mudou a categoria, o
+        // produto ganha um SKU novo da nova categoria.
+        $categoriaMudou = SkuRepository::chave((string) $produto['categoria']) !== SkuRepository::chave($campos['categoria']);
         try {
             $this->produtos->update($id, $campos);
+            if ($categoriaMudou || $produto['sku_numero'] === null) {
+                $sku = $this->skus->proximo($user['id_loja'], $user['id_filial'], $campos['categoria'], true);
+                $this->skus->gravar($id, $sku['sku'], $sku['numero']);
+            }
             if ($delta > 0) {
                 $this->produtos->ajustarQuantidade($id, $delta);
             } elseif ($delta < 0 && !$this->produtos->baixarQuantidadeSeHouver($id, -$delta)) {
@@ -216,6 +260,11 @@ final class ProdutoController
                 );
             }
             $pdo->commit();
+        } catch (LimiteSkuException $e) {
+            // Nova categoria com os 1.000 SKUs ocupados (SkuRepository::proximo).
+            $pdo->rollBack();
+            Response::json(['erro' => $e->getMessage(), 'campo' => 'categoria'], 422);
+            return;
         } catch (\PDOException $e) {
             $pdo->rollBack();
             if ($e->getCode() === '23000' && (int) ($e->errorInfo[1] ?? 0) === 1062) {

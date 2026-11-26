@@ -38,12 +38,18 @@ document.addEventListener('DOMContentLoaded', () => {
      usada). Quando ele nao consegue escolher, responde escolher_filial e a
      propria tela inicial abre a janela de escolha (js/trocar-filial.js) —
      nao ha nada a fazer aqui alem de seguir para ela. */
-  function entrar(usuario) {
+  function entrar(resposta) {
+    /* Loja ainda sem nenhuma filial (conta recem-criada): o Administrador
+       vai para o assistente da primeira filial antes de qualquer tela. */
+    if (resposta.configurar_filial) {
+      window.location.href = 'primeira-filial.html';
+      return;
+    }
     /* Antes todo login caía em controle-estoque.html. Com as permissoes
        separadas por area, um operador de caixa seria mandado para uma tela
        que a guarda dela recusa — e voltaria para ca. A resposta do login ja
        traz as permissoes, entao da para ir direto para a tela certa. */
-    window.location.href = window.hydraHomePorPermissao(usuario);
+    window.location.href = window.hydraHomePorPermissao(resposta.usuario);
   }
 
   /* Segunda etapa: o back-end pede o codigo enviado por e-mail quando a
@@ -108,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      entrar(resposta.usuario);
+      entrar(resposta);
     } catch (err) {
       btn.disabled = false;
       btn.textContent = originalText;
@@ -137,11 +143,11 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.disabled = true;
 
     try {
-      const { usuario } = await window.hydraApi('/auth/login/codigo', {
+      const resposta = await window.hydraApi('/auth/login/codigo', {
         method: 'POST',
         body: { codigo: codigoInput.value },
       });
-      entrar(usuario);
+      entrar(resposta);
     } catch (err) {
       btn.disabled = false;
       btn.textContent = originalText;

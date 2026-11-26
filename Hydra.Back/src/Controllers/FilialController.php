@@ -146,11 +146,22 @@ final class FilialController
             new ProdutoRepository();
         }
 
+        // Primeira filial da loja (assistente do primeiro login): a sessão
+        // ainda não tem filial, então quem a criou já entra nela.
+        $primeiraFilial = $this->filiais->countByLoja($admin['id_loja']) === 0;
+
         $pdo = db();
         $pdo->beginTransaction();
         try {
             $id = $this->filiais->create($admin['id_loja'], $campos);
             $importados = $catalogo !== null ? $catalogo->importar($admin['id_loja'], $id) : 0;
+            if ($primeiraFilial) {
+                // O Administrador não precisa do vínculo (acessa todas as
+                // filiais), mas o mantém caso um dia deixe de ser
+                // Administrador, o mesmo que sql/migracao_filiais.sql faz.
+                $this->filiais->vincular($admin['id_usuario'], $id);
+                (new UsuarioRepository())->updateUltimaFilial($admin['id_usuario'], $id);
+            }
             $pdo->commit();
         } catch (\RuntimeException $e) {
             $pdo->rollBack();
@@ -163,9 +174,14 @@ final class FilialController
             return;
         }
 
+        if ($primeiraFilial || empty($admin['id_filial'])) {
+            Auth::definirFilial($id);
+        }
+
         Response::json([
             'filial' => self::publica($this->filiais->findInLoja($id, $admin['id_loja'])),
             'hortifruti_importados' => $importados,
+            'primeira_filial' => $primeiraFilial,
         ], 201);
     }
 

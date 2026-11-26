@@ -21,69 +21,156 @@
         }
     })();
 
-    /* ================= Categorias já usadas na loja =================
-       Não existe lista fixa nem tabela de categorias: o usuário digita a
-       que fizer sentido para o mercadinho dele. As que já estão em uso
-       vêm do próprio catálogo e são oferecidas como sugestão, o que evita
-       criar "Bebidas" de novo só porque a grafia saiu diferente. */
+    /* ================= Categorias =================
+       Não existe tabela de categorias: a categoria é um texto gravado no
+       produto. A lista de seleção junta as categorias padrão de mercado
+       (CATEGORIAS_PADRAO) com as que a loja já usa nos produtos, e o botão
+       "+ Nova categoria" cria outra na hora. Uma categoria nova passa a
+       existir de verdade quando o primeiro produto com ela é salvo.
+
+       A lista não repete a mesma categoria com grafias diferentes: se a
+       loja já usa "bebidas", ela aparece com essa grafia no lugar da
+       padrão "Bebidas", para não dividir o filtro do Estoque em dois. */
+    const CATEGORIAS_PADRAO = [
+        'Mercearia', 'Açougue', 'Hortifruti', 'Padaria', 'Bebidas',
+        'Higiene e beleza', 'Limpeza', 'Pet', 'Tabacaria',
+    ];
     let categoriasDaLoja = [];
 
-    function preencherDatalistCategorias(nomes) {
-        categoriasDaLoja = Array.from(new Set(nomes.map((n) => String(n || '').trim()).filter(Boolean)))
-            .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const categoriaSelect = document.getElementById('hydroProdCategory');
+    const novaCategoriaBtn = document.getElementById('hydroCategoryNewBtn');
+    const novaCategoriaPainel = document.getElementById('hydroCategoryNewPanel');
+    const novaCategoriaInput = document.getElementById('hydroCategoryNewInput');
 
-        const datalist = document.getElementById('hydroCategoryList');
-        datalist.innerHTML = '';
-        categoriasDaLoja.forEach((categoria) => {
-            const option = document.createElement('option');
-            // Atribuído como propriedade, nunca via innerHTML: é à prova de
-            // injeção por construção, sem precisar de um escapeHtml aqui.
-            option.value = categoria;
-            datalist.appendChild(option);
+    const chaveCategoria = (nome) => nome.toLocaleLowerCase('pt-BR');
+
+    function montarListaCategorias(nomesDaLoja) {
+        const porChave = new Map();
+        // As da loja primeiro: a grafia delas ganha da padrão.
+        nomesDaLoja.concat(CATEGORIAS_PADRAO).forEach((nome) => {
+            const limpo = String(nome || '').replace(/\s+/g, ' ').trim();
+            if (limpo && !porChave.has(chaveCategoria(limpo))) porChave.set(chaveCategoria(limpo), limpo);
         });
-        renderChipsCategorias();
+        categoriasDaLoja = Array.from(porChave.values()).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        renderizarSelectCategorias(categoriaSelect.value);
     }
 
-    /* O <datalist> só aparece quando o usuário começa a digitar, e na
-       maioria dos navegadores nem há seta indicando que existe uma lista
-       (QA 011). As categorias da loja ficam visíveis como botões logo abaixo
-       do campo: um clique preenche. Digitar uma nova continua valendo. */
-    function renderChipsCategorias() {
-        const wrap = document.getElementById('hydroCategoryChips');
-        const input = document.getElementById('hydroProdCategory');
-        if (!wrap || !input) return;
-        wrap.innerHTML = '';
+    function renderizarSelectCategorias(selecionada) {
+        const primeira = categoriaSelect.options[0]; // "Selecione a categoria"
+        categoriaSelect.replaceChildren(primeira);
         categoriasDaLoja.forEach((categoria) => {
-            const chip = document.createElement('button');
-            chip.type = 'button';
-            chip.className = 'hydro-btn hydro-btn-outline hydro-btn-sm';
-            // Não é ação de gravação: a demonstração pública não deve
-            // bloquear este clique com o convite de cadastro.
-            chip.setAttribute('data-demo-allow', '');
-            chip.textContent = categoria;
-            chip.addEventListener('click', () => {
-                input.value = categoria;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                input.focus();
-            });
-            wrap.appendChild(chip);
+            // new Option() atribui como texto, nunca como HTML.
+            categoriaSelect.add(new Option(categoria, categoria));
         });
-        wrap.style.display = categoriasDaLoja.length ? 'flex' : 'none';
+        categoriaSelect.value = selecionada && categoriasDaLoja.includes(selecionada) ? selecionada : '';
     }
+
+    /** Inclui a categoria na lista (se ainda não estiver) e devolve a grafia usada. */
+    function incluirCategoria(nome) {
+        const normalizada = normalizeCategory(nome, categoriasDaLoja);
+        if (normalizada && !categoriasDaLoja.includes(normalizada)) {
+            categoriasDaLoja.push(normalizada);
+            categoriasDaLoja.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        }
+        return normalizada;
+    }
+
+    function abrirNovaCategoria(abrir) {
+        novaCategoriaPainel.hidden = !abrir;
+        novaCategoriaBtn.setAttribute('aria-expanded', String(abrir));
+        if (abrir) {
+            novaCategoriaInput.value = '';
+            novaCategoriaInput.focus();
+        } else {
+            novaCategoriaBtn.focus();
+        }
+    }
+
+    function adicionarNovaCategoria() {
+        const nome = novaCategoriaInput.value;
+        if (!nome.trim()) {
+            showToast('Digite o nome da nova categoria');
+            novaCategoriaInput.focus();
+            return;
+        }
+        const jaExistia = categoriasDaLoja.some((c) => chaveCategoria(c) === chaveCategoria(nome.replace(/\s+/g, ' ').trim()));
+        const categoria = incluirCategoria(nome);
+        renderizarSelectCategorias(categoria);
+        // "input" limpa o destaque de erro do campo (listener do formulário).
+        categoriaSelect.dispatchEvent(new Event('input', { bubbles: true }));
+        atualizarPreviaSku();
+        abrirNovaCategoria(false);
+        categoriaSelect.focus();
+        showToast(jaExistia
+            ? `A categoria "${categoria}" já existia e foi selecionada`
+            : `Categoria "${categoria}" criada. Ela fica salva junto com o produto.`);
+    }
+
+    novaCategoriaBtn.addEventListener('click', () => abrirNovaCategoria(novaCategoriaPainel.hidden));
+    document.getElementById('hydroCategoryNewCancel').addEventListener('click', () => abrirNovaCategoria(false));
+    document.getElementById('hydroCategoryNewAdd').addEventListener('click', adicionarNovaCategoria);
+    novaCategoriaInput.addEventListener('keydown', (e) => {
+        // Enter aqui cria a categoria em vez de enviar o formulário do produto.
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            adicionarNovaCategoria();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            abrirNovaCategoria(false);
+        }
+    });
+
+    /* ================= SKU =================
+       Gerado pelo servidor a partir da categoria (SkuRepository): 2 letras
+       + número da faixa da categoria, ex.: Padaria → PA.3001. Aqui só se
+       mostra a PRÉVIA, pedida a cada troca de categoria; o definitivo vem
+       na resposta do cadastro. */
+    const skuInput = document.getElementById('hydroProdSku');
+    let pedidoSku = 0;
+
+    async function atualizarPreviaSku() {
+        const categoria = categoriaSelect.value;
+        const pedido = ++pedidoSku; // só a resposta do último pedido vale
+        skuInput.value = '';
+        if (!categoria) {
+            skuInput.placeholder = 'Escolha a categoria';
+            return;
+        }
+        skuInput.placeholder = 'Gerando…';
+        try {
+            const { sku } = await window.hydraApi(`/produtos/proximo-sku?categoria=${encodeURIComponent(categoria)}`);
+            if (pedido !== pedidoSku) return;
+            skuInput.value = sku;
+        } catch (err) {
+            if (pedido !== pedidoSku) return;
+            skuInput.placeholder = 'Definido ao salvar';
+            // Categoria cheia (1.000 SKUs): avisa já, antes de preencher o resto.
+            if (err.status === 422) showToast(err.message, true);
+        }
+    }
+
+    categoriaSelect.addEventListener('change', atualizarPreviaSku);
+    // "form" só é declarado mais abaixo neste arquivo; busca direto aqui.
+    document.getElementById('hydroProductForm').addEventListener('reset', () => {
+        pedidoSku++;
+        skuInput.placeholder = 'Escolha a categoria';
+    });
+
+    montarListaCategorias([]); // padrões já na tela enquanto a API responde
 
     (async function loadCategorias() {
         if (window.hydraApi) {
             try {
                 const { produtos } = await window.hydraApi('/produtos');
-                preencherDatalistCategorias(produtos.map((p) => p.categoria));
+                montarListaCategorias(produtos.map((p) => p.categoria));
                 return;
             } catch (err) {
                 // Visitante da demo pública (401) ou cargo sem acesso ao
-                // catálogo: cai para o catálogo local abaixo. Sem sugestões o
-                // campo ainda funciona, livre para digitar.
+                // catálogo: cai para o catálogo local abaixo. As categorias
+                // padrão continuam na lista de qualquer forma.
             }
         }
-        preencherDatalistCategorias(HydroStore.getProducts().map((p) => p.category));
+        montarListaCategorias(HydroStore.getProducts().map((p) => p.category));
     })();
 
     /* Normaliza a categoria digitada: colapsa espaços, corta no tamanho da
@@ -357,10 +444,15 @@
         }
 
         saveBtn.disabled = true;
+        let skuSalvo = '';
 
         if (window.hydraApi) {
             try {
-                await saveProductRemote(data);
+                const produto = await saveProductRemote(data);
+                skuSalvo = (produto && produto.sku) || '';
+                // O SKU definitivo vem do servidor (a prévia pode ter mudado
+                // se outro cadastro da mesma categoria salvou antes).
+                if (skuSalvo) skuInput.value = skuSalvo;
             } catch (err) {
                 // Visitante não autenticado (demo pública) cai para o cadastro
                 // local; qualquer outro erro (validação, duplicidade, servidor)
@@ -376,30 +468,23 @@
             saveProductLocally(data);
         }
 
-        /* Categoria recém-criada entra nas sugestões sem recarregar a tela:
-           cadastrar dois produtos da mesma categoria nova em sequência
-           reaproveita a grafia do primeiro. */
-        const categoriaSalva = normalizeCategory(data.categoria, categoriasDaLoja);
-        if (categoriaSalva && !categoriasDaLoja.includes(categoriaSalva)) {
-            categoriasDaLoja.push(categoriaSalva);
-            categoriasDaLoja.sort((a, b) => a.localeCompare(b, 'pt-BR'));
-            const option = document.createElement('option');
-            option.value = categoriaSalva;
-            document.getElementById('hydroCategoryList').appendChild(option);
-            renderChipsCategorias();
-        }
+        /* A categoria salva continua na lista sem recarregar a tela (inclusive
+           uma criada agora por "+ Nova categoria"), para "Cadastrar outro"
+           na mesma categoria. */
+        incluirCategoria(data.categoria);
 
         /* Depois de salvar, volta para a listagem do Estoque, onde o produto
            novo aparece (QA 007). Quem quer cadastrar vários em sequência
            marca "Cadastrar outro" e continua no formulário. */
         const cadastrarOutro = document.getElementById('hydroProdCadastrarOutro');
+        const comSku = skuSalvo ? ` SKU ${skuSalvo}.` : '';
         if (!cadastrarOutro || !cadastrarOutro.checked) {
-            showToast('Produto salvo com sucesso! Voltando para o estoque...');
-            setTimeout(() => { window.location.href = 'controle-estoque.html'; }, 900);
+            showToast(`Produto salvo com sucesso!${comSku} Voltando para o estoque...`);
+            setTimeout(() => { window.location.href = 'controle-estoque.html'; }, 1400);
             return;
         }
 
-        showToast('Produto salvo com sucesso!');
+        showToast(`Produto salvo com sucesso!${comSku}`);
         setTimeout(() => {
             form.reset();
             // form.reset() desmarcaria a opção que o usuário acabou de usar.

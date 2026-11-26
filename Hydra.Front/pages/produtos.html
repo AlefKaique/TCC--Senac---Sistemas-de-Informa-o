@@ -122,13 +122,30 @@
                         <div class="hydro-form-row">
                             <div class="hydro-form-group">
                                 <label for="hydroProdCategory">Categoria <span class="hydro-required" aria-hidden="true">*</span></label>
-                                <input type="text" id="hydroProdCategory" name="categoria" list="hydroCategoryList"
-                                    placeholder="Ex.: Bebidas" maxlength="60" autocomplete="off" required>
-                                <datalist id="hydroCategoryList"></datalist>
-                                <span class="hydro-field-hint">Escolha uma categoria já usada na loja ou digite uma nova</span>
-                                <div class="hydro-category-chips" id="hydroCategoryChips" role="group" aria-label="Categorias já usadas na loja"
-                                     style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+                                <div class="hydro-category-row">
+                                    <select id="hydroProdCategory" name="categoria" required>
+                                        <option value="">Selecione a categoria</option>
+                                    </select>
+                                    <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroCategoryNewBtn"
+                                        aria-expanded="false" aria-controls="hydroCategoryNewPanel" data-demo-allow>
+                                        + Nova categoria
+                                    </button>
+                                </div>
+                                <div class="hydro-category-new" id="hydroCategoryNewPanel" hidden>
+                                    <label for="hydroCategoryNewInput" class="hydro-sr-only">Nome da nova categoria</label>
+                                    <input type="text" id="hydroCategoryNewInput" maxlength="60" autocomplete="off"
+                                        placeholder="Nome da nova categoria">
+                                    <button type="button" class="hydro-btn hydro-btn-primary hydro-btn-sm" id="hydroCategoryNewAdd" data-demo-allow>Adicionar</button>
+                                    <button type="button" class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroCategoryNewCancel" data-demo-allow>Cancelar</button>
+                                </div>
+                                <span class="hydro-field-hint">Escolha uma categoria da lista ou crie uma nova</span>
                                 <span class="hydro-field-error" data-error-for="hydroProdCategory"></span>
+                            </div>
+                            <div class="hydro-form-group">
+                                <label for="hydroProdSku">SKU</label>
+                                <input type="text" id="hydroProdSku" readonly placeholder="Escolha a categoria"
+                                    aria-describedby="hydroProdSkuHint">
+                                <span class="hydro-field-hint" id="hydroProdSkuHint">Gerado automaticamente pela categoria (ex.: PA.3001)</span>
                             </div>
                         </div>
 

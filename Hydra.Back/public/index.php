@@ -244,6 +244,7 @@ $routes = [
     ['DELETE', '#^/api/cargos/(\d+)$#', fn ($id) => (new CargoController())->destroy((int) $id)],
 
     ['GET', '#^/api/produtos/codigo-barras/(\d{8,14})$#', fn ($codigo) => (new ProdutoController())->buscarPorCodigoBarras($codigo)],
+    ['GET', '#^/api/produtos/proximo-sku$#', fn () => (new ProdutoController())->proximoSku()],
     ['GET', '#^/api/produtos$#', fn () => (new ProdutoController())->index()],
     ['POST', '#^/api/produtos$#', fn () => (new ProdutoController())->store()],
     ['PUT', '#^/api/produtos/(\d+)$#', fn ($id) => (new ProdutoController())->update((int) $id)],

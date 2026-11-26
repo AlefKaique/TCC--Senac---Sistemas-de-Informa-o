@@ -138,6 +138,17 @@ final class FilialRepository
     }
 
     /**
+     * Quantas filiais a loja tem, em qualquer status. Zero = conta recém-
+     * criada que ainda não passou pelo assistente da primeira filial.
+     */
+    public function countByLoja(int $idLoja): int
+    {
+        $stmt = db()->prepare('SELECT COUNT(*) FROM filiais WHERE id_loja = :id_loja');
+        $stmt->execute(['id_loja' => $idLoja]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
      * Quantas filiais ativas a loja tem. Com $travar = true, trava as linhas
      * da loja até o fim da transação aberta pelo chamador, para que dois
      * administradores não inativem ao mesmo tempo as duas últimas filiais.

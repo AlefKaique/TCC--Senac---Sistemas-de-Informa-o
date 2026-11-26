@@ -37,6 +37,24 @@
     margin-bottom: 24px;
 }
 
+.hydro-settings-intro strong { color: var(--ink); }
+.hydro-settings-intro a {
+    color: var(--navy-active, #1b2a63);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+/* Dados da filial ativa: somente leitura (ver configuracoes-loja.js). */
+#hydroSettingsForm .hydro-form-group input[readonly] {
+    background: var(--surface-hover, #f6f7fb);
+    color: var(--ink);
+    cursor: default;
+}
+#hydroSettingsForm .hydro-form-group input[readonly]::placeholder {
+    color: var(--muted);
+    font-style: italic;
+}
+
 /* ============ Cards do formulário ============ */
 .hydro-card {
     background: var(--card);

@@ -72,9 +72,11 @@ CREATE TABLE IF NOT EXISTS lojas (
 
 -- ============================================================
 -- Filiais
---   Uma loja (a rede, criada no Cadastro) tem uma ou mais filiais. O
---   Cadastro cria a primeira, "Matriz"; as demais são criadas pelo
---   Administrador em Configuração Loja > Cadastrar nova Filial.
+--   Uma loja (a rede, criada no Cadastro) tem uma ou mais filiais. A
+--   loja nasce sem filial: no primeiro login o Administrador passa pelo
+--   assistente "Primeira filial" (pages/primeira-filial.html), que cria
+--   a primeira; as demais são criadas em Configuração Loja > Cadastrar
+--   nova Filial.
 --
 --   Usuários, cargos e Configurações da Loja valem para a rede inteira.
 --   Produtos, estoque, vendas, promoções e movimentações pertencem a uma
@@ -337,8 +339,8 @@ CREATE TABLE IF NOT EXISTS produtos (
     id_filial       INT NOT NULL,
     nome           VARCHAR(150) NOT NULL,
     descricao       VARCHAR(255) NULL,
-    -- Digitada livremente pelo usuário no cadastro, com as categorias já
-    -- usadas na loja oferecidas como sugestão (não há lista fixa).
+    -- Escolhida no cadastro entre as 9 categorias padrão e as já usadas
+    -- na loja, ou criada na hora ("+ Nova categoria").
     categoria       VARCHAR(60)  NOT NULL,
     preco_custo     DECIMAL(10,2) NULL,
     preco_venda     DECIMAL(10,2) NULL,
@@ -380,6 +382,24 @@ INDEX idx_catalogo_hortifruti_categoria (categoria, codigo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE UNIQUE INDEX uq_produtos_filial_codigo ON produtos (id_filial, codigo);
+
+-- SKU gerado pela categoria (SkuRepository): 2 letras + número, ex.: PA.3001.
+-- Cada categoria tem uma faixa de 1.000 números; as 9 padrão têm faixas fixas
+-- (Mercearia 0001-1000 ... Tabacaria 8001-9000) e as criadas pela loja ganham
+-- a próxima faixa livre, guardada em categoria_faixas_sku.
+ALTER TABLE produtos
+    ADD COLUMN sku        VARCHAR(12)  NULL,
+    ADD COLUMN sku_numero INT UNSIGNED NULL;
+CREATE UNIQUE INDEX uq_produtos_filial_sku ON produtos (id_filial, sku_numero);
+
+CREATE TABLE IF NOT EXISTS categoria_faixas_sku (
+    id_loja  INT NOT NULL,
+    chave    VARCHAR(60) NOT NULL,
+    faixa    SMALLINT UNSIGNED NOT NULL,
+    PRIMARY KEY (id_loja, chave),
+    UNIQUE INDEX uq_categoria_faixas_sku_faixa (id_loja, faixa),
+    FOREIGN KEY (id_loja) REFERENCES lojas(id_loja) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
 -- Módulo de Vendas (PDV)
