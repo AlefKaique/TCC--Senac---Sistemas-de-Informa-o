@@ -1,0 +1,183 @@
+/* ============ Painel de alertas do sino (js/notificacoes.js) ============
+   Inserido dentro do contêiner da tela (.hydro-stock...), então usa as
+   mesmas variáveis de cor, inclusive as do tema escuro. */
+
+.hydra-notif-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: rgba(15, 23, 42, 0);
+    transition: background .2s ease;
+}
+.hydra-notif-overlay[hidden] { display: none; }
+.hydra-notif-overlay.is-aberto { background: rgba(15, 23, 42, 0.35); }
+
+.hydra-notif-painel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: min(420px, 100%);
+    display: flex;
+    flex-direction: column;
+    background: var(--card, #fff);
+    color: var(--ink, #16213e);
+    border-left: 1px solid var(--border, #e7e9f2);
+    box-shadow: -12px 0 32px rgba(15, 23, 42, 0.14);
+    transform: translateX(100%);
+    transition: transform .2s ease;
+}
+.hydra-notif-overlay.is-aberto .hydra-notif-painel { transform: translateX(0); }
+
+@media (prefers-reduced-motion: reduce) {
+    .hydra-notif-overlay,
+    .hydra-notif-painel { transition: none; }
+}
+
+.hydra-notif-topo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 22px 22px 16px;
+    border-bottom: 1px solid var(--border, #e7e9f2);
+}
+.hydra-notif-topo h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy-900, #152e6d);
+}
+.hydra-notif-filial {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--muted, #697184);
+}
+.hydra-notif-filial:empty { display: none; }
+
+.hydra-notif-fechar {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    border: 1px solid var(--border, #e7e9f2);
+    background: transparent;
+    color: var(--muted, #697184);
+    cursor: pointer;
+}
+.hydra-notif-fechar:hover,
+.hydra-notif-fechar:focus-visible {
+    background: var(--surface-hover, #f6f7fb);
+    color: var(--ink, #16213e);
+}
+
+.hydra-notif-corpo {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 22px;
+}
+
+.hydra-notif-carregando,
+.hydra-notif-info,
+.hydra-notif-erro {
+    margin: 0;
+    font-size: 14px;
+    color: var(--muted, #697184);
+}
+.hydra-notif-erro { color: var(--red, #e24c5c); }
+
+/* Sem alertas */
+.hydra-notif-vazio {
+    height: 100%;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 6px;
+    color: var(--muted, #697184);
+}
+.hydra-notif-vazio svg {
+    color: var(--green, #149e52);
+    background: var(--green-bg, #f2fdf7);
+    border-radius: 50%;
+    padding: 10px;
+    width: 60px;
+    height: 60px;
+    margin-bottom: 6px;
+}
+.hydra-notif-vazio strong {
+    font-size: 16px;
+    color: var(--ink, #16213e);
+}
+.hydra-notif-vazio p { margin: 0; font-size: 14px; }
+
+/* Grupos */
+.hydra-notif-grupo + .hydra-notif-grupo { margin-top: 22px; }
+.hydra-notif-grupo h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--muted, #697184);
+}
+.hydra-notif-contador {
+    min-width: 22px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 12px;
+    text-align: center;
+    letter-spacing: 0;
+}
+.hydra-notif-grupo--perigo .hydra-notif-contador { background: var(--red-bg, #fff2f3); color: var(--red, #e24c5c); }
+.hydra-notif-grupo--atencao .hydra-notif-contador { background: var(--amber-bg, #fef8ef); color: var(--amber, #b98523); }
+
+.hydra-notif-grupo ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.hydra-notif-grupo li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px 10px 14px;
+    border: 1px solid var(--border, #e7e9f2);
+    border-left-width: 4px;
+    border-radius: 10px;
+}
+.hydra-notif-grupo--perigo li { border-left-color: var(--red, #e24c5c); }
+.hydra-notif-grupo--atencao li { border-left-color: var(--amber, #b98523); }
+.hydra-notif-grupo li strong {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink, #16213e);
+    overflow-wrap: anywhere;
+}
+.hydra-notif-grupo li span {
+    font-size: 13px;
+    color: var(--muted, #697184);
+}
+
+.hydra-notif-rodape {
+    padding: 14px 22px;
+    border-top: 1px solid var(--border, #e7e9f2);
+}
+.hydra-notif-link {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--navy-active, #152e6d);
+    text-decoration: none;
+}
+.hydra-notif-link:hover,
+.hydra-notif-link:focus-visible { text-decoration: underline; }

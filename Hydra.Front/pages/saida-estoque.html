@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydra · Nova saída de estoque</title>
+    <link rel="icon" type="image/png" href="../img/logo-hydra.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/controle-estoque.css">
+    <link rel="stylesheet" href="../css/gerenciar-usuarios.css">
+    <link rel="stylesheet" href="../css/menu-submenu.css?v=2026112605">
+    <link rel="stylesheet" href="../css/public-demo.css">
+    <link rel="stylesheet" href="../css/font-size.css">
+    <link rel="stylesheet" href="../css/avatar.css">
+    <link rel="stylesheet" href="../css/movimentacao-estoque.css?v=2026112603">
+</head>
+
+<body>
+
+    <!-- Tudo isolado dentro de .hydro-stock para não colidir com o CSS/JS do restante do sistema -->
+    <div class="hydro-stock">
+
+        <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+        </button>
+        <div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+
+        <div class="hydro-app">
+
+            <!-- Sidebar -->
+            <aside class="hydro-sidebar" id="hydroSidebar">
+                <a class="hydro-brand" href="controle-estoque.html" aria-label="Ir para o início">
+                    <img src="../img/logo-hydra.png" alt="Hydra PDV">
+                </a>
+
+                <nav class="hydro-menu">
+                    <p class="hydro-menu-label">Menu</p>
+                    <ul>
+                        <li>
+                            <a href="#" data-view="estoque"><i class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span><i class="hydro-submenu-seta" aria-hidden="true"></i></a>
+                            <ul class="hydro-submenu-itens" id="hydroSubmenuEstoque" aria-label="Movimentar estoque" data-hydro-recolhivel>
+                                <li id="hydroLiEntradaEstoque"><a href="entrada-estoque.html">Entrada de estoque</a></li>
+                                <li id="hydroLiSaidaEstoque"><a href="saida-estoque.html" class="hydro-active" aria-current="page">Saída de estoque</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#" data-view="caixa"><i class="hydro-ic hydro-ic-drawer"></i><span>Vendas</span></a>
+                        </li>
+                        <li><a href="#" data-view="dashboard"><i
+                                    class="hydro-ic hydro-ic-home"></i><span>Relatório</span></a></li>
+                    </ul>
+                </nav>
+
+                <div class="hydro-menu hydro-menu-admin">
+                    <p class="hydro-menu-label" id="hydroMenuAdminLabel"><span class="hydro-menu-restricted">Admin</span></p>
+                    <ul>
+                        <li id="hydroLiEquipe"><a href="gerenciar-usuarios.html"><i
+                                    class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
+                        <li id="hydroLiConfig">
+                            <div class="hydro-submenu">
+                                <button type="button" class="hydro-submenu-toggle" aria-expanded="false" aria-controls="hydroSubmenuConfig" data-demo-allow><i class="hydro-ic hydro-ic-gear"></i><span>Configurações</span><i class="hydro-submenu-seta" aria-hidden="true"></i></button>
+                                <ul class="hydro-submenu-itens" id="hydroSubmenuConfig" hidden>
+                                    <li><a href="configuracoes-loja.html">Dados da loja</a></li>
+                                    <li><a href="filiais.html">Filiais</a></li>
+                                </ul>
+                            </div>
+                        </li>
+                        <li id="hydroLiCargos"><a href="cargos.html"><i
+                                    class="hydro-ic hydro-ic-shield"></i><span>Cargos</span></a></li>
+                        <li id="hydroLiPromocoes"><a href="promocoes.html"><i
+                                    class="hydro-ic hydro-ic-tag"></i><span>Promoções</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="hydro-menu hydro-menu-bottom">
+                    <p class="hydro-menu-label">Geral</p>
+                    <ul>
+                        <li><a href="#" data-view="sair"><i class="hydro-ic hydro-ic-exit"></i><span>Sair</span></a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Main -->
+            <main class="hydro-main mov" id="movApp" data-tipo="saida">
+                <header class="hydro-topbar mov-topo">
+                    <div class="mov-titulo">
+                        <nav class="mov-trilha" aria-label="Você está em">
+                            <a href="controle-estoque.html">Estoque</a><span aria-hidden="true"> › </span><span id="movTrilha">Saída</span>
+                        </nav>
+                        <h1 id="movTitulo" tabindex="-1">Nova saída de estoque</h1>
+                        <p class="mov-subtitulo" id="movSubtitulo" hidden>Depois de confirmada, a movimentação não pode ser editada nem
+                            excluída — só estornada. O estorno gera uma movimentação contrária e mantém as duas no histórico.</p>
+                    </div>
+                    <div class="hydro-topbar-actions">
+                        <button type="button" class="hydro-btn hydro-btn-outline" id="movSalvarRascunho" data-demo-allow>Salvar rascunho</button>
+                        <button type="button" class="hydro-btn hydro-btn-outline" id="movCancelar" data-demo-allow>Cancelar</button>
+                        <button class="hydro-icon-btn" aria-label="Notificações">
+                            <i class="hydro-ic hydro-ic-bell"></i>
+                            <span class="hydro-notif-dot"></span>
+                        </button>
+                        <div class="hydro-user">
+                            <span class="hydro-avatar" id="hydroUserAvatar" role="img" aria-label="Usuário"></span>
+                            <span class="hydro-user-name" id="hydroUserName"></span>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="mov-faixa" id="movAvisoRascunho" role="status" hidden>
+                    <span id="movAvisoRascunhoTexto"></span>
+                    <button type="button" class="mov-link" id="movRestaurar" data-demo-allow>Restaurar rascunho</button>
+                    <button type="button" class="mov-link" id="movDescartar" data-demo-allow>Descartar</button>
+                </div>
+
+                <div id="movEtapaEdicao">
+                    <section class="mov-card" aria-labelledby="movDocTitulo">
+                        <h2 id="movDocTitulo">Documento</h2>
+                        <div class="mov-grid mov-grid-3">
+                            <div class="mov-campo">
+                                <label for="movSubtipo" class="mov-rotulo">Motivo da saída <span class="mov-obrig" aria-hidden="true">*</span></label>
+                                <select id="movSubtipo" required>
+                                    <option value="">Selecione o motivo</option>
+                                    <option value="vencimento">Vencimento</option>
+                                    <option value="perda">Perda ou avaria</option>
+                                    <option value="consumo_interno">Consumo interno</option>
+                                    <option value="transferencia">Transferência entre filiais</option>
+                                    <option value="devolucao_fornecedor">Devolução ao fornecedor</option>
+                                </select>
+                            </div>
+                            <div class="mov-campo">
+                                <label for="movResponsavel" class="mov-rotulo">Responsável</label>
+                                <input type="text" id="movResponsavel" readonly>
+                            </div>
+                            <div class="mov-campo">
+                                <label for="movData" class="mov-rotulo">Data</label>
+                                <input type="text" id="movData" readonly>
+                            </div>
+                        </div>
+                        <p class="mov-dica"><strong>Venda não aparece aqui.</strong> A baixa de venda é gerada automaticamente pelo PDV —
+                            esta tela registra apenas saídas manuais, que são as que viram prejuízo no relatório.</p>
+                    </section>
+
+                    <section class="mov-card" aria-labelledby="movItensTitulo">
+                        <div class="mov-card-topo">
+                            <h2 id="movItensTitulo">Itens da saída</h2>
+                            <span class="mov-pilula">Lotes escolhidos por FEFO — vence primeiro, sai primeiro</span>
+                        </div>
+                        <div class="mov-busca">
+                            <label for="movBusca" class="mov-rotulo">Buscar produto</label>
+                            <div class="mov-busca-campo">
+                                <svg class="mov-busca-icone" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                                <input type="text" id="movBusca" autocomplete="off" role="combobox" aria-expanded="false"
+                                    aria-controls="movResultados" aria-autocomplete="list"
+                                    placeholder="Bipe o código de barras ou busque por nome, SKU ou EAN">
+                                <kbd class="mov-kbd" aria-hidden="true">Enter adiciona</kbd>
+                            </div>
+                            <ul class="mov-resultados" id="movResultados" role="listbox" aria-label="Produtos encontrados" hidden></ul>
+                        </div>
+                        <div class="mov-itens-saida" id="movItens"></div>
+                        <p class="mov-vazio" id="movVazio">Nenhum produto adicionado. Busque acima pelo nome, SKU ou código de barras.</p>
+                    </section>
+
+                    <section class="mov-card" aria-labelledby="movJustTitulo">
+                        <h2 id="movJustTitulo">Justificativa da saída</h2>
+                        <div class="mov-campo">
+                            <label for="movJustificativa" class="mov-rotulo">Descrição (mínimo 10 caracteres)</label>
+                            <textarea id="movJustificativa" rows="3" maxlength="500" aria-describedby="movJustStatus"></textarea>
+                            <div class="mov-just-linha">
+                                <span class="mov-just-status" id="movJustStatus" aria-live="polite"></span>
+                                <span class="mov-just-contador" id="movJustContador">0 / 10</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="mov-card mov-rodape" aria-label="Resumo e confirmação">
+                        <dl class="mov-estatisticas">
+                            <div><dt>Itens</dt><dd id="movTotItens">0</dd></div>
+                            <div><dt>Unidades</dt><dd id="movTotUnidades">0</dd></div>
+                            <div><dt>Perda em custo</dt><dd id="movTotCusto" class="mov-perda">R$ 0,00</dd></div>
+                        </dl>
+                        <p class="mov-pendencias" id="movPendencias" aria-live="polite"></p>
+                        <button type="button" class="hydro-btn hydro-btn-primary mov-btn-grande" id="movRevisar" disabled>Revisar e confirmar</button>
+                    </section>
+                </div>
+
+                <div id="movEtapaRevisao" hidden>
+                    <div class="mov-revisao">
+                        <div class="mov-revisao-principal">
+                            <section class="mov-card" aria-labelledby="movResumoTitulo">
+                                <div class="mov-card-topo">
+                                    <h2 id="movResumoTitulo">Resumo do documento</h2>
+                                    <button type="button" class="mov-link" data-mov-voltar data-demo-allow>Voltar e editar</button>
+                                </div>
+                                <dl class="mov-resumo" id="movResumoDoc"></dl>
+                            </section>
+                            <section class="mov-card" aria-labelledby="movResumoItensTitulo">
+                                <h2 id="movResumoItensTitulo"></h2>
+                                <ul class="mov-resumo-itens" id="movResumoItens"></ul>
+                                <div class="mov-resumo-total">
+                                    <span>Perda em custo</span>
+                                    <strong id="movResumoTotal" class="mov-perda"></strong>
+                                </div>
+                            </section>
+                        </div>
+                        <aside class="mov-revisao-lateral">
+                            <section class="mov-card" aria-labelledby="movEfeitosTitulo">
+                                <h2 id="movEfeitosTitulo">O que vai acontecer</h2>
+                                <ul class="mov-efeitos" id="movEfeitos"></ul>
+                            </section>
+                            <section class="mov-card" aria-labelledby="movAuditoriaTitulo">
+                                <h2 id="movAuditoriaTitulo">Registro de auditoria</h2>
+                                <dl class="mov-auditoria" id="movAuditoria"></dl>
+                            </section>
+                            <button type="button" class="hydro-btn hydro-btn-primary mov-btn-bloco" id="movConfirmar">Confirmar saída</button>
+                            <button type="button" class="hydro-btn hydro-btn-outline mov-btn-bloco" data-mov-voltar data-demo-allow>Voltar e editar</button>
+                            <p class="mov-erro-confirmar" id="movErroConfirmar" role="alert" hidden></p>
+                        </aside>
+                    </div>
+                </div>
+
+                <div id="movEtapaConcluida" hidden>
+                    <section class="mov-card mov-concluida">
+                        <div class="mov-concluida-icone"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg></div>
+                        <h2 id="movConcluidaTitulo" tabindex="-1"></h2>
+                        <p id="movConcluidaTexto"></p>
+                        <div class="mov-concluida-acoes">
+                            <a class="hydro-btn hydro-btn-primary" href="saida-estoque.html">Nova saída</a>
+                            <a class="hydro-btn hydro-btn-outline" href="controle-estoque.html">Ir para o Estoque</a>
+                            <button type="button" class="hydro-btn hydro-btn-outline" id="movAbrirEstorno">Estornar esta saída</button>
+                        </div>
+                        <div class="mov-estorno" id="movEstorno" hidden>
+                            <label for="movEstornoTexto" class="mov-rotulo">Por que estornar? (mínimo 10 caracteres)</label>
+                            <textarea id="movEstornoTexto" rows="2" maxlength="500"></textarea>
+                            <div class="mov-estorno-acoes">
+                                <button type="button" class="hydro-btn hydro-btn-danger" id="movConfirmarEstorno">Confirmar estorno</button>
+                                <p class="mov-erro-confirmar" id="movErroEstorno" role="alert" hidden></p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+
+        <div class="hydro-toast" id="hydroToast" role="status" aria-live="polite"></div>
+
+    </div>
+
+    <div class="accessibility-widget">
+        <button id="font-plus" data-font-action="increase">A+</button>
+        <button id="font-minus" data-font-action="decrease">A−</button>
+    </div>
+
+    <script src="../js/api.js?v=2026112603"></script>
+    <script src="../js/menu-submenu.js?v=2026112604"></script>
+    <script src="../js/notificacoes.js?v=20261126"></script>
+    <script src="../js/trocar-filial.js?v=20261126"></script>
+    <script src="../js/privacidade-menu.js"></script>
+    <script src="../js/public-demo.js"></script>
+    <script src="../js/font-size.js"></script>
+    <script src="../js/movimentacao-estoque.js?v=2026112603"></script>
+</body>
+
+</html>

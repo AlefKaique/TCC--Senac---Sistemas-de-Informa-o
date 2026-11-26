@@ -50,6 +50,7 @@ use Hydra\Controllers\CatalogoHortifrutiController;
 use Hydra\Controllers\CargoController;
 use Hydra\Controllers\ContaController;
 use Hydra\Controllers\ContatoController;
+use Hydra\Controllers\DocumentoEstoqueController;
 use Hydra\Controllers\EstoqueController;
 use Hydra\Controllers\FilialController;
 use Hydra\Controllers\LojaController;
@@ -253,6 +254,13 @@ $routes = [
 
     ['GET', '#^/api/estoque/movimentacoes$#', fn () => (new EstoqueController())->index()],
     ['POST', '#^/api/estoque/movimentacoes$#', fn () => (new EstoqueController())->store()],
+    // Documentos de entrada/saída com lotes (telas Nova entrada / Nova saída).
+    ['GET', '#^/api/estoque/lotes$#', fn () => (new DocumentoEstoqueController())->lotes()],
+    ['GET', '#^/api/estoque/documentos/proximo-numero$#', fn () => (new DocumentoEstoqueController())->proximoNumero()],
+    ['GET', '#^/api/estoque/documentos$#', fn () => (new DocumentoEstoqueController())->index()],
+    ['POST', '#^/api/estoque/documentos$#', fn () => (new DocumentoEstoqueController())->store()],
+    ['GET', '#^/api/estoque/documentos/(\d+)$#', fn ($id) => (new DocumentoEstoqueController())->show((int) $id)],
+    ['POST', '#^/api/estoque/documentos/(\d+)/estornar$#', fn ($id) => (new DocumentoEstoqueController())->estornar((int) $id)],
 
     ['GET', '#^/api/vendas$#', fn () => (new VendaController())->index()],
     ['POST', '#^/api/vendas$#', fn () => (new VendaController())->store()],
