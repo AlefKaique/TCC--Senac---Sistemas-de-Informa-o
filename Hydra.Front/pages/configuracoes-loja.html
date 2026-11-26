@@ -99,31 +99,30 @@
                     </div>
                 </header>
 
-                <p class="hydro-settings-intro" id="hydroSettingsIntro" data-hydro-config-admin>Mantenha aqui os dados da loja atualizados. Filiais sem dados próprios usam estes.</p>
+                <div class="hydro-filial-atual-intro" data-hydro-config-admin>
+                    <p class="hydro-settings-intro" id="hydroSettingsIntro">
+                        Dados da filial em que você está trabalhando agora: <strong id="hydroFilialAtualNome">carregando…</strong>.
+                        Somente leitura: para alterar, use <a href="filiais.html" id="hydroLinkEditarFilial">Configurações › Filiais</a>.
+                    </p>
+                </div>
 
                 <form id="hydroSettingsForm" novalidate>
 
                     <section class="hydro-card" data-hydro-config-admin>
                         <div class="hydro-card-header">
                             <h2>Identidade da loja</h2>
-                            <p>Nome e logo exibidos no sistema.</p>
+                            <p>Nome da filial ativa e logo da loja.</p>
                         </div>
                         <div class="hydro-card-body">
                             <div class="hydro-logo-row">
                                 <div class="hydro-logo-preview" id="hydroLogoPreview">
                                     <i class="hydro-ic hydro-ic-image"></i>
                                 </div>
-                                <div class="hydro-logo-actions">
-                                    <label class="hydro-btn hydro-btn-outline hydro-btn-sm hydro-upload-btn" for="hydroLogoInput">
-                                        <i class="hydro-ic hydro-ic-upload"></i> Enviar logo
-                                    </label>
-                                    <input type="file" id="hydroLogoInput" accept="image/*" hidden>
-                                    <span class="hydro-logo-hint">PNG, JPG ou WEBP. A imagem é reduzida automaticamente.</span>
-                                </div>
+
                             </div>
                             <div class="hydro-form-group">
-                                <label for="hydroNomeLoja">Nome da loja</label>
-                                <input type="text" id="hydroNomeLoja" required>
+                                <label for="hydroNomeLoja">Nome da filial</label>
+                                <input type="text" id="hydroNomeLoja" readonly>
                             </div>
                         </div>
                     </section>
@@ -131,18 +130,16 @@
                     <section class="hydro-card" data-hydro-config-admin>
                         <div class="hydro-card-header">
                             <h2>Dados cadastrais</h2>
-                            <p>CNPJ e telefone de contato da loja.</p>
+                            <p>CNPJ e telefone da filial ativa.</p>
                         </div>
                         <div class="hydro-card-body hydro-settings-grid">
                             <div class="hydro-form-group">
                                 <label for="hydroCnpj"><i class="hydro-ic hydro-ic-building"></i> CNPJ</label>
-                                <input type="text" id="hydroCnpj" placeholder="00.000.000/0000-00"
-                                    aria-describedby="hydroCnpjBrasilApiStatus">
-                                <small class="hydro-cnpj-status" id="hydroCnpjBrasilApiStatus" role="status" aria-live="polite"></small>
+                                <input type="text" id="hydroCnpj" readonly>
                             </div>
                             <div class="hydro-form-group">
                                 <label for="hydroTelefone"><i class="hydro-ic hydro-ic-phone"></i> Telefone</label>
-                                <input type="text" id="hydroTelefone" placeholder="(00) 00000-0000">
+                                <input type="text" id="hydroTelefone" readonly>
                             </div>
                         </div>
                     </section>
@@ -150,53 +147,24 @@
                     <section class="hydro-card" data-hydro-config-admin>
                         <div class="hydro-card-header">
                             <h2>Endereço</h2>
-                            <p>Endereço físico do estabelecimento.</p>
+                            <p>Endereço da filial ativa.</p>
                         </div>
                         <div class="hydro-card-body hydro-settings-grid">
                             <div class="hydro-form-group">
                                 <label for="hydroCep">CEP</label>
-                                <input type="text" id="hydroCep" placeholder="00000-000">
+                                <input type="text" id="hydroCep" readonly>
                             </div>
                             <div class="hydro-form-group hydro-span-2">
                                 <label for="hydroEndereco"><i class="hydro-ic hydro-ic-map-pin"></i> Endereço</label>
-                                <input type="text" id="hydroEndereco" placeholder="Rua, avenida...">
+                                <input type="text" id="hydroEndereco" readonly>
                             </div>
                             <div class="hydro-form-group">
                                 <label for="hydroCidade">Cidade</label>
-                                <input type="text" id="hydroCidade" placeholder="Cidade">
+                                <input type="text" id="hydroCidade" readonly>
                             </div>
                             <div class="hydro-form-group">
                                 <label for="hydroEstado">Estado</label>
-                                <select id="hydroEstado">
-                                    <option value="">Selecione o estado</option>
-                                    <option value="AC">Acre</option>
-                                    <option value="AL">Alagoas</option>
-                                    <option value="AP">Amapá</option>
-                                    <option value="AM">Amazonas</option>
-                                    <option value="BA">Bahia</option>
-                                    <option value="CE">Ceará</option>
-                                    <option value="DF">Distrito Federal</option>
-                                    <option value="ES">Espírito Santo</option>
-                                    <option value="GO">Goiás</option>
-                                    <option value="MA">Maranhão</option>
-                                    <option value="MT">Mato Grosso</option>
-                                    <option value="MS">Mato Grosso do Sul</option>
-                                    <option value="MG">Minas Gerais</option>
-                                    <option value="PA">Pará</option>
-                                    <option value="PB">Paraíba</option>
-                                    <option value="PR">Paraná</option>
-                                    <option value="PE">Pernambuco</option>
-                                    <option value="PI">Piauí</option>
-                                    <option value="RJ">Rio de Janeiro</option>
-                                    <option value="RN">Rio Grande do Norte</option>
-                                    <option value="RS">Rio Grande do Sul</option>
-                                    <option value="RO">Rondônia</option>
-                                    <option value="RR">Roraima</option>
-                                    <option value="SC">Santa Catarina</option>
-                                    <option value="SP">São Paulo</option>
-                                    <option value="SE">Sergipe</option>
-                                    <option value="TO">Tocantins</option>
-                                </select>
+                                <input type="text" id="hydroEstado" readonly>
                             </div>
                         </div>
                     </section>
@@ -339,10 +307,6 @@
                     </div>
                     </section>
 
-                    <div class="hydro-settings-footer" data-hydro-config-admin>
-                        <button type="button" class="hydro-btn hydro-btn-outline" id="hydroBtnCancelar">Cancelar</button>
-                        <button type="submit" class="hydro-btn hydro-btn-primary" id="hydroBtnSalvar">Salvar alterações</button>
-                    </div>
                 </form>
 
             </main>
@@ -362,7 +326,6 @@
     <script src="../js/privacidade-menu.js"></script>
     <script src="../js/public-demo.js"></script>
     <script src="../js/font-size.js"></script>
-    <script src="../js/cnpj-brasilapi.js"></script>
     <script src="../js/configuracoes-loja.js"></script>
 </body>
 

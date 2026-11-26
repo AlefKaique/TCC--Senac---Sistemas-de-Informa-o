@@ -281,80 +281,39 @@
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    /* ================= Logo da loja =================
-       Antes era só pré-visualização local e sumia ao recarregar (QA 006).
-       Agora a imagem é reduzida aqui (até 256 px, para não pesar no banco)
-       e vai como data URL no mesmo PUT /api/loja dos demais campos. */
-    const logoInput = document.getElementById('hydroLogoInput');
+    /* ================= Filial ativa (somente leitura) =================
+       As seções Identidade, Dados cadastrais e Endereço mostram a filial em
+       que o usuário está trabalhando (a da sessão, de /filiais/minhas), não
+       os dados gerais da loja, e não são editáveis aqui: a edição fica em
+       Configurações > Filiais > Editar. A logo continua sendo a da loja.
+
+       "Tempo real": relê a filial a cada 30 s enquanto a aba está visível e
+       sempre que o usuário volta para ela. Trocar de filial recarrega a
+       página (trocar-filial.js), então a troca aparece na hora. */
+    const ESTADOS = {
+        AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: 'Bahia', CE: 'Ceará',
+        DF: 'Distrito Federal', ES: 'Espírito Santo', GO: 'Goiás', MA: 'Maranhão',
+        MT: 'Mato Grosso', MS: 'Mato Grosso do Sul', MG: 'Minas Gerais', PA: 'Pará',
+        PB: 'Paraíba', PR: 'Paraná', PE: 'Pernambuco', PI: 'Piauí', RJ: 'Rio de Janeiro',
+        RN: 'Rio Grande do Norte', RS: 'Rio Grande do Sul', RO: 'Rondônia', RR: 'Roraima',
+        SC: 'Santa Catarina', SP: 'São Paulo', SE: 'Sergipe', TO: 'Tocantins',
+    };
+    const INTERVALO_ATUALIZACAO_MS = 30000;
+    const NAO_INFORMADO = 'Não informado';
+
     const logoPreview = document.getElementById('hydroLogoPreview');
     const logoPreviewOriginal = logoPreview.innerHTML;
-    const LOGO_LADO_MAX = 256;
-    // undefined = logo não mexida (o PUT não manda a chave); string = nova logo.
-    let logoPendente;
-
-    function mostrarLogo(dataUrl) {
-        if (dataUrl) {
-            logoPreview.innerHTML = '';
-            const img = document.createElement('img');
-            img.src = dataUrl;
-            img.alt = 'Logo da loja';
-            logoPreview.appendChild(img);
-        } else {
-            logoPreview.innerHTML = logoPreviewOriginal;
-        }
-    }
-
-    function reduzirImagem(dataUrl) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => {
-                const escala = Math.min(1, LOGO_LADO_MAX / Math.max(img.width, img.height));
-                const canvas = document.createElement('canvas');
-                canvas.width = Math.max(1, Math.round(img.width * escala));
-                canvas.height = Math.max(1, Math.round(img.height * escala));
-                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                // PNG preserva transparência, comum em logos.
-                resolve(canvas.toDataURL('image/png'));
-            };
-            img.onerror = () => reject(new Error('Não foi possível ler a imagem'));
-            img.src = dataUrl;
-        });
-    }
-
-    logoInput.addEventListener('change', () => {
-        const file = logoInput.files && logoInput.files[0];
-        if (!file) return;
-
-        if (!file.type.startsWith('image/')) {
-            showToast('Selecione um arquivo de imagem');
-            return;
-        }
-        if (file.size > 2 * 1024 * 1024) {
-            showToast('A imagem deve ter até 2MB');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = async () => {
-            try {
-                logoPendente = await reduzirImagem(reader.result);
-                mostrarLogo(logoPendente);
-                showToast('Logo selecionada. Clique em "Salvar alterações" para gravar.');
-            } catch (err) {
-                showToast(err.message);
-            }
-        };
-        reader.readAsDataURL(file);
-    });
-
-    /* ================= Máscaras e validação (QA 005) =================
-       Mesmas regras de Hydra\Support\Validacao no back-end, que é quem
-       decide; aqui é para o usuário ver o erro no campo antes de enviar. */
-    const cnpjInput = document.getElementById('hydroCnpj');
-    const cnpjBrasilApiStatus = document.getElementById('hydroCnpjBrasilApiStatus');
-    const telefoneInput = document.getElementById('hydroTelefone');
-    const cepInput = document.getElementById('hydroCep');
-    let cnpjBrasilApiVerificado = null;
+    const nomeFilialIntro = document.getElementById('hydroFilialAtualNome');
+    const linkEditarFilial = document.getElementById('hydroLinkEditarFilial');
+    const camposFilial = {
+        nome: document.getElementById('hydroNomeLoja'),
+        cnpj: document.getElementById('hydroCnpj'),
+        telefone: document.getElementById('hydroTelefone'),
+        cep: document.getElementById('hydroCep'),
+        endereco: document.getElementById('hydroEndereco'),
+        cidade: document.getElementById('hydroCidade'),
+        estado: document.getElementById('hydroEstado'),
+    };
 
     // CNPJ alfanumérico (2026): 12 posições 0-9/A-Z + 2 dígitos verificadores.
     function mascaraCnpj(v) {
@@ -377,179 +336,64 @@
         return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
     }
 
-    function atualizarStatusCnpj(texto, estado = '') {
-        cnpjBrasilApiStatus.textContent = texto;
-        if (estado) cnpjBrasilApiStatus.dataset.status = estado;
-        else delete cnpjBrasilApiStatus.dataset.status;
+    function mostrarLogo(dataUrl) {
+        if (dataUrl) {
+            logoPreview.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.alt = 'Logo da loja';
+            logoPreview.appendChild(img);
+        } else {
+            logoPreview.innerHTML = logoPreviewOriginal;
+        }
     }
 
-    async function verificarCnpjBrasilApi() {
-        const cnpj = window.hydraCnpj.normalizar(cnpjInput.value);
-        if (!cnpj) {
-            cnpjBrasilApiVerificado = null;
-            atualizarStatusCnpj('');
+    /** Campo vazio mostra "Não informado" como placeholder, sem valor. */
+    function preencherCampo(input, valor) {
+        input.value = valor || '';
+        input.placeholder = valor ? '' : NAO_INFORMADO;
+    }
+
+    function mostrarFilial(filial) {
+        if (!filial) {
+            nomeFilialIntro.textContent = 'nenhuma filial selecionada';
+            Object.values(camposFilial).forEach((input) => preencherCampo(input, ''));
+            linkEditarFilial.href = 'filiais.html';
             return;
         }
-        if (!window.hydraCnpj.validoLocal(cnpj)) {
-            throw new Error('CNPJ inválido. Confira os 14 caracteres e os dígitos verificadores.');
-        }
-        if (cnpjBrasilApiVerificado === cnpj) return;
-
-        atualizarStatusCnpj('Consultando CNPJ na BrasilAPI…');
-        const consulta = await window.hydraCnpj.consultarBrasilApi(cnpj);
-        cnpjBrasilApiVerificado = cnpj;
-        const situacao = consulta.situacao ? ` Situação cadastral: ${consulta.situacao}.` : '';
-        atualizarStatusCnpj(
-            consulta.consultado
-                ? `CNPJ encontrado na BrasilAPI.${situacao}`
-                : consulta.mensagem,
-            'sucesso'
-        );
+        nomeFilialIntro.textContent = filial.nome || NAO_INFORMADO;
+        preencherCampo(camposFilial.nome, filial.nome);
+        preencherCampo(camposFilial.cnpj, mascaraCnpj(filial.cnpj));
+        preencherCampo(camposFilial.telefone, mascaraTelefone(filial.telefone));
+        preencherCampo(camposFilial.cep, mascaraCep(filial.cep));
+        preencherCampo(camposFilial.endereco, filial.endereco);
+        preencherCampo(camposFilial.cidade, filial.cidade);
+        preencherCampo(camposFilial.estado, filial.estado ? (ESTADOS[filial.estado] || filial.estado) : '');
+        linkEditarFilial.href = `cadastro-filial.html?id=${encodeURIComponent(filial.id_filial)}`;
     }
-    const telefoneValido = (v) => /^[1-9][1-9](?:[2-8]\d{7}|9\d{8})$/.test(String(v).replace(/\D/g, ''));
-    const cepValido = (v) => String(v).replace(/\D/g, '').length === 8;
 
-    [[cnpjInput, mascaraCnpj], [telefoneInput, mascaraTelefone], [cepInput, mascaraCep]].forEach(([input, mascara]) => {
-        input.addEventListener('input', () => {
-            input.value = mascara(input.value);
-            limparErroCampo(input);
-            if (input === cnpjInput) {
-                cnpjBrasilApiVerificado = null;
-                atualizarStatusCnpj('');
-            }
+    async function carregarFilialAtiva() {
+        const resposta = await window.hydraApi('/filiais/minhas');
+        mostrarFilial(resposta.filial_ativa || null);
+    }
+
+    let timerAtualizacao = null;
+    function iniciarAtualizacaoAutomatica() {
+        const atualizar = () => carregarFilialAtiva().catch(() => { /* mantém o que já está na tela */ });
+        const agendar = () => {
+            clearInterval(timerAtualizacao);
+            timerAtualizacao = document.hidden ? null : setInterval(atualizar, INTERVALO_ATUALIZACAO_MS);
+        };
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) atualizar();
+            agendar();
         });
-    });
-
-    cnpjInput.addEventListener('blur', () => {
-        verificarCnpjBrasilApi().catch((erro) => {
-            cnpjBrasilApiVerificado = null;
-            atualizarStatusCnpj(erro.message, 'erro');
-        });
-    });
-
-    function limparErroCampo(input) {
-        input.removeAttribute('aria-invalid');
-        input.style.borderColor = '';
-        const msg = document.getElementById(input.id + 'Erro');
-        if (msg) msg.remove();
-        if (input === cnpjInput) input.setAttribute('aria-describedby', cnpjBrasilApiStatus.id);
-    }
-    function marcarErroCampo(input, mensagem) {
-        limparErroCampo(input);
-        input.setAttribute('aria-invalid', 'true');
-        input.style.borderColor = '#d93636';
-        const msg = document.createElement('small');
-        msg.id = input.id + 'Erro';
-        msg.style.cssText = 'display:block;color:#d93636;margin-top:4px;font-size:12px;';
-        msg.textContent = mensagem;
-        input.setAttribute('aria-describedby', msg.id);
-        input.insertAdjacentElement('afterend', msg);
+        agendar();
     }
 
-    const CAMPO_API_PARA_INPUT = {
-        nome_loja: 'hydroNomeLoja',
-        cnpj: 'hydroCnpj',
-        telefone: 'hydroTelefone',
-        cep: 'hydroCep',
-        estado: 'hydroEstado',
-        logo: 'hydroLogoInput',
-    };
-
-    /* ================= Carregar dados atuais da loja ================= */
-    function fillForm(loja) {
-        document.getElementById('hydroNomeLoja').value = loja.nome_loja || '';
-        cnpjInput.value = mascaraCnpj(loja.cnpj);
-        // O CNPJ que já está gravado foi conferido quando foi salvo: sem
-        // isto, o primeiro "Salvar" consultava a BrasilAPI (até 8 s) mesmo
-        // sem o CNPJ ter mudado. Se o usuário trocar o CNPJ, a consulta volta.
-        cnpjBrasilApiVerificado = loja.cnpj ? window.hydraCnpj.normalizar(loja.cnpj) || null : null;
-        telefoneInput.value = mascaraTelefone(loja.telefone);
-        cepInput.value = mascaraCep(loja.cep);
-        document.getElementById('hydroEndereco').value = loja.endereco || '';
-        document.getElementById('hydroCidade').value = loja.cidade || '';
-        document.getElementById('hydroEstado').value = loja.estado || '';
-        logoPendente = undefined;
-        mostrarLogo(loja.logo || null);
-        [cnpjInput, telefoneInput, cepInput].forEach(limparErroCampo);
-    }
-
-    let lojaAtual = null;
-
-    /* ================= Salvar / cancelar ================= */
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const nomeInput = document.getElementById('hydroNomeLoja');
-        const nome_loja = nomeInput.value.trim();
-        const erros = [];
-        if (!nome_loja) erros.push([nomeInput, 'Informe o nome da loja']);
-        if (cnpjInput.value.trim() && !window.hydraCnpj.validoLocal(cnpjInput.value)) {
-            erros.push([cnpjInput, 'CNPJ inválido. Confira os 14 caracteres e os dígitos verificadores.']);
-        }
-        if (telefoneInput.value.trim() && !telefoneValido(telefoneInput.value)) {
-            erros.push([telefoneInput, 'Telefone inválido. Use DDD + número, ex.: (11) 99999-8888.']);
-        }
-        if (cepInput.value.trim() && !cepValido(cepInput.value)) {
-            erros.push([cepInput, 'CEP inválido. Use 8 números, ex.: 01310-100.']);
-        }
-        [nomeInput, cnpjInput, telefoneInput, cepInput].forEach(limparErroCampo);
-        if (erros.length) {
-            erros.forEach(([input, msg]) => marcarErroCampo(input, msg));
-            erros[0][0].focus();
-            showToast(erros[0][1]);
-            return;
-        }
-
-        try {
-            await verificarCnpjBrasilApi();
-        } catch (erro) {
-            marcarErroCampo(cnpjInput, erro.message);
-            atualizarStatusCnpj(erro.message, 'erro');
-            cnpjInput.focus();
-            return;
-        }
-
-        const btn = document.getElementById('hydroBtnSalvar');
-        btn.disabled = true;
-
-        try {
-            const { loja } = await window.hydraApi('/loja', {
-                method: 'PUT',
-                body: {
-                    nome_loja,
-                    cnpj: cnpjInput.value.trim(),
-                    telefone: telefoneInput.value.trim(),
-                    cep: cepInput.value.trim(),
-                    endereco: document.getElementById('hydroEndereco').value.trim(),
-                    cidade: document.getElementById('hydroCidade').value.trim(),
-                    estado: document.getElementById('hydroEstado').value,
-                    // Só manda a chave quando a logo mudou: o back-end trata
-                    // ausência como "não mexer".
-                    ...(logoPendente !== undefined ? { logo: logoPendente } : {}),
-                },
-            });
-            lojaAtual = loja;
-            fillForm(loja);
-
-            // Uma confirmação só. Antes apareciam "Alterações salvas" no
-            // rodapé E o toast, discretos e redundantes (QA 004).
-            showToast('Configurações da loja salvas com sucesso');
-        } catch (err) {
-            const input = document.getElementById(CAMPO_API_PARA_INPUT[err.data && err.data.campo]);
-            if (input && input.type !== 'file') {
-                marcarErroCampo(input, err.message);
-                input.focus();
-            }
-            showToast(err.message);
-        } finally {
-            btn.disabled = false;
-        }
-    });
-
-    document.getElementById('hydroBtnCancelar').addEventListener('click', () => {
-        if (lojaAtual) fillForm(lojaAtual);
-        showToast('Alterações descartadas');
-    });
+    // Nada neste formulário é salvo pelo "submit" (Mercado Pago e alertas
+    // têm botões próprios); Enter num campo não pode recarregar a página.
+    form.addEventListener('submit', (e) => e.preventDefault());
 
     /* ================= Sidebar nav (cosmético, demo de página única) ================= */
     document.querySelectorAll('.hydro-menu a[data-view]').forEach((link) => {
@@ -601,6 +445,7 @@
             if (!podeConfigurarLoja) return;
         } catch (err) {
             alertasPreview.hidden = false;
+            nomeFilialIntro.textContent = 'demonstração';
             // A prévia pública exibe apenas campos vazios e desativados.
             return;
         }
@@ -609,11 +454,11 @@
            depois da outra (alertas -> loja -> Mercado Pago), somando o tempo
            de resposta das três antes de a tela ficar completa. */
         const alertas = carregarPreferenciasAlertas().catch((error) => showToast(error.message));
-        const dadosLoja = window.hydraApi('/loja')
-            .then(({ loja }) => {
-                lojaAtual = loja;
-                fillForm(loja);
-            });
+        const dadosLoja = Promise.all([
+            carregarFilialAtiva(),
+            window.hydraApi('/loja').then(({ loja }) => mostrarLogo(loja.logo || null)),
+        ]);
+        iniciarAtualizacaoAutomatica();
         const contaMp = carregarContaMercadoPago();
         await alertas;
         try {
