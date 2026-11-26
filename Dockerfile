@@ -43,6 +43,9 @@ COPY Hydra.Front/ /var/www/html/
 # handler de PHP passaria a servir o codigo-fonte como texto.
 COPY Hydra.Back/src/ /var/www/app/src/
 COPY Hydra.Back/config/ /var/www/app/config/
+# Os 120 itens do catalogo hortifruti: CatalogoHortifrutiRepository carrega
+# este arquivo sozinho quando a tabela do catalogo esta incompleta.
+COPY Hydra.Back/sql/seed_catalogo_hortifruti.sql /var/www/app/sql/seed_catalogo_hortifruti.sql
 
 RUN mkdir -p /var/www/html/api
 COPY Hydra.Back/public/index.php /var/www/html/api/index.php

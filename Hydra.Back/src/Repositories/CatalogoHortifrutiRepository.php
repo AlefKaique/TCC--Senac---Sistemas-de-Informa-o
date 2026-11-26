@@ -22,6 +22,41 @@ final class CatalogoHortifrutiRepository
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
             );
         });
+        $this->garantirItens();
+    }
+
+    /**
+     * Preenche o catálogo com os 120 itens padrão se ele estiver incompleto.
+     *
+     * Antes os itens só entravam rodando sql/seed_catalogo_hortifruti.sql à
+     * mão; num banco novo (ex.: o do Render) a tabela ficava vazia e toda
+     * importação falhava com "o catálogo não tem os 120 itens". O arquivo
+     * continua sendo a fonte única dos dados (o Dockerfile o copia para
+     * /var/www/app/sql). O INSERT dele é idempotente (ON DUPLICATE KEY
+     * UPDATE), então rodar de novo só corrige itens faltando ou alterados.
+     *
+     * Quem cria este repositório o faz FORA de transação (ver os
+     * construtores de CatalogoHortifrutiController e FilialController::store).
+     */
+    private function garantirItens(): void
+    {
+        if ($this->estaCompleto()) {
+            return;
+        }
+
+        $arquivo = dirname(__DIR__, 2) . '/sql/seed_catalogo_hortifruti.sql';
+        $sql = is_file($arquivo) ? (string) file_get_contents($arquivo) : '';
+        $inicio = stripos($sql, 'INSERT INTO catalogo_hortifruti');
+        if ($inicio === false) {
+            error_log('[Hydra] Catálogo hortifrúti incompleto e arquivo de carga ausente: ' . $arquivo);
+            return; // importar() continua recusando com a mensagem de catálogo incompleto.
+        }
+
+        try {
+            db()->exec(rtrim(substr($sql, $inicio), " \t\r\n;"));
+        } catch (\PDOException $e) {
+            error_log('[Hydra] Falha ao carregar o catálogo hortifrúti padrão: ' . $e->getMessage());
+        }
     }
 
     /** @return array<int,array<string,mixed>> */
@@ -53,7 +88,7 @@ final class CatalogoHortifrutiRepository
     public function importar(int $idLoja, int $idFilial): int
     {
         if (!$this->estaCompleto()) {
-            throw new \RuntimeException('O catálogo padrão não tem os 120 itens. Execute novamente sql/seed_catalogo_hortifruti.sql.');
+            throw new \RuntimeException('O catálogo padrão de hortifrúti não está disponível no momento. Desmarque a importação para continuar e tente importar depois.');
         }
 
         $stmt = db()->prepare(
