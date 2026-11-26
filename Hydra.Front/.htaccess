@@ -4,8 +4,10 @@ RewriteRule ^$ /pages/index.html [R=302,L]
 
 # Cache dos arquivos estáticos. Sem isso, cada troca de tela revalidava
 # todos os CSS/JS (uma ida e volta por arquivo, mesmo terminando em 304).
-# As URLs não levam versão (ex.: caixa.js?v=2), então CSS/JS ficam só 1 hora
-# em cache: um deploy novo chega a todos em no máximo uma hora. Imagens e
+# CSS/JS ficam 1 hora em cache. Ao alterar um CSS/JS, troque o ?v= dele nas
+# páginas (ex.: produtos.js?v=20261126): o HTML não tem cache, então a página
+# nova já pede o arquivo novo. Sem isso, a página nova rodava com o JS antigo
+# guardado no navegador por até uma hora (botões novos sem ação). Imagens e
 # fontes mudam raramente e ficam 7 dias. HTML continua sem cache, para que
 # a tela sempre venha da versão publicada.
 # Cabeçalhos de segurança de todas as respostas (páginas, arquivos e API).
