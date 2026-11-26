@@ -1,0 +1,221 @@
+/* ============ ASSISTENTE DA PRIMEIRA FILIAL ============
+   Usa o layout do Cadastro (cadastro.css); aqui só o que é do assistente. */
+
+.pf-wrap [hidden] { display: none !important; }
+
+.pf-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+.pf-logo { margin-bottom: 0; }
+.pf-sair { margin-bottom: 0; }
+
+.pf-carregando {
+  color: var(--gray-600);
+  font-size: 0.9rem;
+}
+
+/* Progresso */
+.pf-progresso { margin-bottom: 28px; }
+.pf-progresso__texto {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--orange-ink);
+  margin: 0 0 8px;
+}
+.pf-progresso__barra {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gray-300);
+  overflow: hidden;
+}
+.pf-progresso__barra span {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--orange);
+  transition: width .3s ease;
+}
+
+.pf-etapa {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.pf-etapa .signup__title { margin-bottom: 0; outline: none; }
+.pf-etapa .signup__hint { margin-bottom: 4px; }
+
+/* Lista de passos da boas-vindas */
+.pf-lista-passos {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pf-lista-passos li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.92rem;
+  color: var(--navy-dark);
+}
+.pf-lista-passos em {
+  color: var(--gray-600);
+  font-style: normal;
+  font-size: 0.82rem;
+}
+.pf-num {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--navy-soft);
+  color: var(--navy);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+/* Sugestões de nome */
+.pf-sugestoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: -6px;
+}
+.pf-chip {
+  font: 500 0.82rem var(--font-body);
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--gray-300);
+  background: var(--white);
+  color: var(--navy);
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+.pf-chip:hover,
+.pf-chip:focus-visible {
+  border-color: var(--navy);
+  background: var(--navy-soft);
+  outline: none;
+}
+
+/* Campos que o cadastro.css não estiliza */
+.pf-wrap .field select {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  padding: 12px 12px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--gray-300);
+  background: var(--white);
+  color: var(--navy-dark);
+}
+.pf-wrap .field select:focus {
+  outline: none;
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(27,42,99,0.1);
+}
+.pf-wrap .field input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.pf-linha {
+  display: grid;
+  grid-template-columns: 1fr 96px;
+  gap: 12px;
+}
+
+.pf-cnpj-status:empty { display: none; }
+.pf-cnpj-status[data-status="erro"] { color: var(--danger); }
+.pf-cnpj-status[data-status="sucesso"] { color: var(--success); }
+
+.pf-opcao {
+  padding: 16px;
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+}
+.pf-opcao strong { color: var(--navy-dark); }
+.pf-opcao:has(input:checked) {
+  border-color: var(--navy);
+  background: var(--navy-soft);
+}
+
+/* Revisão */
+.pf-resumo {
+  margin: 0;
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+}
+.pf-resumo div {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--gray-300);
+  font-size: 0.88rem;
+}
+.pf-resumo div:first-child { border-top: 0; }
+.pf-resumo dt { color: var(--gray-600); }
+.pf-resumo dd {
+  margin: 0;
+  color: var(--navy-dark);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.pf-resumo .pf-vazio { color: var(--gray-600); font-weight: 400; font-style: italic; }
+
+/* Pronto */
+.pf-sucesso-icone {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--success-soft);
+  color: var(--success);
+}
+.pf-sucesso-icone svg { width: 28px; height: 28px; }
+
+.pf-erro {
+  margin: 18px 0 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+  font-size: 0.86rem;
+}
+
+.pf-acoes {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+}
+.pf-acoes .btn { flex: 1; justify-content: center; }
+.pf-acoes .btn[disabled] { opacity: .6; cursor: progress; transform: none; }
+
+/* Tema escuro: o tema-escuro.css já cobre .signup-body e os inputs. */
+html[data-hydra-theme="dark"] .pf-chip,
+html[data-hydra-theme="dark"] .pf-opcao,
+html[data-hydra-theme="dark"] .pf-resumo,
+html[data-hydra-theme="dark"] .pf-resumo div {
+  background: transparent;
+  border-color: rgba(255,255,255,0.16);
+}
+html[data-hydra-theme="dark"] .pf-lista-passos li,
+html[data-hydra-theme="dark"] .pf-resumo dd,
+html[data-hydra-theme="dark"] .pf-opcao strong {
+  color: #E8ECF7;
+}
+html[data-hydra-theme="dark"] .pf-chip { color: #E8ECF7; }
+html[data-hydra-theme="dark"] .pf-opcao:has(input:checked) { background: rgba(255,255,255,0.06); }

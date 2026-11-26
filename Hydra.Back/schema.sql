@@ -72,9 +72,11 @@ CREATE TABLE IF NOT EXISTS lojas (
 
 -- ============================================================
 -- Filiais
---   Uma loja (a rede, criada no Cadastro) tem uma ou mais filiais. O
---   Cadastro cria a primeira, "Matriz"; as demais são criadas pelo
---   Administrador em Configuração Loja > Cadastrar nova Filial.
+--   Uma loja (a rede, criada no Cadastro) tem uma ou mais filiais. A
+--   loja nasce sem filial: no primeiro login o Administrador passa pelo
+--   assistente "Primeira filial" (pages/primeira-filial.html), que cria
+--   a primeira; as demais são criadas em Configuração Loja > Cadastrar
+--   nova Filial.
 --
 --   Usuários, cargos e Configurações da Loja valem para a rede inteira.
 --   Produtos, estoque, vendas, promoções e movimentações pertencem a uma

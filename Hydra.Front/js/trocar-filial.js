@@ -88,6 +88,17 @@
         estado.filiais = resposta.filiais || [];
         estado.ativa = resposta.filial_ativa || null;
         atualizarChip();
+        irParaPrimeiraFilialSePreciso(resposta);
+    }
+
+    /* Loja sem filial nenhuma (conta recém-criada): o Administrador vai
+       para o assistente da primeira filial, de qualquer tela. A tela
+       Privacidade fica de fora: o titular pode encerrar a conta sem antes
+       criar uma filial. */
+    function irParaPrimeiraFilialSePreciso(resposta) {
+        if (estado.filiais.length > 0 || estado.ativa || !resposta.administrador) return;
+        if (/privacidade-conta\.html$/.test(window.location.pathname)) return;
+        window.location.href = 'primeira-filial.html';
     }
 
     /* ================= Botão na barra lateral e aviso no topo ================= */

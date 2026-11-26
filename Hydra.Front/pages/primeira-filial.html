@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configure sua primeira filial — Hydra PDV</title>
+  <link rel="icon" type="image/png" href="../img/logo-hydra.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/cadastro.css">
+  <link rel="stylesheet" href="../css/primeira-filial.css">
+</head>
+
+<!--
+  Assistente da primeira filial. A conta nasce sem filial (AuthController::
+  criarConta); enquanto a loja não tiver nenhuma, todo login do
+  Administrador cai aqui (login.js e trocar-filial.js). Cada etapa é um
+  <section data-etapa>; js/primeira-filial.js mostra uma de cada vez.
+-->
+<body class="signup-body">
+
+  <div class="signup">
+
+    <div class="signup__form-side">
+      <div class="signup__form-wrap pf-wrap">
+
+        <div class="pf-topo">
+          <span class="logo signup__logo pf-logo">
+            <img src="../img/logo-hydra.png" alt="Hydra PDV">
+          </span>
+          <a href="#" class="auth-back pf-sair" id="pfSair">Sair</a>
+        </div>
+
+        <div class="pf-progresso" id="pfProgresso" hidden>
+          <p class="pf-progresso__texto" id="pfProgressoTexto">Etapa 1 de 4</p>
+          <div class="pf-progresso__barra" role="progressbar" aria-labelledby="pfProgressoTexto"
+            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span id="pfProgressoPreenchido"></span>
+          </div>
+        </div>
+
+        <p class="pf-carregando" id="pfCarregando" role="status">Carregando…</p>
+
+        <form id="pfForm" novalidate>
+
+          <!-- 0 · Boas-vindas -->
+          <section class="pf-etapa" data-etapa="boas-vindas" hidden>
+            <h1 class="signup__title" tabindex="-1">Bem-vindo ao Hydra<span id="pfNomeUsuario"></span>!</h1>
+            <p class="signup__subtitle">Antes de começar, vamos cadastrar a <strong>primeira filial</strong> de
+              <strong id="pfNomeLoja">sua loja</strong>.</p>
+            <p class="signup__hint">Filial é cada ponto de venda da loja. Estoque, vendas e promoções ficam
+              separados por filial. Se você tem um mercado só, ele é a sua primeira filial. Outras podem ser
+              criadas depois em Configurações › Filiais.</p>
+
+            <ul class="pf-lista-passos" aria-label="O que vamos preencher">
+              <li><span class="pf-num">1</span> Nome da filial</li>
+              <li><span class="pf-num">2</span> CNPJ e telefone <em>(opcional)</em></li>
+              <li><span class="pf-num">3</span> Endereço <em>(opcional)</em></li>
+              <li data-requer-catalogo><span class="pf-num">4</span> Catálogo de hortifrúti <em>(opcional)</em></li>
+            </ul>
+            <p class="field__hint">Leva menos de 2 minutos.</p>
+          </section>
+
+          <!-- 1 · Nome -->
+          <section class="pf-etapa" data-etapa="nome" hidden>
+            <h1 class="signup__title" tabindex="-1">Como a filial se chama?</h1>
+            <p class="signup__hint">Esse nome aparece no topo das telas e na janela "Trocar Filial".</p>
+            <div class="field">
+              <label for="pfNome">Nome da filial</label>
+              <input type="text" id="pfNome" maxlength="120" placeholder="Ex.: Matriz, Centro, Loja 1" required
+                autocomplete="off">
+            </div>
+            <div class="pf-sugestoes" aria-label="Sugestões de nome">
+              <button type="button" class="pf-chip" data-sugestao="Matriz">Matriz</button>
+              <button type="button" class="pf-chip" data-sugestao="Loja 1">Loja 1</button>
+              <button type="button" class="pf-chip" data-sugestao="Centro">Centro</button>
+            </div>
+          </section>
+
+          <!-- 2 · Dados cadastrais -->
+          <section class="pf-etapa" data-etapa="dados" hidden>
+            <h1 class="signup__title" tabindex="-1">CNPJ e telefone</h1>
+            <p class="signup__hint">Opcional. Em branco, a filial usa os dados da loja. Você pode preencher depois.</p>
+            <div class="field">
+              <label for="pfCnpj">CNPJ</label>
+              <input type="text" id="pfCnpj" maxlength="18" placeholder="00.000.000/0000-00"
+                aria-describedby="pfCnpjStatus">
+              <p class="field__hint pf-cnpj-status" id="pfCnpjStatus" role="status" aria-live="polite"></p>
+            </div>
+            <div class="field">
+              <label for="pfTelefone">Telefone</label>
+              <input type="text" id="pfTelefone" maxlength="15" inputmode="tel" placeholder="(00) 00000-0000">
+            </div>
+          </section>
+
+          <!-- 3 · Endereço -->
+          <section class="pf-etapa" data-etapa="endereco" hidden>
+            <h1 class="signup__title" tabindex="-1">Onde fica a filial?</h1>
+            <p class="signup__hint">Opcional. Em branco, a filial usa o endereço da loja.</p>
+            <div class="field">
+              <label for="pfCep">CEP</label>
+              <input type="text" id="pfCep" maxlength="9" inputmode="numeric" placeholder="00000-000">
+            </div>
+            <div class="field">
+              <label for="pfEndereco">Endereço</label>
+              <input type="text" id="pfEndereco" maxlength="150" placeholder="Rua, número, bairro">
+            </div>
+            <div class="pf-linha">
+              <div class="field">
+                <label for="pfCidade">Cidade</label>
+                <input type="text" id="pfCidade" maxlength="60" placeholder="Cidade">
+              </div>
+              <div class="field">
+                <label for="pfEstado">Estado</label>
+                <select id="pfEstado">
+                  <option value="">UF</option>
+                  <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
+                  <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
+                  <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+                  <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+                  <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
+                  <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
+                  <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
+                  <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+                  <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <!-- 4 · Catálogo (só com a permissão produtos.importar_catalogo) -->
+          <section class="pf-etapa" data-etapa="catalogo" data-requer-catalogo hidden>
+            <h1 class="signup__title" tabindex="-1">Quer começar com produtos?</h1>
+            <p class="signup__hint">Podemos cadastrar os 120 códigos padrão de hortifrúti (frutas, legumes e
+              verduras) nesta filial. Eles entram sem preço de venda: defina o preço de cada um antes de vendê-lo.</p>
+            <label class="checkbox pf-opcao">
+              <input type="checkbox" id="pfImportarHortifruti">
+              <span><strong>Sim, importar os 120 códigos de hortifrúti</strong><br>
+                Você pode apagar ou editar qualquer item depois.</span>
+            </label>
+          </section>
+
+          <!-- 5 · Revisão -->
+          <section class="pf-etapa" data-etapa="revisao" hidden>
+            <h1 class="signup__title" tabindex="-1">Confira os dados</h1>
+            <p class="signup__hint">Se estiver tudo certo, crie a filial. Dá para alterar tudo depois em
+              Configurações › Filiais.</p>
+            <dl class="pf-resumo" id="pfResumo"></dl>
+          </section>
+
+          <!-- 6 · Pronto -->
+          <section class="pf-etapa" data-etapa="pronto" hidden>
+            <div class="pf-sucesso-icone" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+            </div>
+            <h1 class="signup__title" tabindex="-1">Tudo pronto!</h1>
+            <p class="signup__subtitle" id="pfMensagemPronto">A filial foi criada e você já está trabalhando nela.</p>
+            <p class="signup__hint">Próximos passos: cadastre seus produtos, convide a equipe e comece a vender.</p>
+          </section>
+
+          <p class="pf-erro" id="pfErro" role="alert" hidden></p>
+
+          <div class="pf-acoes" id="pfAcoes" hidden>
+            <button type="button" class="btn btn--outline" id="pfVoltar">Voltar</button>
+            <button type="submit" class="btn btn--primary" id="pfAvancar">Continuar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <aside class="signup__promo">
+      <div class="signup__promo-inner">
+        <h2>Sua loja,<br>do seu jeito</h2>
+        <p>Cada filial tem estoque, vendas e promoções próprios. Comece pela primeira e cresça quando quiser.</p>
+        <div class="signup__promo-deco" aria-hidden="true"></div>
+      </div>
+    </aside>
+
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/cnpj-brasilapi.js"></script>
+  <script src="../js/primeira-filial.js"></script>
+</body>
+
+</html>

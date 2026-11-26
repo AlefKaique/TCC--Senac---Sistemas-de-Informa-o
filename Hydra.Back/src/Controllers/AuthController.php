@@ -3,11 +3,9 @@
 namespace Hydra\Controllers;
 
 use Hydra\Repositories\CadastroPendenteRepository;
-use Hydra\Repositories\CatalogoHortifrutiRepository;
 use Hydra\Repositories\CargoRepository;
 use Hydra\Repositories\FilialRepository;
 use Hydra\Repositories\LojaRepository;
-use Hydra\Repositories\ProdutoRepository;
 use Hydra\Repositories\UsuarioRepository;
 use Hydra\Support\Auth;
 use Hydra\Support\Env;
@@ -57,7 +55,6 @@ final class AuthController
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
         $senha = (string) ($dados['senha'] ?? '');
         $nomeLoja = trim((string) ($dados['nome_loja'] ?? ''));
-        $importarHortifruti = ($dados['importar_hortifruti'] ?? false) === true;
 
         // Um erro por campo, com "campo" na resposta, para a tela marcar o
         // input certo em vez de um alerta genérico (QA 002).
@@ -83,12 +80,6 @@ final class AuthController
             Response::json(['erro' => $erroSenha, 'campo' => 'senha'], 422);
             return;
         }
-        if ($importarHortifruti && !(new CatalogoHortifrutiRepository())->estaCompleto()) {
-            Response::json([
-                'erro' => 'O catálogo padrão não tem os 120 itens. Desmarque a opção para continuar sem importar.',
-            ], 503);
-            return;
-        }
 
         $existente = $this->usuarios->findByEmail($email);
         if ($existente !== null && !$this->removerContaAbandonada($existente)) {
@@ -112,8 +103,7 @@ final class AuthController
             $nomeLoja,
             password_hash($senha, PASSWORD_BCRYPT),
             $codigo,
-            $this->expiracaoCodigo(),
-            $importarHortifruti
+            $this->expiracaoCodigo()
         );
 
         $extra = $this->despacharEmailCodigo(
@@ -131,8 +121,8 @@ final class AuthController
     /**
      * Conta criada pelo Cadastro ANTES dos cadastros pendentes e nunca
      * confirmada: e-mail não verificado, nenhum acesso e sozinha na loja.
-     * Ela não tem dado nenhum (só a loja, a Matriz e os cargos padrão
-     * criados automaticamente), então é apagada para o e-mail poder ser
+     * Ela não tem dado nenhum (só a loja, os cargos padrão e, nas contas
+     * mais antigas, a Matriz criada automaticamente), então é apagada para o e-mail poder ser
      * cadastrado de novo. Devolve false se a conta for de verdade.
      *
      * @param array<string,mixed> $usuario linha de "usuarios"
@@ -151,37 +141,27 @@ final class AuthController
     }
 
     /**
-     * Cria loja, filial Matriz, cargos de sistema e o Administrador, numa
-     * transação. Chamado só depois do código de confirmação conferido.
-     * Devolve null se o e-mail tiver sido cadastrado no meio do caminho.
+     * Cria loja, cargos de sistema e o Administrador, numa transação.
+     * Chamado só depois do código de confirmação conferido. Devolve null se
+     * o e-mail tiver sido cadastrado no meio do caminho.
+     *
+     * A loja nasce SEM filial: no primeiro login o Administrador é levado
+     * ao assistente "Primeira filial" (pages/primeira-filial.html), que
+     * cria a filial com os dados dele e, se ele quiser, importa ali o
+     * catálogo hortifrúti padrão.
      */
-    private function criarConta(
-        string $nome,
-        string $email,
-        string $senhaHash,
-        string $nomeLoja,
-        bool $importarHortifruti = false
-    ): ?int {
+    private function criarConta(string $nome, string $email, string $senhaHash, string $nomeLoja): ?int
+    {
         // Fora da transação: dentro dela a migração do catálogo não pode ser
         // registrada (DDL faz commit implícito) e rodaria em todo cadastro.
         // O mesmo vale para a coluna do titular, gravada logo abaixo.
         $this->cargos->garantirCatalogoGlobal();
         Migracoes::garantirAssinaturas();
-        $catalogo = $importarHortifruti ? new CatalogoHortifrutiRepository() : null;
-        if ($importarHortifruti) {
-            new ProdutoRepository();
-        }
 
         $pdo = db();
         $pdo->beginTransaction();
         try {
             $idLoja = $this->lojas->create($nomeLoja);
-            // Toda loja nasce com uma filial; as demais são criadas depois
-            // em Configurações da Loja > Filiais.
-            $idFilial = $this->filiais->create($idLoja, ['nome' => 'Matriz']);
-            if ($catalogo !== null) {
-                $catalogo->importar($idLoja, $idFilial);
-            }
             // Cria os 3 cargos de sistema da loja (Administrador, Operador
             // de Caixa, Estoquista) antes do primeiro usuário, para já
             // vinculá-lo ao cargo Administrador.
@@ -194,11 +174,6 @@ final class AuthController
             // Quem fez o Cadastro é o titular: só ele vê a tela Privacidade
             // (assinatura e encerramento da conta).
             $this->lojas->definirTitular($idLoja, $idUsuario);
-            // O Administrador não precisa do vínculo (acessa todas as
-            // filiais), mas o mantém caso um dia deixe de ser Administrador
-            // — o mesmo que sql/migracao_filiais.sql faz.
-            $this->filiais->vincular($idUsuario, $idFilial);
-            $this->usuarios->updateUltimaFilial($idUsuario, $idFilial);
             $pdo->commit();
             return $idUsuario;
         } catch (\PDOException $e) {
@@ -248,22 +223,13 @@ final class AuthController
                 return;
             }
 
-            $importarHortifruti = (bool) ($pendente['importar_hortifruti'] ?? false);
-            if ($importarHortifruti && !(new CatalogoHortifrutiRepository())->estaCompleto()) {
-                Response::json([
-                    'erro' => 'O catálogo padrão não está disponível. Tente novamente mais tarde ou conclua o cadastro sem importar.',
-                ], 503);
-                return;
-            }
-
             $idUsuario = $this->usuarios->emailExists($email)
                 ? null
                 : $this->criarConta(
                     (string) $pendente['nome'],
                     $email,
                     (string) $pendente['senha_hash'],
-                    (string) $pendente['nome_loja'],
-                    $importarHortifruti
+                    (string) $pendente['nome_loja']
                 );
             $pendentes->remover($email);
             RateLimit::limpar($chaveLimite, 'envio:' . $email);
@@ -526,6 +492,10 @@ final class AuthController
      * (mesmo critério do cargo, CargoRepository::nivelEquivalente) não
      * precisa de vínculo, mas a loja precisa ter ao menos uma filial ativa.
      *
+     * Exceção: loja que ainda não tem filial NENHUMA (conta recém-criada).
+     * O Administrador entra assim mesmo, e respostaDeLogin() o manda para
+     * o assistente da primeira filial.
+     *
      * @param array<string,mixed> $usuario linha de "usuarios"
      */
     private function bloqueioSemFilial(array $usuario): ?string
@@ -534,6 +504,11 @@ final class AuthController
         $permitidas = $this->filiais->permitidas((int) $usuario['id_usuario'], (int) $usuario['id_loja'], $administrador);
         if ($permitidas !== []) {
             return null;
+        }
+        if ($this->filiais->countByLoja((int) $usuario['id_loja']) === 0) {
+            return $administrador
+                ? null
+                : 'A loja ainda não cadastrou a primeira filial. Peça ao administrador para entrar e concluir a configuração.';
         }
         return $administrador
             ? 'A loja não tem nenhuma filial ativa. Verifique a instalação do sistema.'
@@ -561,6 +536,9 @@ final class AuthController
      * a filial quando dá:
      *   - uma filial só: entra nela;
      *   - várias: volta para a última usada, se ela ainda estiver liberada;
+     *   - nenhuma (loja sem filial; só o Administrador chega aqui):
+     *     "configurar_filial" = true e o front-end abre o assistente da
+     *     primeira filial;
      *   - senão: "escolher_filial" = true e o front-end abre a janela de
      *     escolha (até lá, os endpoints de dados respondem 409).
      *
@@ -599,7 +577,8 @@ final class AuthController
             'filial' => $escolhida !== null
                 ? ['id_filial' => (int) $escolhida['id_filial'], 'nome' => $escolhida['nome']]
                 : null,
-            'escolher_filial' => $escolhida === null,
+            'escolher_filial' => $escolhida === null && $permitidas !== [],
+            'configurar_filial' => $permitidas === [],
         ];
     }
 
