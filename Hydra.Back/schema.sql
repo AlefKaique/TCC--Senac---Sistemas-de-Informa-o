@@ -855,6 +855,7 @@ INSERT INTO permissoes (codigo, nome, descricao, categoria, ordem) VALUES
     ('vendas.operar',         'Vendas no Caixa',              'Operar o Caixa (PDV) e finalizar vendas',                                                   'Operação',      20),
     ('vendas.historico',      'Histórico de Vendas',          'Consultar as vendas já finalizadas e os detalhes de cada uma',                              'Operação',      21),
     ('relatorios.visualizar', 'Relatórios',                   'Abrir o Relatório com o faturamento e os indicadores da loja',                 'Operação',      22),
+    ('relatorios.completo',   'Relatório Completo',           'Ver no Relatório as vendas por operador, os cancelamentos e o lucro estimado — marque também "Relatórios"', 'Operação', 23),
     ('equipe.gerenciar',      'Equipe e Cargos',              'Gerenciar os usuários da loja e os cargos e suas permissões',                               'Administração', 30),
     ('loja.configurar',       'Configuração da Loja',         'Ver e alterar os dados cadastrais da loja',                                                 'Administração', 31)
 ON DUPLICATE KEY UPDATE
@@ -1097,6 +1098,26 @@ CREATE TABLE IF NOT EXISTS contatos (
     criado_em        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_contatos_criado (criado_em),
     INDEX idx_contatos_email_criado (email, criado_em)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ============================================================
+-- Relatório de Vendas: detalhes que cada usuário escolheu ver
+--   O Passo 2 da tela Relatório ("O que você quer ver na tela") liga e
+--   desliga blocos. A escolha fica salva por usuário, para a tela abrir
+--   do mesmo jeito na próxima vez. "blocos" é uma lista JSON com os
+--   códigos dos blocos marcados, por exemplo
+--   ["mais_vendidos", "dia_a_dia"].
+--   Banco já em uso: sql/migracao_relatorio_vendas.sql (ou deixe o
+--   back-end criar sozinho, Hydra\Support\Migracoes).
+-- ============================================================
+CREATE TABLE IF NOT EXISTS relatorio_preferencia (
+    id_usuario     INT PRIMARY KEY,
+    blocos         JSON NOT NULL,
+    atualizado_em  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
+        ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 

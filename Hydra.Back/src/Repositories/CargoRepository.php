@@ -46,6 +46,7 @@ final class CargoRepository
             'vendas.operar',
             'vendas.historico',
             'relatorios.visualizar',
+            'relatorios.completo',
             'equipe.gerenciar',
             'loja.configurar',
         ],
@@ -63,7 +64,7 @@ final class CargoRepository
     ];
 
     /**
-     * Catálogo das 10 permissões, espelhando o bloco INSERT do schema.sql.
+     * Catálogo das 11 permissões, espelhando o bloco INSERT do schema.sql.
      * Existe também em PHP porque o INSERT do schema só roda se o arquivo
      * for reaplicado à mão: sem isto, um banco criado na versão anterior
      * ficaria com ZERO permissões no catálogo depois da aposentadoria dos
@@ -88,6 +89,7 @@ final class CargoRepository
         ['vendas.operar',         'Vendas no Caixa',             'Operar o Caixa (PDV) e finalizar vendas',                                                          'Operação',      20],
         ['vendas.historico',      'Histórico de Vendas',         'Consultar as vendas já finalizadas e os detalhes de cada uma',                                     'Operação',      21],
         ['relatorios.visualizar', 'Relatórios',                  'Abrir o Relatório com o faturamento e os indicadores da loja',                        'Operação',      22],
+        ['relatorios.completo',   'Relatório Completo',          'Ver no Relatório as vendas por operador, os cancelamentos e o lucro estimado — marque também "Relatórios"', 'Operação', 23],
         ['equipe.gerenciar',      'Equipe e Cargos',             'Gerenciar os usuários da loja e os cargos e suas permissões',                                      'Administração', 30],
         ['loja.configurar',       'Configuração da Loja',        'Ver e alterar os dados cadastrais da loja',                                                        'Administração', 31],
     ];
@@ -222,6 +224,21 @@ final class CargoRepository
                  SELECT c.id_cargo, p.id_permissao
                    FROM cargos c
                    JOIN permissoes p ON p.codigo = \'produtos.importar_catalogo\'
+                  WHERE c.cargo_sistema = 1 AND c.nome = \'Administrador\''
+            );
+        });
+        // "Relatório Completo" (operadores, cancelamentos e lucro no
+        // Relatório) nasceu depois dos cargos de sistema: o Administrador
+        // já existente ganha a marcação para a tela de Cargos refletir o que
+        // ele vê. O acesso do Administrador não depende disto (o relatório
+        // reconhece o nível administrador direto); o cargo "Gerente" que a
+        // loja criar recebe a permissão marcando-a na tela de Cargos.
+        Migracoes::garantir('permissao_relatorio_completo_v1', static function (): void {
+            db()->exec(
+                'INSERT IGNORE INTO cargo_permissoes (id_cargo, id_permissao)
+                 SELECT c.id_cargo, p.id_permissao
+                   FROM cargos c
+                   JOIN permissoes p ON p.codigo = \'relatorios.completo\'
                   WHERE c.cargo_sistema = 1 AND c.nome = \'Administrador\''
             );
         });
