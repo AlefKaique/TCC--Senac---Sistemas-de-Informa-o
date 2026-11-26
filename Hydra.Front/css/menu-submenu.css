@@ -1,6 +1,6 @@
 /* ===================================================================
-   Submenus recolhíveis da barra lateral: "Relatório" (Visão geral,
-   Entrada / Saída) e "Configurações" (Dados da loja, Filiais).
+   Submenu recolhível da barra lateral: "Configurações" (Dados da loja,
+   Filiais).
 
    O título do grupo é um <button> com aria-expanded e aria-controls
    apontando para a lista; js/menu-submenu.js alterna os dois. Nas telas
@@ -59,8 +59,7 @@
     transition: transform .15s ease;
 }
 
-.hydro-submenu-toggle[aria-expanded="true"] .hydro-submenu-seta,
-.hydro-menu a[aria-expanded="true"] .hydro-submenu-seta {
+.hydro-submenu-toggle[aria-expanded="true"] .hydro-submenu-seta {
     transform: translateY(2px) rotate(-135deg);
 }
 
