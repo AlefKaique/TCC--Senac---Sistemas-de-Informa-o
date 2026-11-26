@@ -572,6 +572,56 @@ body {
     border-color: var(--navy-active);
 }
 
+/* Categoria: lista de seleção + "+ Nova categoria" (ver produtos.js). */
+.hydro-category-row,
+.hydro-category-new {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.hydro-category-row select,
+.hydro-category-new input {
+    flex: 1;
+    min-width: 0;
+}
+.hydro-category-row .hydro-btn,
+.hydro-category-new .hydro-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.hydro-category-new {
+    margin-top: 8px;
+}
+.hydro-category-new[hidden] {
+    display: none;
+}
+@media (max-width: 480px) {
+    .hydro-category-row,
+    .hydro-category-new {
+        flex-wrap: wrap;
+    }
+}
+
+/* SKU: gerado pelo servidor, só leitura. */
+#hydroProdSku[readonly] {
+    background: var(--surface-hover, #f6f7fb);
+    font-weight: 600;
+    letter-spacing: .03em;
+    cursor: default;
+}
+
+.hydro-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .hydro-form-group input.hydro-invalid,
 .hydro-form-group select.hydro-invalid {
     border-color: var(--red);
