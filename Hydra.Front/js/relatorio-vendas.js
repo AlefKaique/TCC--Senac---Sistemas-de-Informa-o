@@ -3,7 +3,8 @@
  *
  * Fluxo:
  *   1. GET /api/relatorios/preferencias — blocos que o usuário deixou
- *      marcados, o que o cargo dele pode ver e as filiais do seletor;
+ *      marcados, o que o cargo dele pode ver e a filial em que ele está
+ *      trabalhando (o relatório mostra só essa filial);
  *   2. GET /api/relatorios/vendas — o resumo e SÓ os blocos marcados.
  *      Marcar mais um bloco depois busca só aquele bloco (resumo=0);
  *      desmarcar não busca nada;
@@ -67,6 +68,10 @@
     };
     const UNIDADES_FRACIONADAS = ['kg', 'g', 'l', 'ml'];
     const MAX_DIAS = 90;
+    /** Quantos meses (contando o atual) aparecem na lista do Passo 1. */
+    const MESES_NA_LISTA = 12;
+    const NOMES_MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
     const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
     const inteiro = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
@@ -77,10 +82,7 @@
 
     const $ = (id) => document.getElementById(id);
     const dom = {
-        filial: $('rvFilial'),
-        imprimir: $('rvImprimir'),
-        exportar: $('rvExportar'),
-        datas: $('rvDatas'),
+        periodo: $('rvPeriodo'),
         dataInicio: $('rvDataInicio'),
         dataFim: $('rvDataFim'),
         aplicarDatas: $('rvAplicarDatas'),
@@ -88,24 +90,24 @@
         chips: $('rvChips'),
         chipOperadores: $('rvChipOperadores'),
         marcarTudo: $('rvMarcarTudo'),
-        soEssencial: $('rvSoEssencial'),
+        multi: $('rvMulti'),
+        multiBotao: $('rvMultiBotao'),
+        multiTexto: $('rvMultiTexto'),
+        multiPainel: $('rvMultiPainel'),
+        multiPronto: $('rvMultiPronto'),
         confirmacao: $('rvConfirmacao'),
         situacao: $('rvSituacao'),
         resumo: $('rvResumo'),
         comparando: $('rvComparando'),
         cartoes: $('rvCartoes'),
         avisoCusto: $('rvAvisoCusto'),
-        comparacao: $('rvComparacao'),
-        comparacaoConteudo: $('rvComparacaoConteudo'),
         blocos: $('rvBlocos'),
         nenhumBloco: $('rvNenhumBloco'),
         cancelamentos: $('rvCancelamentos'),
         cancelamentosConteudo: $('rvCancelamentosConteudo'),
         verCancelamentos: $('rvVerCancelamentos'),
-        imprimirCompras: $('rvImprimirCompras'),
-        imprimirValidade: $('rvImprimirValidade'),
+        ferramentas: $('rvFerramentas'),
     };
-    const botoesPeriodo = Array.from(document.querySelectorAll('.rv-periodo'));
 
     /* ================= Estado ================= */
 
@@ -116,7 +118,7 @@
         filial: '',
         blocos: new Set(ESSENCIAL),
         disponiveis: BLOCOS.map((bloco) => bloco.id),
-        acesso: { nivel: 'funcionario', todas_filiais: false, operadores: false, cancelamentos: false, lucro: false },
+        acesso: { nivel: 'funcionario', operadores: false, cancelamentos: false, lucro: false },
         filiais: [],
         dados: null,
         carregando: false,
@@ -173,25 +175,51 @@
         return `de ${dataBR(de)} a ${dataBR(ate)}`;
     }
 
+    /**
+     * Períodos do Passo 1: 'hoje', 'ontem', '7dias' ou 'mes:AAAA-MM'.
+     * O mês atual vai do dia 1 até hoje; os outros meses, do dia 1 ao último.
+     */
     function intervaloDoPeriodo(periodo) {
         const dia = hoje();
-        const agora = new Date(`${dia}T12:00:00`);
+        const mes = /^mes:(\d{4})-(\d{2})$/.exec(periodo || '');
+        if (mes) {
+            const ano = Number(mes[1]);
+            const indice = Number(mes[2]) - 1;
+            const primeiro = chaveData(new Date(ano, indice, 1));
+            const ultimo = chaveData(new Date(ano, indice + 1, 0));
+            return [primeiro, ultimo > dia ? dia : ultimo];
+        }
         switch (periodo) {
             case 'hoje':
                 return [dia, dia];
             case 'ontem':
                 return [somarDias(dia, -1), somarDias(dia, -1)];
-            case 'mes':
-                return [chaveData(new Date(agora.getFullYear(), agora.getMonth(), 1)), dia];
-            case 'mes-passado':
-                return [
-                    chaveData(new Date(agora.getFullYear(), agora.getMonth() - 1, 1)),
-                    chaveData(new Date(agora.getFullYear(), agora.getMonth(), 0)),
-                ];
             case '7dias':
             default:
                 return [somarDias(dia, -6), dia];
         }
+    }
+
+    /** Monta o dropdown do Passo 1: atalhos, os últimos meses e "outras datas". */
+    function montarOpcoesDePeriodo() {
+        const agora = new Date(`${hoje()}T12:00:00`);
+        const meses = [];
+        for (let i = 0; i < MESES_NA_LISTA; i += 1) {
+            const data = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+            const valor = `mes:${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+            const nome = `${NOMES_MESES[data.getMonth()]} de ${data.getFullYear()}`;
+            const extra = i === 0 ? ' (este mês)' : (i === 1 ? ' (mês passado)' : '');
+            meses.push(`<option value="${valor}">${nome}${extra}</option>`);
+        }
+        dom.periodo.innerHTML = '<optgroup label="Atalhos">'
+            + '<option value="hoje">Hoje</option>'
+            + '<option value="ontem">Ontem</option>'
+            + '<option value="7dias">Últimos 7 dias</option>'
+            + '</optgroup>'
+            + `<optgroup label="Mês">${meses.join('')}</optgroup>`
+            + '<optgroup label="Outro período">'
+            + '<option value="escolher">Outras datas (use os campos ao lado)</option>'
+            + '</optgroup>';
     }
 
     /* ================= Formatação ================= */
@@ -230,15 +258,8 @@
     }
 
     function textoFilial() {
-        if (state.filial === 'todas') return 'todas as filiais';
         const filial = state.filiais.find((item) => String(item.id_filial) === String(state.filial));
         return filial ? `filial ${filial.nome}` : 'filial atual';
-    }
-
-    function nomeFilial() {
-        if (state.filial === 'todas') return 'Todas as filiais';
-        const filial = state.filiais.find((item) => String(item.id_filial) === String(state.filial));
-        return filial ? filial.nome : '';
     }
 
     function mostraColunaFilial() {
@@ -266,7 +287,7 @@
     }
 
     function sugestaoDePeriodo() {
-        return state.periodo === '7dias' ? 'Tente Este mês ou Mês passado.' : 'Tente Últimos 7 dias.';
+        return state.periodo === '7dias' ? 'Tente escolher um mês na lista do Passo 1.' : 'Tente Últimos 7 dias.';
     }
 
     let toastTimer = null;
@@ -408,7 +429,6 @@
     function renderizarTudo() {
         renderizarConfirmacao();
         renderizarResumo();
-        renderizarComparacao();
         renderizarBlocos();
         renderizarCancelamentos();
     }
@@ -503,34 +523,6 @@
                 + `e ${plural(semCusto, 'ficou', 'ficaram')} fora do lucro estimado (${dinheiro(resumo.faturamento_sem_custo)} em vendas). `
                 + 'Cadastre o preço de custo na tela Produtos para o lucro ficar mais certo.';
         }
-    }
-
-    function renderizarComparacao() {
-        const linhas = state.dados && state.dados.comparacao_filiais;
-        dom.comparacao.hidden = !linhas || state.visitante;
-        if (!linhas) return;
-        const maior = Math.max(0, ...linhas.map((linha) => Number(linha.faturamento) || 0));
-        const cabecalho = [
-            { texto: 'Filial' },
-            { texto: 'Dinheiro que entrou', num: true },
-            { texto: 'Vendas', num: true },
-            { texto: 'Média por venda', num: true },
-        ];
-        if (state.acesso.lucro) cabecalho.push({ texto: 'Lucro estimado', num: true });
-        const corpo = linhas.map((linha) => {
-            const pct = maior > 0 ? (Number(linha.faturamento) / maior) * 100 : 0;
-            return `<tr class="rv-linha-barra" style="--rv-pct:${pct}%">`
-                + `<td class="rv-nome">${escapeHtml(linha.nome)}</td>`
-                + `<td class="rv-num">${dinheiro(linha.faturamento)}</td>`
-                + `<td class="rv-num">${numero(linha.num_vendas)}</td>`
-                + `<td class="rv-num">${dinheiro(linha.media_venda)}</td>`
-                + `${state.acesso.lucro ? `<td class="rv-num">${dinheiro(linha.lucro)}</td>` : ''}</tr>`;
-        });
-        const primeira = linhas[0];
-        const destaque = primeira && Number(primeira.faturamento) > 0
-            ? `<p class="rv-destaque-texto">A filial que mais vendeu foi <strong>${escapeHtml(primeira.nome)}</strong>, com <strong>${dinheiro(primeira.faturamento)}</strong>.</p>`
-            : '';
-        dom.comparacaoConteudo.innerHTML = destaque + tabela('rvComparacaoTitulo', cabecalho, corpo);
     }
 
     function renderizarBlocos() {
@@ -762,7 +754,7 @@
     /* ---------- Vendas canceladas (ferramenta mantida) ---------- */
     function renderizarCancelamentos() {
         const pode = state.acesso.cancelamentos && !state.visitante;
-        dom.verCancelamentos.hidden = !pode;
+        dom.ferramentas.hidden = !pode;
         dom.cancelamentos.hidden = !pode || !state.mostrarCancelamentos;
         if (dom.cancelamentos.hidden) return;
         dom.verCancelamentos.textContent = 'Atualizar vendas canceladas';
@@ -809,26 +801,24 @@
 
     /* ================= Interações ================= */
 
+    function ajudaDatas(texto, erro) {
+        dom.datasAjuda.textContent = texto || `Você pode escolher até ${MAX_DIAS} dias de uma vez.`;
+        dom.datasAjuda.classList.toggle('rv-erro', Boolean(erro));
+    }
+
+    /** Deixa o dropdown e os campos de data mostrando o período atual. */
     function marcarPeriodo(periodo) {
-        botoesPeriodo.forEach((botao) => botao.setAttribute('aria-pressed', String(botao.dataset.periodo === periodo)));
+        dom.periodo.value = periodo;
+        dom.dataInicio.value = state.de;
+        dom.dataFim.value = state.ate;
     }
 
     function escolherPeriodo(periodo) {
+        ajudaDatas();
         if (periodo === 'escolher') {
-            const abrir = dom.datas.hidden;
-            dom.datas.hidden = !abrir;
-            document.querySelector('[data-periodo="escolher"]').setAttribute('aria-expanded', String(abrir));
-            if (abrir) {
-                dom.dataInicio.value = state.de;
-                dom.dataFim.value = state.ate;
-                dom.datasAjuda.textContent = `Você pode escolher até ${MAX_DIAS} dias de uma vez.`;
-                dom.datasAjuda.classList.remove('rv-erro');
-                dom.dataInicio.focus();
-            }
+            dom.dataInicio.focus();
             return;
         }
-        dom.datas.hidden = true;
-        document.querySelector('[data-periodo="escolher"]').setAttribute('aria-expanded', 'false');
         state.periodo = periodo;
         [state.de, state.ate] = intervaloDoPeriodo(periodo);
         marcarPeriodo(periodo);
@@ -843,17 +833,45 @@
         else if (de > ate) erro = 'O primeiro dia precisa vir antes do último dia.';
         else if (diasEntre(de, ate) > MAX_DIAS) erro = `Escolha no máximo ${MAX_DIAS} dias. Você escolheu ${numero(diasEntre(de, ate))}.`;
         if (erro) {
-            dom.datasAjuda.textContent = erro;
-            dom.datasAjuda.classList.add('rv-erro');
+            ajudaDatas(erro, true);
             return;
         }
-        dom.datasAjuda.textContent = `Você pode escolher até ${MAX_DIAS} dias de uma vez.`;
-        dom.datasAjuda.classList.remove('rv-erro');
-        state.periodo = 'escolher';
+        ajudaDatas();
+        // Se as datas batem com um item da lista, o dropdown mostra esse item.
+        const opcao = Array.from(dom.periodo.options).find((item) => {
+            if (item.value === 'escolher') return false;
+            const [inicio, fim] = intervaloDoPeriodo(item.value);
+            return inicio === de && fim === ate;
+        });
+        state.periodo = opcao ? opcao.value : 'escolher';
         state.de = de;
         state.ate = ate;
-        marcarPeriodo('escolher');
+        marcarPeriodo(state.periodo);
         carregarTudo();
+    }
+
+    /* ---------- Dropdown do Passo 2 ---------- */
+    function textoDoDropdown() {
+        const marcados = blocosMarcados();
+        const total = state.disponiveis.length;
+        if (!marcados.length) return 'Nenhuma parte escolhida — toque para escolher';
+        if (marcados.length === total) return `Todas as partes (${total})`;
+        if (marcados.length <= 2) {
+            return marcados.map((id) => {
+                const caixa = dom.chips.querySelector(`input[value="${id}"]`);
+                return caixa ? caixa.nextElementSibling.textContent : id;
+            }).join(' + ');
+        }
+        return `${marcados.length} de ${total} partes escolhidas`;
+    }
+
+    function abrirDropdown(abrir) {
+        dom.multiPainel.hidden = !abrir;
+        dom.multiBotao.setAttribute('aria-expanded', String(abrir));
+        if (abrir) {
+            const primeira = dom.chips.querySelector('.rv-opcao:not([hidden]) input');
+            if (primeira) primeira.focus();
+        }
     }
 
     function sincronizarChips() {
@@ -861,6 +879,7 @@
             caixa.checked = state.blocos.has(caixa.value);
         });
         dom.chipOperadores.hidden = !state.disponiveis.includes('operadores');
+        dom.multiTexto.textContent = textoDoDropdown();
     }
 
     function definirBlocos(lista) {
@@ -872,199 +891,33 @@
         buscarBlocosQueFaltam();
     }
 
-    async function imprimirLista(tipo, botao) {
-        if (state.visitante || !state.pronto) return;
-        const textoOriginal = botao.textContent;
-        botao.disabled = true;
-        botao.textContent = 'Preparando…';
-        try {
-            const resposta = await pedir({ blocos: [tipo], resumo: false });
-            const itens = resposta[tipo] || [];
-            const comFilial = resposta.filial && resposta.filial.id_filial === null;
-            const dia = dataBR(hoje());
-            if (!itens.length) {
-                toast(tipo === 'lista_compras'
-                    ? 'Nenhum produto no estoque mínimo ou abaixo dele agora. Não há o que imprimir.'
-                    : 'Nenhum produto vencido ou vencendo nos próximos 30 dias. Não há o que imprimir.');
-                return;
-            }
-            if (tipo === 'lista_compras') {
-                const cabecalho = (comFilial ? ['Filial'] : []).concat(['Produto', 'Tem agora', 'Mínimo', 'Falta para o mínimo', 'Situação', 'Comprei']);
-                const linhas = itens.map((item) => (comFilial ? [item.filial] : []).concat([
-                    item.nome,
-                    quantidadeTexto(item.estoque, item.unidade),
-                    quantidadeTexto(item.estoque_minimo, item.unidade),
-                    quantidadeTexto(item.falta, item.unidade),
-                    item.situacao,
-                    '☐',
-                ]));
-                imprimirTabela('Lista de compras', `${resposta.filial.nome} · situação em ${dia}`, cabecalho, linhas);
-            } else {
-                const cabecalho = (comFilial ? ['Filial'] : []).concat(['Produto', 'Quantidade', 'Validade', 'Situação']);
-                const linhas = itens.map((item) => {
-                    const situacaoValidade = item.dias < 0
-                        ? `Vencido há ${numero(-item.dias)} ${plural(-item.dias, 'dia', 'dias')}`
-                        : (item.dias === 0 ? 'Vence hoje' : `Vence em ${numero(item.dias)} ${plural(item.dias, 'dia', 'dias')}`);
-                    return (comFilial ? [item.filial] : []).concat([
-                        item.nome,
-                        quantidadeTexto(item.estoque, item.unidade),
-                        dataBR(item.validade),
-                        situacaoValidade,
-                    ]);
-                });
-                imprimirTabela('Relatório de validade', `${resposta.filial.nome} · situação em ${dia} · vencidos e que vencem em até 30 dias`, cabecalho, linhas);
-            }
-        } catch (erro) {
-            toast(erro && erro.message ? erro.message : 'Não foi possível preparar a impressão. Tente de novo.');
-        } finally {
-            botao.disabled = false;
-            botao.textContent = textoOriginal;
-        }
-    }
-
-    /** Quantidade em texto puro (para impressão e planilha). */
-    function quantidadeTexto(valor, unidade) {
-        const div = document.createElement('div');
-        div.innerHTML = quantidade(valor, unidade);
-        return div.textContent;
-    }
-
-    function imprimirTabela(titulo, subtitulo, cabecalho, linhas) {
-        const conteudo = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'
-            + `<title>${escapeHtml(titulo)}</title><style>`
-            + 'body{font:16px Arial,sans-serif;padding:24px;color:#000}h1{font-size:24px;margin:0 0 4px}'
-            + 'p{margin:0 0 16px;font-size:15px}table{width:100%;border-collapse:collapse}'
-            + 'th,td{border:1px solid #777;padding:8px 10px;text-align:left}th{background:#eee}'
-            + 'tr{break-inside:avoid}</style></head><body>'
-            + `<h1>${escapeHtml(titulo)}</h1><p>${escapeHtml(subtitulo)}</p>`
-            + `<table><thead><tr>${cabecalho.map((item) => `<th>${escapeHtml(item)}</th>`).join('')}</tr></thead>`
-            + `<tbody>${linhas.map((linha) => `<tr>${linha.map((item) => `<td>${escapeHtml(item)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
-            + '</body></html>';
-        const quadro = document.createElement('iframe');
-        quadro.setAttribute('aria-hidden', 'true');
-        quadro.tabIndex = -1;
-        quadro.style.cssText = 'position:fixed;width:0;height:0;border:0;right:0;bottom:0';
-        document.body.appendChild(quadro);
-        quadro.contentDocument.open();
-        quadro.contentDocument.write(conteudo);
-        quadro.contentDocument.close();
-        quadro.contentWindow.addEventListener('afterprint', () => quadro.remove(), { once: true });
-        quadro.contentWindow.focus();
-        quadro.contentWindow.print();
-    }
-
-    /* ---------- Exportar Excel (CSV com ; e BOM) ---------- */
-    function exportarExcel() {
-        if (!state.dados || !state.dados.resumo) {
-            toast('Espere o relatório terminar de carregar para exportar.');
-            return;
-        }
-        const protegerTexto = (valor) => {
-            let texto = valor == null ? '' : String(valor);
-            // Evita que o Excel trate um texto como fórmula (=, +, -, @).
-            if (/^[\s]*[=+\-@]/.test(texto)) texto = `'${texto}`;
-            return `"${texto.replace(/"/g, '""')}"`;
-        };
-        const T = protegerTexto;
-        const D = (valor) => (valor == null ? '' : Number(valor).toFixed(2).replace('.', ','));
-        const Q = (valor) => (valor == null ? '' : String(Math.round(Number(valor) * 1000) / 1000).replace('.', ','));
-        const P = (valor) => (valor == null ? '' : String(Math.round(Number(valor) * 10) / 10).replace('.', ','));
-        const linhas = [];
-        const dados = state.dados;
-        const resumo = dados.resumo;
-        const anterior = dados.resumo_anterior || {};
-        const pa = dados.periodo_anterior;
-
-        linhas.push([T('Relatório de vendas')]);
-        linhas.push([T('Período'), T(`${dataBR(state.de)} a ${dataBR(state.ate)}`)]);
-        linhas.push([T('Filial'), T(nomeFilial())]);
-        linhas.push([T('Gerado em'), T(new Date().toLocaleString('pt-BR'))]);
-        linhas.push([]);
-        linhas.push([T('Resumo')]);
-        linhas.push([T('Item'), T('Este período'), T(`Período anterior (${dataBR(pa.data_inicio)} a ${dataBR(pa.data_fim)})`)]);
-        linhas.push([T('Dinheiro que entrou (R$)'), D(resumo.faturamento), D(anterior.faturamento)]);
-        linhas.push([T('Quantidade de vendas'), String(resumo.num_vendas), String(anterior.num_vendas ?? '')]);
-        linhas.push([T('Média por venda (R$)'), D(resumo.media_venda), D(anterior.media_venda)]);
-        if (state.acesso.lucro && resumo.lucro !== undefined) {
-            linhas.push([T('Lucro estimado (R$)'), D(resumo.lucro), D(anterior.lucro)]);
-        }
-
-        if (dados.comparacao_filiais) {
-            linhas.push([]);
-            linhas.push([T('Comparação entre filiais')]);
-            linhas.push([T('Filial'), T('Dinheiro que entrou (R$)'), T('Vendas'), T('Média por venda (R$)')]
-                .concat(state.acesso.lucro ? [T('Lucro estimado (R$)')] : []));
-            dados.comparacao_filiais.forEach((linha) => linhas.push(
-                [T(linha.nome), D(linha.faturamento), String(linha.num_vendas), D(linha.media_venda)]
-                    .concat(state.acesso.lucro ? [D(linha.lucro)] : [])
-            ));
-        }
-
-        const comFilial = mostraColunaFilial();
-        blocosMarcados().forEach((id) => {
-            const bloco = dados[id];
-            if (!bloco) return;
-            const titulo = BLOCOS.find((item) => item.id === id).titulo;
-            linhas.push([]);
-            linhas.push([T(titulo)]);
-            if (id === 'mais_vendidos') {
-                linhas.push([T('Posição'), T('Produto'), T('Quanto vendeu'), T('Unidade'), T('Dinheiro que entrou (R$)'), T('% do total')]);
-                bloco.itens.forEach((item) => linhas.push([T(`${item.posicao}º`), T(item.nome), Q(item.quantidade), T(item.unidade), D(item.faturamento), P(item.percentual)]));
-            } else if (id === 'dia_a_dia') {
-                linhas.push([T('Data'), T('Dia da semana'), T('Vendas'), T('Total do dia (R$)'), T('Produto campeão'), T('Quanto vendeu dele'), T('Unidade')]);
-                bloco.dias.forEach((dia) => linhas.push([
-                    T(dataBR(dia.data)), T(dia.dia_semana), String(dia.num_vendas), D(dia.total),
-                    T(dia.campeao ? dia.campeao.nome : ''), dia.campeao ? Q(dia.campeao.quantidade) : '', T(dia.campeao ? dia.campeao.unidade : ''),
-                ]));
-                linhas.push([T('Total do período'), '', String(bloco.total.num_vendas), D(bloco.total.total)]);
-            } else if (id === 'horarios') {
-                linhas.push([T('Parte do dia'), T('Dinheiro que entrou (R$)'), T('Vendas'), T('% do dinheiro')]);
-                bloco.forEach((faixa) => linhas.push([T(faixa.rotulo), D(faixa.valor), String(faixa.num_vendas), P(faixa.percentual)]));
-            } else if (id === 'pagamentos') {
-                linhas.push([T('Forma de pagamento'), T('Valor (R$)'), T('% do total')]);
-                bloco.forEach((forma) => linhas.push([T(FORMAS[forma.forma] || forma.forma), D(forma.valor), P(forma.percentual)]));
-            } else if (id === 'parados') {
-                linhas.push([T('Produto')].concat(comFilial ? [T('Filial')] : [], [T('Estoque agora'), T('Unidade'), T('Vendas no período'), T('Dinheiro parado (R$)'), T('Calculado pelo')]));
-                bloco.itens.forEach((item) => linhas.push([T(item.nome)].concat(comFilial ? [T(item.filial)] : [], [
-                    Q(item.estoque), T(item.unidade), String(item.num_vendas), D(item.valor_parado), T(item.sem_custo ? 'preço de venda' : 'preço de custo'),
-                ])));
-            } else if (id === 'vai_acabar') {
-                linhas.push([T('Produto')].concat(comFilial ? [T('Filial')] : [], [T('Estoque agora'), T('Unidade'), T('Vende por dia (média)'), T('Quando acaba')]));
-                bloco.itens.forEach((item) => linhas.push([T(item.nome)].concat(comFilial ? [T(item.filial)] : [], [
-                    Q(item.estoque), T(item.unidade), Q(item.media_diaria), T(textoAcabaEm(item).texto),
-                ])));
-            } else if (id === 'operadores') {
-                linhas.push([T('Operador'), T('Vendas'), T('Dinheiro que entrou (R$)'), T('Vendas canceladas')]);
-                bloco.forEach((linha) => linhas.push([T(linha.nome), String(linha.num_vendas), D(linha.valor), String(linha.cancelamentos)]));
-            }
+    function ligarEventos() {
+        dom.periodo.addEventListener('change', () => escolherPeriodo(dom.periodo.value));
+        dom.aplicarDatas.addEventListener('click', aplicarDatas);
+        [dom.dataInicio, dom.dataFim].forEach((campo) => {
+            campo.addEventListener('keydown', (evento) => {
+                if (evento.key === 'Enter') aplicarDatas();
+            });
+            // Mexeu numa data: o dropdown passa a dizer "Outras datas" até aplicar.
+            campo.addEventListener('input', () => {
+                if (campo.value) dom.periodo.value = 'escolher';
+            });
         });
 
-        if (state.mostrarCancelamentos && dados.cancelamentos && dados.cancelamentos.itens.length) {
-            linhas.push([]);
-            linhas.push([T('Vendas canceladas')]);
-            linhas.push([T('Venda nº')].concat(comFilial ? [T('Filial')] : [], [T('Cancelada em'), T('Valor (R$)'), T('Quem vendeu'), T('Quem autorizou'), T('Motivo')]));
-            dados.cancelamentos.itens.forEach((item) => linhas.push([String(item.numero_venda)].concat(comFilial ? [T(item.filial)] : [], [
-                T(dataHoraBR(item.data_cancelamento)), D(item.valor), T(item.operador), T(item.autorizador), T(item.motivo || ''),
-            ])));
-        }
-
-        const conteudo = `﻿${linhas.map((linha) => linha.join(';')).join('\r\n')}\r\n`;
-        const endereco = URL.createObjectURL(new Blob([conteudo], { type: 'text/csv;charset=utf-8' }));
-        const link = document.createElement('a');
-        link.href = endereco;
-        link.download = `relatorio-vendas_${dataBR(state.de).replace(/\//g, '-')}_a_${dataBR(state.ate).replace(/\//g, '-')}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(() => URL.revokeObjectURL(endereco), 1000);
-    }
-
-    function ligarEventos() {
-        botoesPeriodo.forEach((botao) => botao.addEventListener('click', () => escolherPeriodo(botao.dataset.periodo)));
-        dom.aplicarDatas.addEventListener('click', aplicarDatas);
-        [dom.dataInicio, dom.dataFim].forEach((campo) => campo.addEventListener('keydown', (evento) => {
-            if (evento.key === 'Enter') aplicarDatas();
-        }));
+        dom.multiBotao.addEventListener('click', () => abrirDropdown(dom.multiPainel.hidden));
+        dom.multiPronto.addEventListener('click', () => {
+            abrirDropdown(false);
+            dom.multiBotao.focus();
+        });
+        document.addEventListener('click', (evento) => {
+            if (!dom.multiPainel.hidden && !dom.multi.contains(evento.target)) abrirDropdown(false);
+        });
+        dom.multi.addEventListener('keydown', (evento) => {
+            if (evento.key === 'Escape' && !dom.multiPainel.hidden) {
+                abrirDropdown(false);
+                dom.multiBotao.focus();
+            }
+        });
 
         dom.chips.addEventListener('change', (evento) => {
             const caixa = evento.target.closest('input[type="checkbox"]');
@@ -1074,12 +927,6 @@
             definirBlocos(Array.from(state.blocos));
         });
         dom.marcarTudo.addEventListener('click', () => definirBlocos(state.disponiveis.slice()));
-        dom.soEssencial.addEventListener('click', () => definirBlocos(ESSENCIAL.slice()));
-
-        dom.filial.addEventListener('change', () => {
-            state.filial = dom.filial.value;
-            carregarTudo();
-        });
 
         dom.blocos.addEventListener('click', (evento) => {
             const pagina = evento.target.closest('[data-rv-pagina]');
@@ -1100,10 +947,6 @@
             carregarBlocos(['cancelamentos']);
             dom.cancelamentos.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
-        dom.imprimirCompras.addEventListener('click', () => imprimirLista('lista_compras', dom.imprimirCompras));
-        dom.imprimirValidade.addEventListener('click', () => imprimirLista('validade', dom.imprimirValidade));
-        dom.imprimir.addEventListener('click', () => window.print());
-        dom.exportar.addEventListener('click', exportarExcel);
 
         // No papel sai sempre o tema claro: o tema escuro (css/tema-escuro.css,
         // carregado por último) venceria as cores de impressão e deixaria
@@ -1121,30 +964,14 @@
 
     /* ================= Início ================= */
 
-    function montarSeletorDeFilial(idAtiva) {
-        const opcoes = [];
-        if (state.acesso.todas_filiais && state.filiais.length > 1) {
-            opcoes.push('<option value="todas">Todas as filiais</option>');
-        }
-        state.filiais.forEach((filial) => {
-            opcoes.push(`<option value="${filial.id_filial}">${escapeHtml(filial.nome)}</option>`);
-        });
-        dom.filial.innerHTML = opcoes.join('');
-        if (state.acesso.todas_filiais && state.filiais.length > 1) state.filial = 'todas';
-        else state.filial = String(idAtiva);
-        dom.filial.value = state.filial;
-        // Gerente e funcionário só veem a filial em que estão trabalhando.
-        dom.filial.disabled = opcoes.length <= 1;
-    }
-
     function modoVisitante() {
         state.visitante = true;
         situacao('aviso', 'Entre com seu usuário para ver os relatórios do seu mercado. <a href="login.html">Entrar no sistema</a>');
-        dom.filial.innerHTML = '<option>Entre para escolher</option>';
         renderizarTudo();
     }
 
     async function iniciar() {
+        montarOpcoesDePeriodo();
         ligarEventos();
         [state.de, state.ate] = intervaloDoPeriodo(state.periodo);
         dom.dataInicio.max = hoje();
@@ -1179,7 +1006,9 @@
             state.disponiveis = preferencias.blocos_disponiveis;
             state.blocos = new Set(preferencias.blocos);
             state.filiais = preferencias.filiais || [];
-            montarSeletorDeFilial(preferencias.id_filial_ativa);
+            // O relatório é sempre da filial em que a pessoa está trabalhando
+            // (para ver outra, ela troca de filial no menu).
+            state.filial = String(preferencias.id_filial_ativa);
             sincronizarChips();
             state.pronto = true;
             carregarTudo();

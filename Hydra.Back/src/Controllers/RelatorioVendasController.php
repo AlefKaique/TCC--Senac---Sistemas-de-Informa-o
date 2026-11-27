@@ -13,17 +13,19 @@ use Hydra\Support\Response;
  * Tela Relatório de Vendas (pages/dashboard.html, item "Relatório" do menu).
  *
  *   GET /api/relatorios/vendas        — o relatório, só com os blocos pedidos
- *   GET /api/relatorios/preferencias  — blocos salvos, acesso e filiais do seletor
+ *   GET /api/relatorios/preferencias  — blocos salvos, acesso e filial em que o usuário está
  *   PUT /api/relatorios/preferencias  — salva os blocos marcados
+ *
+ * O relatório mostra sempre e só a filial em que o usuário está
+ * trabalhando (a da sessão). Para ver outra filial, ele troca de filial no
+ * menu. Vale para todos os cargos, inclusive o ADM.
  *
  * Quem vê o quê (validado aqui, não só escondido na tela):
  *   - ADM (cargo de nível administrador: "Equipe e Cargos" ou
- *     "Configuração da Loja"): todas as filiais ativas da loja, a
- *     comparação entre elas, operadores, cancelamentos e lucro;
- *   - Gerente (cargo com "Relatório Completo"): só a filial em que está
- *     trabalhando, com operadores, cancelamentos e lucro;
- *   - Funcionário (só "Relatórios"): só a filial em que está trabalhando,
- *     sem operadores, sem cancelamentos e sem lucro.
+ *     "Configuração da Loja") e Gerente (cargo com "Relatório Completo"):
+ *     operadores, cancelamentos e lucro;
+ *   - Funcionário (só "Relatórios"): sem operadores, sem cancelamentos e
+ *     sem lucro.
  */
 final class RelatorioVendasController
 {
@@ -70,7 +72,7 @@ final class RelatorioVendasController
             'acesso' => $acesso,
             'filiais' => array_map(
                 static fn (array $filial): array => ['id_filial' => (int) $filial['id_filial'], 'nome' => $filial['nome']],
-                $this->filiaisVisiveis($usuario, $acesso)
+                $this->filiaisVisiveis($usuario)
             ),
             'id_filial_ativa' => (int) $usuario['id_filial'],
         ]);
@@ -106,7 +108,7 @@ final class RelatorioVendasController
     /**
      * GET /api/relatorios/vendas
      *   data_inicio, data_fim  AAAA-MM-DD (obrigatórios, até 90 dias)
-     *   id_filial              número da filial ou "todas" (só ADM)
+     *   id_filial              opcional; se vier, tem de ser a filial da sessão
      *   blocos                 lista separada por vírgula (pode ficar vazia)
      *   resumo                 "0" para não calcular os cartões (paginação, impressões)
      *   produtos_pagina        0 = os 5 primeiros; 1, 2... = lista completa, 20 por página
@@ -122,7 +124,7 @@ final class RelatorioVendasController
         }
         [$de, $ate] = $periodo;
 
-        $filial = $this->filialPedida($usuario, $acesso);
+        $filial = $this->filialPedida($usuario);
         if ($filial === null) {
             return;
         }
@@ -159,9 +161,6 @@ final class RelatorioVendasController
         if (($_GET['resumo'] ?? '1') !== '0') {
             $resposta['resumo'] = $repositorio->resumo($ids, $de, $ate, $acesso['lucro']);
             $resposta['resumo_anterior'] = $repositorio->resumo($ids, $anterior['de'], $anterior['ate'], $acesso['lucro']);
-            if ($filial['id'] === null && count($ids) > 1) {
-                $resposta['comparacao_filiais'] = $repositorio->comparacaoFiliais($ids, $de, $ate, $acesso['lucro']);
-            }
         }
 
         foreach ($blocos as $bloco) {
@@ -197,14 +196,13 @@ final class RelatorioVendasController
 
     /* ================= Permissões ================= */
 
-    /** @return array{nivel:string,todas_filiais:bool,operadores:bool,cancelamentos:bool,lucro:bool} */
+    /** @return array{nivel:string,operadores:bool,cancelamentos:bool,lucro:bool} */
     private function acesso(): array
     {
         $adm = Auth::ehAdministrador();
         $completo = $adm || Auth::can('relatorios.completo');
         return [
             'nivel' => $adm ? 'adm' : ($completo ? 'gerente' : 'funcionario'),
-            'todas_filiais' => $adm,
             'operadores' => $completo,
             'cancelamentos' => $completo,
             'lucro' => $completo,
@@ -221,62 +219,39 @@ final class RelatorioVendasController
     }
 
     /**
-     * ADM: todas as filiais ativas da loja. Os demais: só a filial em que
-     * estão trabalhando (a da sessão, já conferida por requireFilial()).
+     * Só a filial em que o usuário está trabalhando (a da sessão, já
+     * conferida por requireFilial()).
      *
      * @return array<int,array<string,mixed>>
      */
-    private function filiaisVisiveis(array $usuario, array $acesso): array
+    private function filiaisVisiveis(array $usuario): array
     {
-        $repositorio = new FilialRepository();
-        if ($acesso['todas_filiais']) {
-            return $repositorio->permitidas((int) $usuario['id_usuario'], (int) $usuario['id_loja'], true);
-        }
-        $filial = $repositorio->findInLoja((int) $usuario['id_filial'], (int) $usuario['id_loja']);
+        $filial = (new FilialRepository())->findInLoja((int) $usuario['id_filial'], (int) $usuario['id_loja']);
         return $filial === null ? [] : [$filial];
     }
 
     /**
-     * @return array{id:?int,nome:string,ids:int[]}|null null quando já respondeu com erro
+     * @return array{id:int,nome:string,ids:int[]}|null null quando já respondeu com erro
      */
-    private function filialPedida(array $usuario, array $acesso): ?array
+    private function filialPedida(array $usuario): ?array
     {
         $ativa = (int) $usuario['id_filial'];
-        $pedido = $_GET['id_filial'] ?? ($acesso['todas_filiais'] ? 'todas' : (string) $ativa);
-        if (!is_string($pedido) || ($pedido !== 'todas' && !ctype_digit($pedido))) {
+        $pedido = $_GET['id_filial'] ?? (string) $ativa;
+        if (!is_string($pedido) || !ctype_digit($pedido)) {
             Response::json(['erro' => 'Filial inválida.'], 422);
             return null;
         }
-
-        $visiveis = $this->filiaisVisiveis($usuario, $acesso);
-        if ($pedido === 'todas') {
-            if (!$acesso['todas_filiais']) {
-                Response::json(['erro' => 'Seu cargo só vê o relatório da filial em que você está trabalhando.'], 403);
-                return null;
-            }
-            if ($visiveis === []) {
-                Response::json(['erro' => 'Nenhuma filial ativa encontrada.'], 404);
-                return null;
-            }
-            return [
-                'id' => null,
-                'nome' => 'Todas as filiais',
-                'ids' => array_map(static fn (array $filial): int => (int) $filial['id_filial'], $visiveis),
-            ];
-        }
-
-        $id = (int) $pedido;
-        if (!$acesso['todas_filiais'] && $id !== $ativa) {
-            Response::json(['erro' => 'Seu cargo só vê o relatório da filial em que você está trabalhando.'], 403);
+        if ((int) $pedido !== $ativa) {
+            Response::json(['erro' => 'O relatório mostra só a filial em que você está trabalhando. Para ver outra, troque de filial no menu.'], 403);
             return null;
         }
-        foreach ($visiveis as $filial) {
-            if ((int) $filial['id_filial'] === $id) {
-                return ['id' => $id, 'nome' => $filial['nome'], 'ids' => [$id]];
-            }
+
+        $visiveis = $this->filiaisVisiveis($usuario);
+        if ($visiveis === []) {
+            Response::json(['erro' => 'Filial não encontrada ou desativada.'], 404);
+            return null;
         }
-        Response::json(['erro' => 'Filial não encontrada ou desativada.'], 404);
-        return null;
+        return ['id' => $ativa, 'nome' => $visiveis[0]['nome'], 'ids' => [$ativa]];
     }
 
     /** @return string[]|null null quando já respondeu com erro */

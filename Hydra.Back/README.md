@@ -130,24 +130,26 @@ Parâmetros:
 | Parâmetro | Obrigatório | Valores |
 |---|---|---|
 | `data_inicio`, `data_fim` | sim | `AAAA-MM-DD`, no máximo 90 dias |
-| `id_filial` | não | número da filial ou `todas` (só ADM). Padrão: `todas` para ADM, a filial da sessão para os demais |
+| `id_filial` | não | se vier, tem de ser a filial da sessão (outra filial dá 403). Padrão: a filial da sessão |
 | `blocos` | não | separados por vírgula: `mais_vendidos`, `dia_a_dia`, `horarios`, `pagamentos`, `parados`, `vai_acabar`, `operadores`, e os botões da seção de impressões: `cancelamentos`, `lista_compras`, `validade` |
 | `resumo` | não | `0` para não calcular os cartões (usado ao paginar e ao imprimir) |
 | `produtos_pagina` | não | `0` = os 5 primeiros; `1`, `2`… = lista completa, 20 por página |
 
 Só as consultas dos blocos pedidos são executadas. A resposta traz
 `periodo`, `periodo_anterior` (com o texto da comparação, como "na semana
-anterior"), `filial`, `acesso`, `resumo`, `resumo_anterior`,
-`comparacao_filiais` (ADM com `todas`) e uma chave por bloco pedido.
+anterior"), `filial`, `acesso`, `resumo`, `resumo_anterior` e uma chave por
+bloco pedido.
+
+O relatório mostra sempre só a filial da sessão, para todos os cargos
+(inclusive o ADM). Para ver outra filial, o usuário troca de filial no menu.
 
 Quem vê o quê, conferido no back-end:
 
-- **ADM** (cargo com "Equipe e Cargos" ou "Configuração da Loja"): todas as
-  filiais ativas, a comparação entre elas, operadores, cancelamentos e lucro.
+- **ADM** (cargo com "Equipe e Cargos" ou "Configuração da Loja"):
+  operadores, cancelamentos e lucro.
 - **Gerente** (cargo com a permissão "Relatório Completo",
-  `relatorios.completo`): só a filial da sessão, com operadores,
-  cancelamentos e lucro.
-- **Funcionário** (só "Relatórios"): só a filial da sessão; pedir
+  `relatorios.completo`): operadores, cancelamentos e lucro.
+- **Funcionário** (só "Relatórios"): pedir
   `operadores` ou `cancelamentos` responde 403 e o resumo vem sem lucro.
 
 Para ter um Gerente, crie um cargo na tela Cargos com "Relatórios" e

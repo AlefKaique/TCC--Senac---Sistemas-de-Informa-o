@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/dashboard.css">
-    <link rel="stylesheet" href="../css/relatorio-vendas.css?v=2026112601">
+    <link rel="stylesheet" href="../css/relatorio-vendas.css?v=2026112604">
     <link rel="stylesheet" href="../css/menu-submenu.css?v=2026112606">
     <link rel="stylesheet" href="../css/public-demo.css">
     <link rel="stylesheet" href="../css/font-size.css">
@@ -98,40 +98,16 @@
 
                 <div class="rv" id="rv">
 
-                    <!-- ===== Filtro: período, detalhes, filial, imprimir e exportar ===== -->
+                    <!-- ===== Filtro: período e detalhes (sempre da filial em que a pessoa está trabalhando) ===== -->
                     <section class="rv-card rv-filtro" aria-label="Escolha o que o relatório vai mostrar">
-                        <div class="rv-filtro-topo">
-                            <div class="rv-campo">
-                                <label for="rvFilial">Filial</label>
-                                <select id="rvFilial" disabled>
-                                    <option>Carregando…</option>
-                                </select>
-                            </div>
-                            <div class="rv-filtro-acoes">
-                                <button type="button" class="rv-btn rv-btn-contorno" id="rvImprimir">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V3h10v6M7 18H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v7H7z" /></svg>
-                                    Imprimir
-                                </button>
-                                <button type="button" class="rv-btn rv-btn-contorno" id="rvExportar">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v3h16v-3" /></svg>
-                                    Exportar Excel
-                                </button>
-                            </div>
-                        </div>
-
                         <fieldset class="rv-passo">
                             <legend><span class="rv-passo-numero" aria-hidden="true">1</span> Passo 1 — Período</legend>
-                            <p class="rv-passo-ajuda">Escolha de quando você quer ver as vendas.</p>
-                            <div class="rv-periodos">
-                                <button type="button" class="rv-periodo" data-periodo="hoje" aria-pressed="false">Hoje</button>
-                                <button type="button" class="rv-periodo" data-periodo="ontem" aria-pressed="false">Ontem</button>
-                                <button type="button" class="rv-periodo" data-periodo="7dias" aria-pressed="true">Últimos 7 dias</button>
-                                <button type="button" class="rv-periodo" data-periodo="mes" aria-pressed="false">Este mês</button>
-                                <button type="button" class="rv-periodo" data-periodo="mes-passado" aria-pressed="false">Mês passado</button>
-                                <button type="button" class="rv-periodo" data-periodo="escolher" aria-pressed="false"
-                                    aria-expanded="false" aria-controls="rvDatas">Escolher datas…</button>
-                            </div>
-                            <div class="rv-datas" id="rvDatas" hidden>
+                            <p class="rv-passo-ajuda">Escolha um mês na lista ou ajuste as datas do jeito que quiser.</p>
+                            <div class="rv-periodo-linha">
+                                <div class="rv-campo rv-campo-periodo">
+                                    <label for="rvPeriodo">Mês ou período</label>
+                                    <select id="rvPeriodo"><!-- opções montadas pelo js/relatorio-vendas.js --></select>
+                                </div>
                                 <div class="rv-campo">
                                     <label for="rvDataInicio">Do dia</label>
                                     <input type="date" id="rvDataInicio">
@@ -141,25 +117,34 @@
                                     <input type="date" id="rvDataFim">
                                 </div>
                                 <button type="button" class="rv-btn rv-btn-cheio" id="rvAplicarDatas">Ver essas datas</button>
-                                <p class="rv-passo-ajuda rv-datas-ajuda" id="rvDatasAjuda">Você pode escolher até 90 dias de uma vez.</p>
                             </div>
+                            <p class="rv-passo-ajuda rv-datas-ajuda" id="rvDatasAjuda">Você pode escolher até 90 dias de uma vez.</p>
                         </fieldset>
 
                         <fieldset class="rv-passo">
                             <legend><span class="rv-passo-numero" aria-hidden="true">2</span> Passo 2 — O que você quer ver na tela</legend>
-                            <p class="rv-passo-ajuda">Toque para ligar ou desligar cada parte. A tela lembra a sua escolha na próxima vez.</p>
-                            <div class="rv-chips" id="rvChips">
-                                <label class="rv-chip"><input type="checkbox" value="mais_vendidos"><span>Produtos que mais venderam</span></label>
-                                <label class="rv-chip"><input type="checkbox" value="dia_a_dia"><span>Dia a dia (campeão de cada data)</span></label>
-                                <label class="rv-chip"><input type="checkbox" value="horarios"><span>Horário de movimento</span></label>
-                                <label class="rv-chip"><input type="checkbox" value="pagamentos"><span>Formas de pagamento</span></label>
-                                <label class="rv-chip"><input type="checkbox" value="parados"><span>Produtos que pararam de vender</span></label>
-                                <label class="rv-chip"><input type="checkbox" value="vai_acabar"><span>Vai acabar logo</span></label>
-                                <label class="rv-chip" id="rvChipOperadores"><input type="checkbox" value="operadores"><span>Vendas por operador</span></label>
-                            </div>
-                            <div class="rv-atalhos">
-                                <button type="button" class="rv-btn rv-btn-contorno" id="rvMarcarTudo">Marcar tudo</button>
-                                <button type="button" class="rv-btn rv-btn-contorno" id="rvSoEssencial">Só o essencial</button>
+                            <p class="rv-passo-ajuda">Abra a lista e marque as partes que quer ver. A tela lembra a sua escolha na próxima vez.</p>
+                            <div class="rv-multi" id="rvMulti">
+                                <button type="button" class="rv-multi-botao" id="rvMultiBotao"
+                                    aria-expanded="false" aria-controls="rvMultiPainel">
+                                    <span class="rv-multi-texto" id="rvMultiTexto">Carregando…</span>
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                                </button>
+                                <div class="rv-multi-painel" id="rvMultiPainel" hidden>
+                                    <div class="rv-opcoes" id="rvChips" role="group" aria-label="Partes do relatório">
+                                        <label class="rv-opcao"><input type="checkbox" value="mais_vendidos"><span>Produtos que mais venderam</span></label>
+                                        <label class="rv-opcao"><input type="checkbox" value="dia_a_dia"><span>Dia a dia (campeão de cada data)</span></label>
+                                        <label class="rv-opcao"><input type="checkbox" value="horarios"><span>Horário de movimento</span></label>
+                                        <label class="rv-opcao"><input type="checkbox" value="pagamentos"><span>Formas de pagamento</span></label>
+                                        <label class="rv-opcao"><input type="checkbox" value="parados"><span>Produtos que pararam de vender</span></label>
+                                        <label class="rv-opcao"><input type="checkbox" value="vai_acabar"><span>Vai acabar logo</span></label>
+                                        <label class="rv-opcao" id="rvChipOperadores"><input type="checkbox" value="operadores"><span>Vendas por operador</span></label>
+                                    </div>
+                                    <div class="rv-multi-rodape">
+                                        <button type="button" class="rv-btn rv-btn-contorno" id="rvMarcarTudo">Marcar tudo</button>
+                                        <button type="button" class="rv-btn rv-btn-cheio" id="rvMultiPronto">Pronto</button>
+                                    </div>
+                                </div>
                             </div>
                         </fieldset>
                     </section>
@@ -175,20 +160,14 @@
                         <p class="rv-aviso" id="rvAvisoCusto" hidden></p>
                     </section>
 
-                    <section class="rv-card rv-bloco" id="rvComparacao" aria-labelledby="rvComparacaoTitulo" hidden>
-                        <h2 id="rvComparacaoTitulo">Comparação entre filiais</h2>
-                        <p class="rv-bloco-ajuda">Quanto cada filial vendeu no mesmo período.</p>
-                        <div id="rvComparacaoConteudo"></div>
-                    </section>
-
                     <!-- ===== Blocos escolhidos no Passo 2 (montados pelo js/relatorio-vendas.js) ===== -->
                     <div class="rv-blocos" id="rvBlocos"></div>
 
                     <div class="rv-card rv-nenhum" id="rvNenhumBloco" hidden>
                         <h2>Nenhum detalhe marcado</h2>
                         <p>O resumo lá em cima continua aparecendo. Para ver mais informações aqui embaixo, vá ao
-                            <strong>Passo 2</strong> e toque em um dos botões, por exemplo
-                            <strong>“Produtos que mais venderam”</strong>, ou toque em <strong>“Só o essencial”</strong>.</p>
+                            <strong>Passo 2</strong>, abra a lista e marque uma das partes, por exemplo
+                            <strong>“Produtos que mais venderam”</strong>.</p>
                     </div>
 
                     <section class="rv-card rv-bloco" id="rvCancelamentos" aria-labelledby="rvCancelamentosTitulo" hidden>
@@ -197,14 +176,12 @@
                         <div id="rvCancelamentosConteudo"></div>
                     </section>
 
-                    <!-- ===== Ferramentas mantidas da tela anterior ===== -->
-                    <section class="rv-card rv-ferramentas" aria-labelledby="rvFerramentasTitulo">
-                        <h2 id="rvFerramentasTitulo">Impressões e cancelamentos</h2>
-                        <p class="rv-bloco-ajuda">A lista de compras e o relatório de validade mostram a situação de agora, sem depender do período. Os cancelamentos seguem o período escolhido no Passo 1.</p>
+                    <!-- ===== Vendas canceladas (só para quem tem permissão) ===== -->
+                    <section class="rv-card rv-ferramentas" id="rvFerramentas" aria-labelledby="rvFerramentasTitulo" hidden>
+                        <h2 id="rvFerramentasTitulo">Vendas canceladas</h2>
+                        <p class="rv-bloco-ajuda">Veja as vendas canceladas no período escolhido no Passo 1, com quem vendeu e quem autorizou.</p>
                         <div class="rv-ferramentas-botoes">
-                            <button type="button" class="rv-btn rv-btn-contorno" id="rvImprimirCompras">Imprimir lista de compras</button>
-                            <button type="button" class="rv-btn rv-btn-contorno" id="rvImprimirValidade">Imprimir relatório de validade</button>
-                            <button type="button" class="rv-btn rv-btn-contorno" id="rvVerCancelamentos" hidden aria-controls="rvCancelamentos">Ver vendas canceladas</button>
+                            <button type="button" class="rv-btn rv-btn-contorno" id="rvVerCancelamentos" aria-controls="rvCancelamentos">Ver vendas canceladas</button>
                         </div>
                     </section>
                 </div>
@@ -227,7 +204,7 @@
     <script src="../js/privacidade-menu.js"></script>
     <script src="../js/public-demo.js"></script>
     <script src="../js/font-size.js"></script>
-    <script src="../js/relatorio-vendas.js?v=2026112601"></script>
+    <script src="../js/relatorio-vendas.js?v=2026112604"></script>
 </body>
 
 </html>

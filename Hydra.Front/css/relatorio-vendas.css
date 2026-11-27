@@ -8,8 +8,8 @@
    poucas cores próprias daqui têm a versão escura logo abaixo.
 
    Regras da tela: nada de gráfico de pizza/linha, só tabelas e barras
-   horizontais em CSS; alvos de toque com 44px ou mais (48px nos botões
-   de período); texto de tabela a partir de 16px; números com algarismos
+   horizontais em CSS; alvos de toque com 44px ou mais (48px nos campos
+   e botões principais); texto de tabela a partir de 16px; números com algarismos
    de largura fixa (tabular-nums) para as colunas alinharem.
    =================================================================== */
 
@@ -122,8 +122,8 @@ html[data-hydra-theme="dark"] .hydro-dash {
 }
 
 .rv-btn:focus-visible,
-.rv-periodo:focus-visible,
-.rv-chip:focus-within,
+.rv-multi-botao:focus-visible,
+.rv-opcao:focus-within,
 .rv select:focus-visible,
 .rv input[type="date"]:focus-visible {
     outline: 3px solid var(--blue, #5e81f4);
@@ -135,20 +135,6 @@ html[data-hydra-theme="dark"] .hydro-dash {
     display: flex;
     flex-direction: column;
     gap: 22px;
-}
-
-.rv-filtro-topo {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 14px 20px;
-}
-
-.rv-filtro-acoes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
 }
 
 .rv-campo {
@@ -190,6 +176,11 @@ html[data-hydra-theme="dark"] .hydro-dash {
     min-width: 0;
 }
 
+.rv-passo:first-child {
+    padding-top: 0;
+    border-top: 0;
+}
+
 .rv-passo legend {
     display: flex;
     align-items: center;
@@ -219,55 +210,24 @@ html[data-hydra-theme="dark"] .hydro-dash {
     font-size: 15px;
 }
 
-.rv-periodos,
-.rv-chips,
-.rv-atalhos {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.rv-periodo {
-    min-height: 48px;
-    padding: 10px 18px;
-    border: 2px solid var(--border);
-    border-radius: 999px;
-    background: var(--card);
-    color: var(--navy-900);
-    font: inherit;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-.rv-periodo:hover {
-    background: var(--surface-hover);
-}
-
-.rv-periodo[aria-pressed="true"] {
-    background: var(--rv-ativo);
-    border-color: var(--rv-ativo);
-    color: #fff;
-}
-
-.rv-periodo[aria-pressed="true"]::before {
-    content: "✓ ";
-}
-
-.rv-datas {
+/* ---------- Passo 1: dropdown de mês/período + datas na mesma linha ---------- */
+.rv-periodo-linha {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
     gap: 12px 16px;
-    margin-top: 14px;
-    padding: 16px;
-    border-radius: 12px;
-    background: var(--soft);
+}
+
+.rv-campo-periodo select {
+    min-width: 280px;
+}
+
+.rv-periodo-linha input[type="date"] {
+    min-width: 180px;
 }
 
 .rv-datas-ajuda {
-    flex-basis: 100%;
-    margin: 0 !important;
+    margin: 10px 0 0 !important;
 }
 
 .rv-datas-ajuda.rv-erro {
@@ -275,45 +235,120 @@ html[data-hydra-theme="dark"] .hydro-dash {
     font-weight: 700;
 }
 
-/* Chip = checkbox de verdade dentro do <label>, com o visual de botão. */
-.rv-chip {
+/* ---------- Passo 2: dropdown com caixas de marcar ---------- */
+.rv-multi {
     position: relative;
-    display: inline-flex;
+    max-width: 520px;
+}
+
+.rv-multi-botao {
+    display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
     min-height: 48px;
-    padding: 10px 16px;
+    padding: 10px 14px;
     border: 2px solid var(--border);
-    border-radius: 999px;
-    background: var(--card);
-    color: var(--navy-900);
+    border-radius: 10px;
+    background: var(--input-bg, #fff);
+    color: var(--ink);
+    font: inherit;
     font-size: 16px;
-    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+}
+
+.rv-multi-botao:hover {
+    border-color: var(--rv-ativo);
+}
+
+.rv-multi-texto {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rv-multi-botao svg {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform .15s ease;
+}
+
+.rv-multi-botao[aria-expanded="true"] {
+    border-color: var(--rv-ativo);
+}
+
+.rv-multi-botao[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+}
+
+.rv-multi-painel {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+    box-shadow: 0 12px 32px rgba(15, 30, 70, .18);
+}
+
+.rv-opcoes {
+    display: flex;
+    flex-direction: column;
+}
+
+.rv-opcao {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    color: var(--ink);
+    font-size: 16px;
     cursor: pointer;
     user-select: none;
 }
 
-.rv-chip:hover {
+.rv-opcao:hover {
     background: var(--surface-hover);
 }
 
-.rv-chip input {
-    width: 22px;
-    height: 22px;
+.rv-opcao input {
+    width: 20px;
+    height: 20px;
     margin: 0;
     flex: none;
-    accent-color: var(--navy-active);
+    accent-color: var(--rv-ativo);
     cursor: pointer;
 }
 
-.rv-chip:has(input:checked) {
-    background: var(--rv-ativo);
-    border-color: var(--rv-ativo);
-    color: #fff;
+.rv-opcao:has(input:checked) {
+    font-weight: 700;
 }
 
-.rv-atalhos {
-    margin-top: 14px;
+.rv-multi-rodape {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+
+.rv-multi-rodape .rv-btn {
+    min-height: 44px;
+    padding: 8px 16px;
 }
 
 /* ============ Linha de confirmação e situação ============ */
@@ -706,8 +741,6 @@ html[data-hydra-theme="dark"] .rv-selo-urgente {
         font-size: 32px;
     }
 
-    .rv-filtro-topo,
-    .rv-filtro-acoes,
     .rv-campo,
     .rv select,
     .rv input[type="date"] {
@@ -719,16 +752,22 @@ html[data-hydra-theme="dark"] .rv-selo-urgente {
         min-width: 0;
     }
 
-    .rv-filtro-acoes .rv-btn,
-    .rv-datas .rv-btn,
-    .rv-atalhos .rv-btn,
+    .rv-periodo-linha .rv-btn,
     .rv-ferramentas-botoes .rv-btn {
         flex: 1 1 100%;
     }
 
-    .rv-periodo,
-    .rv-chip {
-        flex: 1 1 auto;
+    .rv-campo-periodo select,
+    .rv-periodo-linha input[type="date"] {
+        min-width: 0;
+    }
+
+    .rv-multi {
+        max-width: none;
+    }
+
+    .rv-multi-rodape .rv-btn {
+        flex: 1 1 0;
     }
 }
 
