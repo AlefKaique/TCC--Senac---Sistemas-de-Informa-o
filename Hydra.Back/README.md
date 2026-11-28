@@ -122,9 +122,40 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | GET    | `/api/catalogo-hortifruti`           | pública | Lista o catálogo padrão de códigos hortifrúti |
 | POST   | `/api/catalogo-hortifruti/importar`  | `produtos.importar_catalogo` | Importa para a filial ativa sem sobrescrever códigos existentes |
 
+### Relatório de Estoque (`GET /api/relatorios/estoque-produtos`)
+
+É a rota da tela Relatório (`pages/dashboard.html` + `js/relatorio-estoque.js`).
+O foco é o produto, sem valores em dinheiro: o que entrou e o que saiu no
+período, o que está em falta e o que está vencendo. Exige
+`relatorios.visualizar` e usa sempre a filial da sessão.
+
+| Parâmetro | Obrigatório | Valores |
+|---|---|---|
+| `data_inicio`, `data_fim` | sim | `AAAA-MM-DD`, no máximo 366 dias |
+| `busca` | não | nome (parte), código de barras (início), PLU ou código do produto |
+| `categoria` | não | categoria exata do produto |
+| `dias_validade` | não | `7`, `15`, `30` (padrão) ou `60`: o que conta como "vencendo" |
+| `tipo` | não | `todas` (padrão), `entrada` ou `saida`: filtro da lista de movimentações |
+| `pagina` | não | página da lista de movimentações (25 por página) |
+| `secao` | não | `movimentacoes` devolve só a lista (troca de página ou de tipo) |
+| `completo` | não | `1` devolve a lista inteira (até 2.000), usada pelo PDF |
+
+A resposta traz `resumo` (cartões), `por_produto` (entradas, vendido, outras
+saídas e estoque atual de cada produto movimentado), `movimentacoes`,
+`em_falta` (no mínimo ou abaixo, agora), `vencendo` (lotes vencidos ou que
+vencem em até `dias_validade` dias, agora) e `categorias` (para o filtro).
+"Vendido" já desconta as vendas canceladas. O saldo de cada lote em
+`vencendo` é calculado na leitura com a mesma regra de
+`LoteRepository::sincronizar()` (FEFO), sem gravar nada.
+
+O PDF é montado no navegador por `js/relatorio-estoque-pdf.js` com jsPDF e
+jsPDF-AutoTable (MIT), guardados em `Hydra.Front/js/vendor/` porque a CSP só
+aceita scripts do próprio site.
+
 ### Relatório de Vendas (`GET /api/relatorios/vendas`)
 
-É a rota da tela Relatório (`pages/dashboard.html` + `js/relatorio-vendas.js`).
+Relatório com valores em dinheiro (faturamento, lucro, formas de pagamento).
+Hoje não tem tela: fica para o módulo financeiro futuro.
 Parâmetros:
 
 | Parâmetro | Obrigatório | Valores |

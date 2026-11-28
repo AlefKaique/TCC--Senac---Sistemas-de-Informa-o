@@ -1,0 +1,744 @@
+/* ===================================================================
+   Tela Relatório de Estoque (pages/dashboard.html + js/relatorio-estoque.js)
+
+   O menu lateral, o topo e as variáveis de cor vêm de dashboard.css
+   (escopo .hydro-dash). Este arquivo cuida só do conteúdo da tela, com
+   prefixo .re- para não colidir com nada. As cores de fundo usam as
+   variáveis de dashboard.css, que o tema escuro (css/tema-escuro.css)
+   redefine; as cores de texto próprias daqui têm a versão escura logo
+   abaixo.
+
+   Foco no produto: entradas, saídas, o que está em falta e o que está
+   vencendo. Sem valores em dinheiro. Alvos de toque com 44px ou mais.
+   =================================================================== */
+
+.hydro-dash {
+    --re-verde: #11703b;
+    --re-vermelho: #b42335;
+    --re-ambar: #8a5a00;
+    --re-azul: #2f4fc0;
+    --re-texto-suave: #5a6378;
+    --re-ativo: var(--navy-active, #152e6d);
+}
+
+html[data-hydra-theme="dark"] .hydro-dash {
+    --re-verde: #6fdca6;
+    --re-vermelho: #ff9aa5;
+    --re-ambar: #f3c46b;
+    --re-azul: #a9bcff;
+    --re-texto-suave: #b9c3d4;
+    /* O azul de destaque do tema escuro com texto branco fica abaixo de
+       4,5:1; este tom passa. */
+    --re-ativo: #3d55a6;
+}
+
+.re {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    font-size: 16px;
+    color: var(--ink);
+}
+
+.re h2,
+.re h3,
+.re p {
+    margin: 0;
+}
+
+.re [hidden] {
+    display: none !important;
+}
+
+.re-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg, 16px);
+    box-shadow: var(--shadow-card);
+    padding: 20px 22px;
+}
+
+/* ============ Botões e campos ============ */
+.re-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 9px 18px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    color: var(--navy-900);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.re-btn:hover:not(:disabled) {
+    background: var(--surface-hover);
+}
+
+.re-btn svg {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.re-btn-cheio {
+    background: var(--re-ativo);
+    border-color: var(--re-ativo);
+    color: #fff;
+}
+
+.re-btn-cheio:hover:not(:disabled) {
+    background: var(--re-ativo);
+    filter: brightness(1.12);
+}
+
+.re-btn:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+
+.re-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.re-campo label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--navy-900);
+}
+
+.re select,
+.re input[type="date"],
+.re input[type="search"] {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg, #fff);
+    color: var(--ink);
+    font: inherit;
+    font-size: 15px;
+}
+
+.re select:hover,
+.re input:hover {
+    border-color: var(--muted-soft);
+}
+
+.re-btn:focus-visible,
+.re-cartao:focus-visible,
+.re-segmento:focus-visible,
+.re-ordenar:focus-visible,
+.re-aba-painel:focus-visible,
+.re select:focus-visible,
+.re input:focus-visible {
+    outline: 3px solid var(--blue, #5e81f4);
+    outline-offset: 2px;
+}
+
+/* ============ Filtros ============ */
+.re-filtros-linha {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px 14px;
+}
+
+.re-campo-data {
+    flex: 0 1 190px;
+}
+
+.re-campo-busca {
+    flex: 2 1 240px;
+}
+
+.re-campo-categoria {
+    flex: 1 1 170px;
+    max-width: 220px;
+}
+
+.re-filtros-rodape {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.re-btn-pdf {
+    margin-left: auto;
+}
+
+.re-busca {
+    position: relative;
+}
+
+.re-busca svg {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    width: 18px;
+    height: 18px;
+    transform: translateY(-50%);
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: none;
+}
+
+.re .re-busca input {
+    padding-left: 38px;
+}
+
+.re-filtros-info {
+    flex: 1 1 300px;
+    color: var(--re-texto-suave);
+    font-size: 14px;
+}
+
+.re-filtros-info strong {
+    color: var(--ink);
+}
+
+.re-filtros-info.re-erro {
+    color: var(--re-vermelho);
+    font-weight: 700;
+}
+
+/* ============ Situação (carregando, aviso, erro) ============ */
+.re-situacao:empty {
+    display: none;
+}
+
+.re-situacao {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    border: 1px solid var(--amber-border, #f3dcae);
+    background: var(--amber-bg);
+    color: var(--ink);
+    font-size: 15px;
+}
+
+.re-situacao.re-carregando {
+    border-color: var(--border);
+    background: var(--soft);
+}
+
+.re-situacao.re-erro {
+    border-color: var(--red-border, #f6c9ce);
+    background: var(--red-bg);
+}
+
+.re-situacao a {
+    color: var(--re-azul);
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+/* ============ Cartões (são também as abas da tela) ============ */
+.re-cartoes {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+}
+
+.re-cartao {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    padding: 16px 18px 18px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-lg, 16px);
+    background: var(--card);
+    box-shadow: var(--shadow-card);
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.re-cartao:hover {
+    border-color: var(--muted-soft);
+}
+
+/* Cartão escolhido: borda forte e uma seta apontando para o conteúdo dele. */
+.re-cartao[aria-selected="true"] {
+    border-color: var(--re-ativo);
+    box-shadow: 0 0 0 1.5px var(--re-ativo), var(--shadow-card);
+}
+
+.re-cartao[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -12px;
+    transform: translateX(-50%);
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid var(--re-ativo);
+}
+
+.re-cartao-rotulo {
+    color: var(--re-texto-suave);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.re-cartao[aria-selected="true"] .re-cartao-rotulo {
+    color: var(--navy-900);
+}
+
+.re-cartao-quando {
+    color: var(--re-texto-suave);
+    font-weight: 500;
+}
+
+.re-cartao-par {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 32px;
+}
+
+.re-stat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.re-stat-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.re-stat-linha {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.re-stat-nome {
+    color: var(--re-texto-suave);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.re-cartao-icone {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+}
+
+.re-cartao-icone svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.re-stat-entrada .re-cartao-icone { background: var(--green-bg); color: var(--re-verde); }
+.re-stat-saida .re-cartao-icone { background: var(--blue-bg); color: var(--re-azul); }
+.re-cartao-falta .re-cartao-icone { background: var(--red-bg); color: var(--re-vermelho); }
+.re-cartao-vencendo .re-cartao-icone { background: var(--amber-bg); color: var(--re-ambar); }
+
+.re-cartao-valor {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.re-cartao-detalhe {
+    color: var(--re-texto-suave);
+    font-size: 13.5px;
+}
+
+/* Com alerta ativo, o número ganha a cor do alerta. */
+.re-cartao-falta.re-com-alerta .re-cartao-valor { color: var(--re-vermelho); }
+.re-cartao-vencendo.re-com-alerta .re-cartao-valor { color: var(--re-ambar); }
+
+/* ============ Conteúdo do cartão escolhido ============ */
+.re-painel {
+    padding: 0;
+}
+
+.re-aba-painel {
+    padding: 18px 22px 22px;
+}
+
+.re-painel-topo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px 20px;
+    margin-bottom: 14px;
+}
+
+.re-painel-topo .re-ajuda {
+    margin-bottom: 0 !important;
+    flex: 1 1 320px;
+}
+
+.re-ajuda {
+    margin-bottom: 14px !important;
+    color: var(--re-texto-suave);
+    font-size: 14.5px;
+    max-width: 80ch;
+}
+
+.re-ajuda strong {
+    color: var(--ink);
+}
+
+.re-campo-inline {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+
+.re-campo-inline select {
+    width: auto;
+    min-width: 120px;
+}
+
+/* Segmentos (Todas / Só entradas / Só saídas) */
+.re-segmentos {
+    display: inline-flex;
+    padding: 4px;
+    border-radius: 12px;
+    background: var(--soft);
+}
+
+.re-segmento {
+    min-height: 40px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 9px;
+    background: none;
+    color: var(--re-texto-suave);
+    font: inherit;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.re-segmento[aria-pressed="true"] {
+    background: var(--card);
+    color: var(--navy-900);
+    box-shadow: 0 1px 3px rgba(13, 26, 61, .12);
+}
+
+/* ============ Tabelas ============ */
+.re-tabela-rolagem {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.re-tabela {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+}
+
+/* ".re" na frente: vence a regra geral de dashboard.css
+   (.hydro-dash tbody td), que deixa todas as células sem quebra de linha. */
+.re .re-tabela th,
+.re .re-tabela td {
+    padding: 11px 14px;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border);
+    font-size: 15px;
+    color: var(--ink);
+    white-space: normal;
+}
+
+.re .re-tabela thead th {
+    position: sticky;
+    top: 0;
+    background: var(--soft);
+    color: var(--re-texto-suave);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.re .re-tabela tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.re .re-tabela tbody tr:hover td {
+    background: var(--row-hover);
+}
+
+.re .re-tabela .re-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.re .re-tabela td.re-num {
+    font-weight: 600;
+}
+
+.re-nome {
+    font-weight: 700;
+}
+
+.re-sub {
+    display: block;
+    margin-top: 2px;
+    color: var(--re-texto-suave);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.re-zero {
+    color: var(--muted-soft);
+    font-weight: 500 !important;
+}
+
+.re-mais {
+    color: var(--re-verde);
+}
+
+.re .re-tabela .re-data {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Cabeçalho que ordena a tabela */
+.re-ordenar {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+}
+
+.re-ordenar::after {
+    content: "↕";
+    opacity: .45;
+    font-size: 12px;
+}
+
+th[aria-sort="ascending"] .re-ordenar::after { content: "↑"; opacity: 1; }
+th[aria-sort="descending"] .re-ordenar::after { content: "↓"; opacity: 1; }
+
+/* ============ Selos ============ */
+.re-selo {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.re-selo::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.re-selo-vermelho { background: var(--red-bg); color: var(--re-vermelho); }
+.re-selo-ambar { background: var(--amber-bg); color: var(--re-ambar); }
+.re-selo-verde { background: var(--green-bg); color: var(--re-verde); }
+.re-selo-azul { background: var(--blue-bg); color: var(--re-azul); }
+.re-selo-neutro { background: var(--soft); color: var(--re-texto-suave); }
+
+.re-selos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* ============ Estados vazios, carregando e rodapé das listas ============ */
+.re-vazio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 34px 16px;
+    text-align: center;
+    color: var(--re-texto-suave);
+}
+
+.re-vazio strong {
+    color: var(--ink);
+    font-size: 16.5px;
+}
+
+.re-vazio-icone {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    margin-bottom: 4px;
+    border-radius: 50%;
+    background: var(--green-bg);
+    color: var(--re-verde);
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.re-vazio-neutro .re-vazio-icone {
+    background: var(--soft);
+    color: var(--re-texto-suave);
+}
+
+.re-carregando-bloco {
+    padding: 30px 16px;
+    text-align: center;
+    color: var(--re-texto-suave);
+}
+
+.re-rodape-lista {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    margin-top: 14px;
+    color: var(--re-texto-suave);
+    font-size: 14.5px;
+}
+
+.re-paginas {
+    display: flex;
+    gap: 8px;
+}
+
+/* ============ Telas menores ============ */
+@media (max-width: 1100px) {
+    .re-cartoes {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .re-cartao-movimento {
+        grid-column: 1 / -1;
+    }
+
+    /* Em duas linhas a seta apontaria para os cartões de baixo, não para o
+       conteúdo; a borda forte já mostra qual está escolhido. */
+    .re-cartao[aria-selected="true"]::after {
+        display: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .re-card {
+        padding: 16px;
+    }
+
+    .re-painel {
+        padding: 0;
+    }
+
+    .re-aba-painel {
+        padding: 16px;
+    }
+
+    .re-cartoes {
+        gap: 10px;
+    }
+
+    .re-cartao {
+        gap: 10px;
+        padding: 14px;
+    }
+
+    .re-cartao-par {
+        gap: 10px 20px;
+    }
+
+    .re-cartao-icone {
+        width: 38px;
+        height: 38px;
+    }
+
+    .re-cartao-valor {
+        font-size: 24px;
+    }
+
+    .re-campo-busca,
+    .re-campo-categoria,
+    .re-btn-pdf {
+        flex: 1 1 100%;
+        max-width: none;
+    }
+
+    .re-campo-data {
+        flex: 1 1 calc(50% - 7px);
+    }
+
+    .re-btn-pdf {
+        margin-left: 0;
+    }
+
+    .re-segmentos {
+        width: 100%;
+    }
+
+    .re-segmento {
+        flex: 1 1 0;
+        padding: 0 8px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .re-cartao {
+        transition: none;
+    }
+}
