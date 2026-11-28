@@ -44,15 +44,67 @@
     text-decoration: underline;
 }
 
-/* Dados da filial ativa: somente leitura (ver configuracoes-loja.js). */
-#hydroSettingsForm .hydro-form-group input[readonly] {
-    background: var(--surface-hover, #f6f7fb);
-    color: var(--ink);
-    cursor: default;
+/* Texto de abertura + botão "Editar dados da filial" na mesma linha. */
+.hydro-filial-atual-intro {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    margin-bottom: 24px;
 }
-#hydroSettingsForm .hydro-form-group input[readonly]::placeholder {
+
+.hydro-filial-atual-intro .hydro-settings-intro {
+    flex: 1 1 360px;
+    margin-bottom: 0;
+}
+
+.hydro-filial-atual-intro .hydro-btn {
+    flex: none;
+    color: var(--navy-900);
+}
+
+/* Dados da filial ativa: só para consulta (ver configuracoes-loja.js).
+   Antes eram caixas de formulário cinza com cursor fixo de seta: pareciam
+   campos quebrados, em que não dava para clicar nem digitar. Agora são
+   texto de consulta, rótulo pequeno em cima e valor embaixo, com cursor
+   de texto para selecionar e copiar (o CNPJ, por exemplo). Para editar,
+   o botão "Editar dados da filial" leva ao cadastro da filial. */
+#hydroSettingsForm [data-hydro-config-admin] .hydro-form-group {
+    gap: 4px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+#hydroSettingsForm [data-hydro-config-admin] .hydro-form-group label {
+    font-size: 12px;
+    font-weight: 600;
     color: var(--muted);
+}
+
+#hydroSettingsForm [data-hydro-config-admin] .hydro-form-group input[readonly] {
+    width: 100%;
+    padding: 2px 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    cursor: text;
+}
+
+#hydroSettingsForm [data-hydro-config-admin] .hydro-form-group input[readonly]:focus-visible {
+    outline: 2px solid var(--navy-active);
+    outline-offset: 2px;
+}
+
+#hydroSettingsForm [data-hydro-config-admin] .hydro-form-group input[readonly]::placeholder {
+    color: var(--muted);
+    font-weight: 500;
     font-style: italic;
+    opacity: 1;
 }
 
 /* ============ Cards do formulário ============ */

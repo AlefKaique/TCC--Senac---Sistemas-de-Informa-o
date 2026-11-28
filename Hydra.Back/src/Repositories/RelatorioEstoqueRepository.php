@@ -5,7 +5,7 @@ namespace Hydra\Repositories;
 use Hydra\Controllers\DocumentoEstoqueController;
 
 /**
- * Consultas da tela Relatório (pages/dashboard.html): o relatório de
+ * Consultas da tela Relatório (pages/relatorio.html): o relatório de
  * estoque, focado no produto e sem valores em dinheiro.
  *
  *   - resumo()         cartões do topo: entradas e saídas do período;

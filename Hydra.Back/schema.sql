@@ -458,7 +458,7 @@ CREATE TABLE IF NOT EXISTS vendas (
 
     -- Cancelamento (tela Vendas, aba "Cancelar Venda"): a venda não é
     -- apagada, muda de status. O estoque volta por uma movimentação de
-    -- entrada (origem 'cancelamento_venda'), e relatórios e Dashboard
+    -- entrada (origem 'cancelamento_venda'), e os relatórios
     -- passam a ignorar a venda. Grava quem operava o caixa e quem
     -- autorizou com a senha de autorização.
     status                      ENUM('concluida', 'cancelada') NOT NULL DEFAULT 'concluida',
@@ -666,7 +666,7 @@ CREATE INDEX idx_movimentacoes_produto_data        ON movimentacoes_estoque (id_
 -- venda quanto lançamentos financeiros manuais (ex.: retirada de
 -- caixa), sem vínculo obrigatório com uma venda específica.
 -- Reservada para uma futura tela de lançamentos manuais — os
--- indicadores financeiros já disponíveis no Dashboard (RF06) são
+-- indicadores financeiros já disponíveis no Relatório (RF06) são
 -- calculados diretamente a partir de "vendas", sem depender desta
 -- tabela.
 -- ============================================================

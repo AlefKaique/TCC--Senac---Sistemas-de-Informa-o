@@ -116,15 +116,8 @@
         statusCnpj('');
     });
     campos.nome.addEventListener('input', () => marcarInvalido(campos.nome, false));
-
-    document.querySelectorAll('[data-sugestao]').forEach((chip) => {
-        chip.addEventListener('click', () => {
-            campos.nome.value = chip.dataset.sugestao;
-            marcarInvalido(campos.nome, false);
-            mostrarErro('');
-            campos.nome.focus();
-        });
-    });
+    // Os botões de sugestão ("Matriz", "Loja 1", "Centro") saíram: o nome
+    // desta filial vira o nome da loja, e "Matriz" não serve para isso.
 
     /* ================= Validação por etapa ================= */
 
@@ -339,16 +332,13 @@
 
         try {
             // A loja já tem filial? Então o assistente não tem o que fazer.
-            const [minhas, dadosLoja] = await Promise.all([
-                window.hydraApi('/filiais/minhas'),
-                window.hydraApi('/loja?sem_logo=1').catch(() => null),
-            ]);
+            /* O nome da loja não é mais buscado: o Cadastro deixou de pedi-lo
+               e, até esta filial existir, ele é só um nome provisório. O
+               nome escolhido aqui passa a ser o nome da loja. */
+            const minhas = await window.hydraApi('/filiais/minhas');
             if ((minhas.filiais || []).length > 0) {
                 window.location.href = window.hydraHomePorPermissao(usuario);
                 return;
-            }
-            if (dadosLoja && dadosLoja.loja && dadosLoja.loja.nome_loja) {
-                $('pfNomeLoja').textContent = dadosLoja.loja.nome_loja;
             }
         } catch (err) {
             el.carregando.textContent = mensagemDeFalha(err);

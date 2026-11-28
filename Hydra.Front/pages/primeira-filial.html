@@ -51,8 +51,8 @@
           <!-- 0 · Boas-vindas -->
           <section class="pf-etapa" data-etapa="boas-vindas" hidden>
             <h1 class="signup__title" tabindex="-1">Bem-vindo ao Hydra<span id="pfNomeUsuario"></span>!</h1>
-            <p class="signup__subtitle">Antes de começar, vamos cadastrar a <strong>primeira filial</strong> de
-              <strong id="pfNomeLoja">sua loja</strong>.</p>
+            <p class="signup__subtitle">Antes de começar, vamos cadastrar a <strong>primeira filial</strong> da
+              sua loja.</p>
             <p class="signup__hint">Filial é cada ponto de venda da loja. Estoque, vendas e promoções ficam
               separados por filial. Se você tem um mercado só, ele é a sua primeira filial. Outras podem ser
               criadas depois em Configurações › Filiais.</p>
@@ -69,16 +69,12 @@
           <!-- 1 · Nome -->
           <section class="pf-etapa" data-etapa="nome" hidden>
             <h1 class="signup__title" tabindex="-1">Como a filial se chama?</h1>
-            <p class="signup__hint">Esse nome aparece no topo das telas e na janela "Trocar Filial".</p>
+            <p class="signup__hint">Use o nome do seu mercado. Ele aparece no topo das telas, na janela
+              "Trocar Filial" e passa a ser também o nome da sua loja.</p>
             <div class="field">
               <label for="pfNome">Nome da filial</label>
-              <input type="text" id="pfNome" maxlength="120" placeholder="Ex.: Matriz, Centro, Loja 1" required
+              <input type="text" id="pfNome" maxlength="120" placeholder="Ex.: Hortifrúti Bom Preço" required
                 autocomplete="off">
-            </div>
-            <div class="pf-sugestoes" aria-label="Sugestões de nome">
-              <button type="button" class="pf-chip" data-sugestao="Matriz">Matriz</button>
-              <button type="button" class="pf-chip" data-sugestao="Loja 1">Loja 1</button>
-              <button type="button" class="pf-chip" data-sugestao="Centro">Centro</button>
             </div>
           </section>
 
@@ -184,9 +180,9 @@
 
   </div>
 
-  <script src="../js/api.js"></script>
+  <script src="../js/api.js?v=2026112820"></script>
   <script src="../js/cnpj-brasilapi.js"></script>
-  <script src="../js/primeira-filial.js"></script>
+  <script src="../js/primeira-filial.js?v=2026112820"></script>
 </body>
 
 </html>

@@ -324,7 +324,9 @@
             // Mesma permissão que a API exige em /api/promocoes.
             if (!window.hydraGuardaDeTela(usuario, ['produtos.editar_preco'])) return;
         } catch (err) {
-            // Visitante não autenticado (demo pública): tela vazia, sem dados reais.
+            // Visitante não autenticado (demo pública, 401): tela vazia, sem
+            // dados reais. Outra falha: a mesma tela vazia, com o aviso.
+            if (!window.hydraEhVisitante(err)) window.hydraAvisoFalhaSessao(err);
             renderAll();
             return;
         }

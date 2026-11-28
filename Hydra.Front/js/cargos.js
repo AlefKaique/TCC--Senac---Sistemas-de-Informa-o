@@ -119,11 +119,11 @@
                 categoriaAtual = p.categoria;
                 return `${titulo}
           <label class="hydro-cargo-perm-row">
+            <input type="checkbox" class="hydro-cargo-checkbox" data-codigo="${escapeHtml(p.codigo)}" ${draft.permissoes.has(p.codigo) ? 'checked' : ''}>
             <span class="hydro-cargo-perm-copy">
               <strong>${escapeHtml(p.nome)}</strong>
               <span>${escapeHtml(p.descricao || '')}</span>
             </span>
-            <input type="checkbox" class="hydro-cargo-checkbox" data-codigo="${escapeHtml(p.codigo)}" ${draft.permissoes.has(p.codigo) ? 'checked' : ''}>
           </label>`;
             })
             .join('');
@@ -376,7 +376,9 @@
             window.hydraAplicarMenuPorPermissao(usuario);
             if (!window.hydraGuardaDeTela(usuario, ['equipe.gerenciar'])) return;
         } catch (err) {
-            // Visitante não autenticado (demo pública): mantém a tela estática, sem carregar dados reais.
+            // Visitante não autenticado (demo pública, 401): mantém a tela
+            // estática, sem carregar dados reais. Outra falha: aviso.
+            if (!window.hydraEhVisitante(err)) window.hydraAvisoFalhaSessao(err);
             return;
         }
 

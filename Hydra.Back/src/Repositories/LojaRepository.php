@@ -12,6 +12,17 @@ final class LojaRepository
     }
 
     /**
+     * Dá à loja o nome da primeira filial (FilialController::store). O
+     * Cadastro não pede mais o nome da loja, então ela nasce com um nome
+     * provisório e passa a se chamar como a filial criada no primeiro acesso.
+     */
+    public function renomear(int $idLoja, string $nomeLoja): void
+    {
+        db()->prepare('UPDATE lojas SET nome_loja = :nome_loja WHERE id_loja = :id_loja')
+            ->execute(['nome_loja' => mb_substr($nomeLoja, 0, 120), 'id_loja' => $idLoja]);
+    }
+
+    /**
      * Apaga a loja e, por ON DELETE CASCADE, tudo o que pendura nela. Usado
      * só para contas do Cadastro que nunca confirmaram o e-mail (ver
      * AuthController::removerContaAbandonada()).

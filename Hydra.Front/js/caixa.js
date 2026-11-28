@@ -52,7 +52,8 @@
        visitante da demo pública, continuam vindo do HydroStore local. */
     let usingRealApi = false;
     /* Estado da sessão nesta tela: 'carregando' até /auth/me e os dados
-       responderem, depois 'autenticado' ou 'visitante'. Antes só existia
+       responderem, depois 'autenticado', 'visitante' (401, demo pública) ou
+       'erro' (não deu para conferir o acesso: tela vazia, sem demo). Antes só existia
        usingRealApi, que é false tanto para o visitante quanto para quem
        está logado mas a tela ainda carrega — e quem clicava em "Cancelar
        Venda" logo após recarregar via "funciona apenas com login" (QA 012). */
@@ -153,7 +154,7 @@
     }
 
     /* ================= Estado do pedido (Caixa aceita 1 pedido aberto por vez) =================
-       Os itens referenciam produtos reais (mesmos ids usados em Produtos/Estoque/Dashboard).
+       Os itens referenciam produtos reais (mesmos ids usados em Produtos/Estoque/Relatório).
 
        "proximoNumero" é o número que a próxima venda vai receber. Ele vem do
        back-end (GET /api/vendas devolve "proximo_numero", calculado sobre as
@@ -926,7 +927,8 @@
         const order = getActiveOrder();
         orderTitleEl.textContent = rotuloPedido(order.id);
         // Quem está operando o caixa — é esse nome que fica gravado na venda.
-        orderClientEl.textContent = `Operador: ${(usuarioAtual && usuarioAtual.nome) || 'Demonstração'}`;
+        const operador = (usuarioAtual && usuarioAtual.nome) || (sessaoEstado === 'visitante' ? 'Demonstração' : '—');
+        orderClientEl.textContent = `Operador: ${operador}`;
 
         const { entries, total } = computeTotals(order);
 
@@ -1229,6 +1231,9 @@
         if (!salesHistory.some((item) => item.id === vendaGravada.id)) salesHistory.unshift(vendaGravada);
         order.id = vendaGravada.orderId;
         proximoNumero = vendaGravada.orderId + 1;
+        // A venda pode ter zerado ou deixado abaixo do mínimo algum produto:
+        // confere já, para o pop-up de alerta (notificacoes.js) avisar na hora.
+        if (window.hydraVerificarAlertas) window.hydraVerificarAlertas();
     }
 
     document.getElementById('hydroPixCopyButton').addEventListener('click', async () => {
@@ -1692,6 +1697,10 @@
             showToast('O cancelamento de venda funciona apenas com login no sistema.', true);
             return;
         }
+        if (sessaoEstado === 'erro') {
+            showToast('Não foi possível conferir o seu acesso. Use "Tentar de novo" no topo da tela.', true);
+            return;
+        }
         authPinEl.value = '';
         authErrorEl.hidden = true;
         authModalEl.hidden = false;
@@ -1934,7 +1943,7 @@
     function atualizarBotaoCancelar() {
         if (!cancelTabBtn) return;
         const carregando = sessaoEstado === 'carregando';
-        cancelTabBtn.disabled = carregando;
+        cancelTabBtn.disabled = carregando || sessaoEstado === 'erro';
         cancelTabBtn.setAttribute('aria-busy', carregando ? 'true' : 'false');
         cancelTabBtn.title = carregando ? 'Carregando seus dados de acesso...' : '';
     }
@@ -1973,6 +1982,15 @@
         try {
             ({ usuario } = await window.hydraSessao());
         } catch (err) {
+            // Falha que não é 401 (rede, servidor): usuário provavelmente
+            // logado. Tela vazia com o aviso, nunca o catálogo e as vendas
+            // de demonstração apresentados como se fossem da loja.
+            if (!window.hydraEhVisitante(err)) {
+                sessaoEstado = 'erro';
+                window.hydraAvisoFalhaSessao(err);
+                finalizarCarga();
+                return;
+            }
             // Visitante não autenticado (demo pública): a tela continua
             // navegável com o catálogo local.
             sessaoEstado = 'visitante';

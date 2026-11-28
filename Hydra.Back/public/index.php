@@ -212,7 +212,7 @@ $routes = [
     ['GET', '#^/api/relatorios/estoque$#', fn () => (new RelatorioController())->estoque()],
     ['GET', '#^/api/relatorios/cancelamentos$#', fn () => (new RelatorioController())->cancelamentos()],
     ['GET', '#^/api/relatorios/operadores$#', fn () => (new RelatorioController())->operadores()],
-    // Tela Relatório (pages/dashboard.html): estoque focado no produto.
+    // Tela Relatório (pages/relatorio.html): estoque focado no produto.
     ['GET', '#^/api/relatorios/estoque-produtos$#', fn () => (new RelatorioEstoqueController())->relatorio()],
     // Relatório de vendas com valores: sem tela no momento (módulo financeiro futuro).
     ['GET', '#^/api/relatorios/vendas$#', fn () => (new RelatorioVendasController())->vendas()],

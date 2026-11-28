@@ -1,7 +1,7 @@
 /* ===================================================================
    HydroStore — camada de dados compartilhada entre as telas do Hydra PDV.
    Usa localStorage como "banco de dados" local, para que Produtos, Caixa,
-   Estoque e Dashboard leiam e escrevam nas mesmas informações.
+   Estoque e Relatório leiam e escrevam nas mesmas informações.
    =================================================================== */
 (function (global) {
     'use strict';
@@ -11,7 +11,7 @@
        7800 + n). Sem trocar as três juntas, um navegador que já tinha a
        demonstração antiga ficaria com as duas numerações misturadas no
        histórico, e as movimentações das vendas velhas continuariam contando
-       no Dashboard. Trocar só a de "semeei" não bastaria: o seed se somaria
+       no Relatório. Trocar só a de "semeei" não bastaria: o seed se somaria
        ao histórico antigo em vez de substituí-lo. */
     var KEYS = {
         products: 'hydro_products',
@@ -275,7 +275,7 @@
     }
 
     /* ================= Histórico de demonstração (roda só na 1ª vez) =================
-       Popula ~30 dias de vendas e movimentações plausíveis, para que o Dashboard,
+       Popula ~30 dias de vendas e movimentações plausíveis, para que o Relatório,
        o Caixa e o Estoque já nasçam com dados reais para exibir. Uso real do
        sistema (novas vendas, entradas/saídas) se soma a esse histórico. */
     function seedHistoryIfNeeded() {

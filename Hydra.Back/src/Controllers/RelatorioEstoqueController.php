@@ -9,7 +9,7 @@ use Hydra\Support\Auth;
 use Hydra\Support\Response;
 
 /**
- * Tela Relatório (pages/dashboard.html + js/relatorio-estoque.js): o
+ * Tela Relatório (pages/relatorio.html + js/relatorio-estoque.js): o
  * relatório de estoque, focado no produto e sem valores em dinheiro (a
  * parte financeira fica para um módulo futuro).
  *

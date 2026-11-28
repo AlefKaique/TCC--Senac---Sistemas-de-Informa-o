@@ -43,7 +43,7 @@ final class VendaController
      * GET /api/vendas — histórico de vendas (RF10), com itens e pagamentos
      * embutidos.
      *
-     * Aceita também "relatorios.visualizar" porque o Dashboard calcula o
+     * Aceita também "relatorios.visualizar" porque o Relatório calcula o
      * faturamento a partir desta lista: um cargo criado só para acompanhar
      * os números da loja não deve levar 403 aqui, nem precisar da permissão
      * de abrir o histórico item a item.

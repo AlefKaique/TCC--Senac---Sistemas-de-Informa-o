@@ -1,5 +1,5 @@
 /**
- * Tela Relatório de Estoque (pages/dashboard.html).
+ * Tela Relatório de Estoque (pages/relatorio.html).
  *
  * Jornada pensada: o mercado cadastrou o estoque, vendeu, e abre o
  * relatório para ver o que entrou e o que saiu de cada produto, o que está
@@ -11,7 +11,8 @@
  *   ... &secao=movimentacoes              — só a lista de movimentações,
  *                                           ao trocar de página ou de tipo;
  *   ... &completo=1                       — tudo, com a lista inteira, para o PDF
- *                                           (montado por js/relatorio-estoque-pdf.js).
+ *                                           (montado por js/relatorio-estoque-pdf.js,
+ *                                           só com a parte aberta na tela).
  *
  * O relatório é sempre da filial em que a pessoa está trabalhando (a da
  * sessão, decidida no back-end). Tudo é formatado em pt-BR.
@@ -25,7 +26,7 @@
     /** Linhas da tabela "Entradas e saídas" mostradas de cada vez. */
     const LINHAS_POR_VEZ = 50;
     const UNIDADES_FRACIONADAS = ['kg', 'g', 'l', 'ml'];
-    /** Os cartões do topo são as abas da tela (ver pages/dashboard.html). */
+    /** Os cartões do topo são as abas da tela (ver pages/relatorio.html). */
     const ABAS = ['movimento', 'falta', 'vencendo'];
 
     const inteiro = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
@@ -634,8 +635,15 @@
         dom.pdf.disabled = true;
         dom.pdf.textContent = 'Gerando PDF…';
         try {
-            const dados = await window.hydraApi(`/relatorios/estoque-produtos?${parametros({ completo: '1', tipo: 'todas', pagina: '1' })}`);
+            // O PDF traz só o que está aberto na tela: o cartão (aba) escolhido e,
+            // em "Entradas e saídas", a visão e o tipo (todas/entradas/saídas).
+            const tipo = state.aba === 'movimento' && state.visao === 'lista' ? state.tipo : 'todas';
+            const dados = await window.hydraApi(`/relatorios/estoque-produtos?${parametros({ completo: '1', tipo, pagina: '1' })}`);
+            dados.por_produto = ordenarProdutos(dados.por_produto || []); // mesma ordem da tabela na tela
             window.hydraRelatorioEstoquePdf(dados, {
+                parte: state.aba,
+                visao: state.visao,
+                tipo,
                 busca: state.busca,
                 categoria: state.categoria,
                 geradoPor: state.usuario ? state.usuario.nome : '',

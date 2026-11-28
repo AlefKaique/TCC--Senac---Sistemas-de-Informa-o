@@ -1,12 +1,11 @@
 /**
  * Tela "Filiais" (Admin > Configuração Loja > Filiais). Mesma estrutura da
  * tela Equipe: cartões de resumo, barra de filtros e a listagem — aqui em
- * cartões de perfil (logo à esquerda, nome da filial ao lado) com o lucro
- * do mês de cada filial em destaque.
+ * cartões de perfil (logo à esquerda, nome da filial ao lado).
  *
- * Dados de GET /api/filiais. O "resumo_mes" de cada filial (vendas,
- * faturamento e lucro bruto do mês) só vem para quem tem a permissão de
- * Relatórios; sem ela os cartões aparecem sem os números.
+ * Dados de GET /api/filiais. Os cartões mostram só dados da filial
+ * (situação, cidade, CNPJ, telefone, endereço). O lucro bruto e o
+ * faturamento do mês saíram daqui: valores ficam só no Relatório.
  */
 (function () {
     'use strict';
@@ -17,9 +16,6 @@
     const filtroSituacao = document.getElementById('hydroFiltroSituacao');
     if (!grid) return;
 
-    const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho',
-        'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-
     // Cor do "logo" de cada filial: fixa por filial (depende do id), para a
     // mesma filial ter sempre a mesma cor em qualquer computador.
     const CORES_LOGO = ['#152e6d', '#149e52', '#b98523', '#5e81f4', '#c2410c', '#7c3aed', '#0e7490', '#be185d'];
@@ -28,16 +24,11 @@
     let idFilialAtiva = null;
     // Dados da loja: filial sem dados próprios mostra os da loja.
     let loja = null;
-    let nomeMes = '';
 
     function escapeHtml(str) {
         const div = document.createElement('div');
         div.textContent = str == null ? '' : String(str);
         return div.innerHTML;
-    }
-
-    function dinheiro(valor) {
-        return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
     let toastTimer = null;
@@ -79,25 +70,6 @@
 
     function normalizar(texto) {
         return String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-    }
-
-    function lucroHtml(f) {
-        if (!f.resumo_mes) {
-            return `
-                <div class="hydro-filial-lucro">
-                    <span class="hydro-filial-lucro-rotulo">Lucro do mês</span>
-                    <span class="hydro-filial-lucro-sub">Seu cargo não tem acesso aos Relatórios, por isso os valores não aparecem.</span>
-                </div>`;
-        }
-        const r = f.resumo_mes;
-        const classe = r.lucro > 0 ? ' hydro-positivo' : (r.lucro < 0 ? ' hydro-negativo' : '');
-        const vendas = r.vendas === 1 ? '1 venda' : `${r.vendas} vendas`;
-        return `
-                <div class="hydro-filial-lucro">
-                    <span class="hydro-filial-lucro-rotulo">Lucro bruto de ${escapeHtml(nomeMes)}</span>
-                    <strong class="hydro-filial-lucro-valor${classe}">${dinheiro(r.lucro)}</strong>
-                    <span class="hydro-filial-lucro-sub">Faturamento ${dinheiro(r.faturamento)} · ${vendas}</span>
-                </div>`;
     }
 
     function linhasDeDados(origem) {
@@ -149,7 +121,6 @@
                         </span>
                     </div>
                 </div>
-                ${lucroHtml(f)}
                 ${dadosHtml(f)}
                 <div class="hydro-filial-acoes">
                     <a class="hydro-btn hydro-btn-outline hydro-btn-sm" href="cadastro-filial.html?id=${encodeURIComponent(f.id_filial)}"
@@ -241,8 +212,6 @@
             loja = dadosLoja && dadosLoja.loja ? dadosLoja.loja : null;
             filiais = resposta.filiais || [];
             idFilialAtiva = resposta.id_filial_ativa;
-            const [ano, mes] = String(resposta.mes_referencia || '').split('-');
-            nomeMes = mes ? `${MESES[Number(mes) - 1]} de ${ano}` : '';
             renderStats();
             render();
         } catch (err) {

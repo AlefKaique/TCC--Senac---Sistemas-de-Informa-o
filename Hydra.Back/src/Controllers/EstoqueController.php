@@ -24,7 +24,7 @@ final class EstoqueController
         $this->movimentacoes = new MovimentacaoEstoqueRepository();
     }
 
-    /** GET /api/estoque/movimentacoes — usado pelo Dashboard (RF06). Leitura. */
+    /** GET /api/estoque/movimentacoes — usado pelo Relatório (RF06). Leitura. */
     public function index(): void
     {
         $user = Auth::requirePermissionNaFilial('estoque.consultar');

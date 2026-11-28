@@ -13,6 +13,11 @@
                hora de salvar — depois de o usuário ter preenchido tudo. */
             window.hydraGuardaDeTela(usuario, ['produtos.gerenciar']);
         } catch (err) {
+            // Falha que não é 401 (rede, servidor): aviso, sem demonstração.
+            if (!window.hydraEhVisitante(err)) {
+                window.hydraAvisoFalhaSessao(err);
+                return;
+            }
             // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
             // O histórico fictício da demonstração só interessa a ele; para
             // quem está logado, gerar ~30 dias de vendas no localStorage era
@@ -165,9 +170,11 @@
                 montarListaCategorias(produtos.map((p) => p.categoria));
                 return;
             } catch (err) {
-                // Visitante da demo pública (401) ou cargo sem acesso ao
-                // catálogo: cai para o catálogo local abaixo. As categorias
-                // padrão continuam na lista de qualquer forma.
+                // Só o visitante da demo pública (401) usa as categorias do
+                // catálogo local. Outra falha (rede, servidor, cargo sem
+                // acesso) misturava categorias de DEMONSTRAÇÃO às da loja;
+                // agora fica só com as categorias padrão, já na tela.
+                if (!window.hydraEhVisitante(err)) return;
             }
         }
         montarListaCategorias(HydroStore.getProducts().map((p) => p.category));

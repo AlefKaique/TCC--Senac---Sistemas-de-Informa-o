@@ -197,7 +197,10 @@
             // Mesma permissão que a API exige em POST/PUT /api/filiais.
             if (!window.hydraGuardaDeTela(usuario, ['loja.configurar'])) return;
         } catch (err) {
-            return; // Visitante da demonstração pública.
+            // Visitante da demonstração pública (401): a tela fica como está.
+            // Outra falha: aviso com "Tentar de novo".
+            if (!window.hydraEhVisitante(err)) window.hydraAvisoFalhaSessao(err);
+            return;
         }
 
         if (!idEdicao) {

@@ -54,7 +54,10 @@ final class AuthController
         $nome = trim((string) ($dados['nome'] ?? ''));
         $email = trim(strtolower((string) ($dados['email'] ?? '')));
         $senha = (string) ($dados['senha'] ?? '');
-        $nomeLoja = trim((string) ($dados['nome_loja'] ?? ''));
+        // O Cadastro não pede mais o nome da loja: ele vem da primeira
+        // filial, criada no primeiro acesso (FilialController::store). Fica
+        // vazio aqui e criarConta() usa um nome provisório até lá.
+        $nomeLoja = '';
 
         // Um erro por campo, com "campo" na resposta, para a tela marcar o
         // input certo em vez de um alerta genérico (QA 002).
@@ -65,14 +68,6 @@ final class AuthController
         }
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 100) {
             Response::json(['erro' => $email === '' ? 'Informe o e-mail.' : 'E-mail inválido', 'campo' => 'email'], 422);
-            return;
-        }
-        if ($nomeLoja === '') {
-            Response::json(['erro' => 'Informe o nome da loja.', 'campo' => 'nome_loja'], 422);
-            return;
-        }
-        if (mb_strlen($nomeLoja) > 120) {
-            Response::json(['erro' => 'O nome da loja pode ter no máximo 120 caracteres.', 'campo' => 'nome_loja'], 422);
             return;
         }
         $erroSenha = PasswordPolicy::validar($senha);
@@ -149,9 +144,18 @@ final class AuthController
      * ao assistente "Primeira filial" (pages/primeira-filial.html), que
      * cria a filial com os dados dele e, se ele quiser, importa ali o
      * catálogo hortifrúti padrão.
+     *
+     * $nomeLoja vem vazio desde que o Cadastro deixou de pedi-lo: a loja
+     * nasce com um nome provisório ("Loja de Fulano"), só para a área da
+     * Equipe Hydra não listar um mercado sem nome, e recebe o nome da
+     * primeira filial quando ela é criada. Cadastros pendentes feitos antes
+     * dessa mudança ainda trazem o nome digitado, e ele é mantido.
      */
     private function criarConta(string $nome, string $email, string $senhaHash, string $nomeLoja): ?int
     {
+        if ($nomeLoja === '') {
+            $nomeLoja = mb_substr('Loja de ' . $nome, 0, 120);
+        }
         // Fora da transação: dentro dela a migração do catálogo não pode ser
         // registrada (DDL faz commit implícito) e rodaria em todo cadastro.
         // O mesmo vale para a coluna do titular, gravada logo abaixo.

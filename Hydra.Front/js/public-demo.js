@@ -2,12 +2,12 @@
     'use strict';
 
     var pageByView = {
-        dashboard: 'dashboard.html',
+        relatorio: 'relatorio.html',
         caixa: 'caixa.html',
         vendas: 'caixa.html',
         produtos: 'produtos.html',
         estoque: 'controle-estoque.html',
-        financeiro: 'dashboard.html',
+        financeiro: 'relatorio.html',
         equipe: 'gerenciar-usuarios.html',
         configuracoes: 'configuracoes-loja.html',
         cargos: 'cargos.html',
@@ -110,6 +110,11 @@
     if (!window.hydraApi) {
         lockForVisitors();
     } else {
-        window.hydraSessao().catch(lockForVisitors);
+        // Só trava quem não está logado (401). Antes qualquer falha (rede,
+        // servidor ocupado ao trocar de tela) travava também o usuário
+        // logado: todo botão abria o aviso "Crie sua conta para continuar".
+        window.hydraSessao().catch(function (err) {
+            if (window.hydraEhVisitante(err)) lockForVisitors();
+        });
     }
 })();

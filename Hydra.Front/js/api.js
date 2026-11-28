@@ -153,7 +153,9 @@ window.hydraApi = async function hydraApi(path, options = {}) {
     }
   } catch (e) {
     if (e && e.name === 'AbortError') {
-      throw new Error('O servidor demorou demais para responder. Verifique a conexão e tente novamente.');
+      const erroPrazo = new Error('O servidor demorou demais para responder. Verifique a conexão e tente novamente.');
+      erroPrazo.prazo = true; // hydraSessao não repete: já esperou o prazo inteiro.
+      throw erroPrazo;
     }
     throw e;
   } finally {
@@ -189,22 +191,99 @@ window.hydraApi = async function hydraApi(path, options = {}) {
  * back-end revalida a cada requisição.
  */
 let hydraSessaoPromise = null;
+
+/** Falha de rede ou do servidor (5xx): pode dar certo se tentar de novo. */
+function hydraFalhaPassageira(err) {
+  return !err || err.status === undefined || err.status >= 500;
+}
+
+/*
+ * Busca /auth/me tentando de novo, em silêncio, se a falha for passageira.
+ *
+ * Ao trocar de tela, as chamadas da tela anterior ainda podem estar na fila
+ * do servidor (o `php -S` local atende uma por vez) ou o MySQL remoto pode
+ * engasgar. Antes, uma única falha dessas bastava para a tela achar que
+ * ninguém estava logado e mostrar os dados de DEMONSTRAÇÃO.
+ */
+async function hydraBuscarSessao() {
+  const esperas = [400, 1200];
+  for (let tentativa = 0; ; tentativa += 1) {
+    try {
+      return await window.hydraApi('/auth/me');
+    } catch (err) {
+      const repetir = hydraFalhaPassageira(err) && !(err && err.prazo) && tentativa < esperas.length;
+      if (!repetir) throw err;
+      await new Promise((resolve) => setTimeout(resolve, esperas[tentativa]));
+    }
+  }
+}
+
 window.hydraSessao = function hydraSessao() {
   if (!hydraSessaoPromise) {
-    hydraSessaoPromise = window.hydraApi('/auth/me');
+    hydraSessaoPromise = hydraBuscarSessao();
     // Assim que o usuário chega, o avatar do topo troca o ícone genérico
     // pelas iniciais (ou foto). Fica aqui para nenhuma tela precisar chamar.
     hydraSessaoPromise.then(
       (resposta) => window.hydraRenderizarAvatar(resposta && resposta.usuario),
       () => {}
     );
-    // Falha de rede não pode ficar em cache: a próxima chamada tenta de novo.
+    // Falha de rede ou do servidor não pode ficar em cache: a próxima chamada tenta de novo.
     hydraSessaoPromise.catch((err) => {
-      if (!err || err.status === undefined) hydraSessaoPromise = null;
+      if (hydraFalhaPassageira(err)) hydraSessaoPromise = null;
     });
   }
   return hydraSessaoPromise;
 };
+
+/**
+ * Verdadeiro só quando a pessoa NÃO está logada (401): é o único caso em
+ * que a tela pode virar a demonstração pública.
+ *
+ * Antes cada tela tratava QUALQUER erro de /auth/me como visitante. Rede
+ * instável, prazo esgotado, erro 500 ou o cancelamento das chamadas ao
+ * sair da página faziam um usuário logado ver produtos e vendas inventados
+ * como se fossem os da loja.
+ */
+window.hydraEhVisitante = function hydraEhVisitante(err) {
+  return Boolean(err) && err.status === 401;
+};
+
+/**
+ * Faixa no topo da tela para quando não deu para conferir o acesso (falha
+ * que não é 401). Fica no lugar dos dados de demonstração, com um botão
+ * para tentar de novo.
+ */
+window.hydraAvisoFalhaSessao = function hydraAvisoFalhaSessao(err) {
+  if (document.getElementById('hydraFalhaSessao')) return;
+  console.error('[sessão] GET /api/auth/me falhou:', err && err.status, err && err.message);
+  const mensagem = err && err.status && err.message
+    ? err.message
+    : 'Não foi possível conferir o seu acesso. Confira a internet e tente de novo.';
+  const faixa = document.createElement('div');
+  faixa.id = 'hydraFalhaSessao';
+  faixa.className = 'hydra-falha-sessao';
+  faixa.setAttribute('role', 'alert');
+  const texto = document.createElement('span');
+  texto.textContent = mensagem;
+  const botao = document.createElement('button');
+  botao.type = 'button';
+  botao.textContent = 'Tentar de novo';
+  botao.setAttribute('data-demo-allow', '');
+  botao.addEventListener('click', () => window.location.reload());
+  faixa.append(texto, botao);
+  // Logo abaixo da barra do topo da tela (título e avatar).
+  const topo = document.querySelector('.hydro-main > .hydro-topbar');
+  if (topo) topo.insertAdjacentElement('afterend', faixa);
+  else (document.querySelector('main') || document.body).prepend(faixa);
+};
+
+/* Página restaurada pelo botão Voltar do navegador (cache de páginas) com o
+   aviso de falha à mostra: recarrega para buscar tudo de novo, em vez de
+   devolver a tela travada no erro. As demais telas voltam como estavam
+   (o carrinho do Caixa, por exemplo, não se perde). */
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted && document.getElementById('hydraFalhaSessao')) window.location.reload();
+});
 
 /**
  * Avatar do topo no estilo do Microsoft Teams.
@@ -284,7 +363,7 @@ window.hydraSessao.limpar = function limparSessao() {
 const HYDRA_TELAS = [
   { pagina: 'controle-estoque.html', view: 'estoque', permissoes: ['estoque.consultar'] },
   { pagina: 'caixa.html', view: 'caixa', permissoes: ['vendas.operar', 'vendas.historico'] },
-  { pagina: 'dashboard.html', view: 'dashboard', permissoes: ['relatorios.visualizar'] },
+  { pagina: 'relatorio.html', view: 'relatorio', permissoes: ['relatorios.visualizar'] },
   { pagina: 'gerenciar-usuarios.html', li: 'hydroLiEquipe', permissoes: ['equipe.gerenciar'] },
   { pagina: 'configuracoes-loja.html', li: 'hydroLiConfig', permissoes: ['loja.configurar'] },
   { pagina: 'cargos.html', li: 'hydroLiCargos', permissoes: ['equipe.gerenciar'] },

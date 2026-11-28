@@ -278,30 +278,55 @@
 }
 
 /* ============ Permissões ============
-   Lista plana: são 5, uma por área, então não há agrupamento por
-   categoria (renderia um título por item). */
+   Cada permissão é um cartão clicável inteiro (o <label> envolve tudo),
+   com a caixinha à esquerda, colada no texto que ela liga. Antes a
+   caixinha ficava na ponta direita da linha: numa tela larga, a mais de
+   mil pixels do nome da permissão. Em telas largas os cartões formam duas
+   colunas; o título de cada categoria ocupa a linha inteira. */
 .hydro-cargo-perm-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+    gap: 10px;
     margin-bottom: 20px;
 }
 
 .hydro-cargo-perm-row {
     display: flex;
     align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 12px 4px;
-    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md, 12px);
+    background: var(--card, #fff);
+    cursor: pointer;
+    user-select: none;
+    transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
 }
 
-.hydro-cargo-perm-row:last-child {
-    border-bottom: none;
+.hydro-cargo-perm-row:hover {
+    border-color: var(--muted-soft);
+    background: var(--row-hover, #fafbfd);
+}
+
+/* Marcada: o cartão inteiro ganha o tom da cor principal, para dar para
+   bater o olho e ver o que o cargo pode fazer. */
+.hydro-cargo-perm-row:has(.hydro-cargo-checkbox:checked) {
+    border-color: color-mix(in srgb, var(--navy-active) 45%, transparent);
+    background: var(--blue-bg, #eff2fe);
+}
+
+/* Foco pelo teclado (Tab + Espaço): anel no cartão, não só na caixinha. */
+.hydro-cargo-perm-row:has(.hydro-cargo-checkbox:focus-visible) {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--navy-active) 30%, transparent);
+    border-color: var(--navy-active);
 }
 
 /* Título de categoria ("Operação", "Administração") entre os grupos de
    permissões. O primeiro cola no topo da lista; os seguintes ganham ar
    para separar visualmente os blocos. */
 .hydro-cargo-perm-group {
-    margin: 22px 0 2px;
+    grid-column: 1 / -1;
+    margin: 14px 0 0;
     font-size: 11.5px;
     font-weight: 700;
     letter-spacing: .06em;
@@ -316,57 +341,70 @@
 .hydro-cargo-perm-copy {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
+    min-width: 0;
 }
 
 .hydro-cargo-perm-copy strong {
     font-size: 14px;
     color: var(--ink);
     font-weight: 600;
+    line-height: 1.35;
 }
 
 .hydro-cargo-perm-copy span {
     font-size: 12.5px;
     color: var(--muted);
-    line-height: 1.4;
+    line-height: 1.45;
 }
 
 /* Checkbox customizado — quadrado com cantos arredondados (RF pedido:
-   marcar permissões por checkbox, não pela chave/toggle usual do Discord) */
-.hydro-cargo-checkbox {
+   marcar permissões por checkbox, não pela chave/toggle usual do Discord).
+   O "visto" é um SVG de fundo que cresce ao marcar; antes era um retângulo
+   de bordas girado, que saía torto e fino. */
+/* Seletor com a lista na frente de propósito: ela fica dentro de um
+   .hydro-form-group, e a regra ".hydro-form-group input" (borda clara e
+   padding de campo de texto) vencia ".hydro-cargo-checkbox" sozinho. */
+.hydro-cargo-perm-list .hydro-cargo-checkbox {
     flex-shrink: 0;
-    width: 22px;
-    height: 22px;
-    margin-top: 2px;
+    width: 20px;
+    height: 20px;
+    margin: 1px 0 0;
+    padding: 0;
     appearance: none;
     -webkit-appearance: none;
-    border: 2px solid var(--border);
+    /* --muted-soft sozinho dava ~2,6:1 de contraste com o branco: a caixa
+       desmarcada quase sumia. A mistura fica acima de 3:1 nos dois temas. */
+    border: 1.5px solid color-mix(in srgb, var(--muted) 80%, var(--card, #fff));
     border-radius: 6px;
-    background: var(--card, #fff);
+    background-color: var(--card, #fff);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 0;
     cursor: pointer;
-    position: relative;
-    transition: background .15s, border-color .15s;
+    transition: background-color .15s ease, border-color .15s ease, background-size .18s ease;
 }
 
-.hydro-cargo-checkbox:hover {
-    border-color: var(--muted-soft);
-}
-
-.hydro-cargo-checkbox:checked {
-    background: var(--navy-active);
+.hydro-cargo-perm-list .hydro-cargo-perm-row:hover .hydro-cargo-checkbox:not(:checked) {
     border-color: var(--navy-active);
 }
 
-.hydro-cargo-checkbox:checked::after {
-    content: '';
-    position: absolute;
-    left: 6px;
-    top: 2px;
-    width: 5px;
-    height: 10px;
-    border: solid #fff;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
+.hydro-cargo-perm-list .hydro-cargo-checkbox:checked {
+    background-color: var(--navy-active);
+    border-color: var(--navy-active);
+    background-size: 14px;
+}
+
+.hydro-cargo-perm-list .hydro-cargo-checkbox:focus-visible {
+    outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hydro-cargo-perm-row,
+    .hydro-cargo-perm-list .hydro-cargo-checkbox {
+        transition: none;
+    }
 }
 
 /* ============ Zona de exclusão ============ */

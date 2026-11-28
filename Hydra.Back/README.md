@@ -72,7 +72,7 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 | PUT    | `/api/produtos/{id}`                 | `produtos.gerenciar` | Edita produto (preços exigem `produtos.editar_preco`, RN04) |
 | DELETE | `/api/produtos/{id}`                 | `produtos.gerenciar` | Exclui ou inativa o produto (RN03) |
 | GET    | `/api/produtos/{id}/movimentacoes`   | `estoque.consultar` | Histórico de entradas/saídas do produto (RF10) |
-| GET    | `/api/estoque/movimentacoes`         | `estoque.consultar` | Movimentações da loja (Dashboard, RF06) |
+| GET    | `/api/estoque/movimentacoes`         | `estoque.consultar` | Movimentações da loja (Relatório, RF06) |
 | POST   | `/api/estoque/movimentacoes`         | `estoque.lancar` | Lança entrada ou saída manual (RF03/RF12) |
 | GET    | `/api/vendas`                        | `vendas.historico` **ou** `relatorios.visualizar` | Histórico de vendas com itens, pagamentos, o nome de quem registrou e o próximo número de pedido da loja |
 | GET    | `/api/relatorios/resumo`              | `relatorios.visualizar` | Indicadores financeiros, comparativo com período anterior e visão de hoje |
@@ -124,7 +124,7 @@ Alternativamente, aponte um VirtualHost do Apache (XAMPP) para a pasta
 
 ### Relatório de Estoque (`GET /api/relatorios/estoque-produtos`)
 
-É a rota da tela Relatório (`pages/dashboard.html` + `js/relatorio-estoque.js`).
+É a rota da tela Relatório (`pages/relatorio.html` + `js/relatorio-estoque.js`).
 O foco é o produto, sem valores em dinheiro: o que entrou e o que saiu no
 período, o que está em falta e o que está vencendo. Exige
 `relatorios.visualizar` e usa sempre a filial da sessão.
@@ -460,7 +460,7 @@ A autorização vale 5 minutos, só na filial em que foi dada, e fica na
 sessão. O PIN errado conta tentativas (`RateLimit`, chave por operador).
 A venda cancelada não é apagada: muda para `status = 'cancelada'`, os
 itens voltam ao estoque por uma movimentação de entrada com origem
-`cancelamento_venda`, e o Dashboard e a tela Filiais deixam de somá-la.
+`cancelamento_venda`, e o Relatório deixa de somá-la.
 
 Banco criado antes deste recurso: o back-end cria as colunas sozinho
 (`Hydra\Support\Migracoes`); `sql/migracao_cancelamento_vendas.sql` faz o
@@ -514,7 +514,7 @@ Estoque de Caixa por inteiro.
 | `produtos.editar_preco` | Alterar Preços | alterar preço de custo e de venda (RN04). Só tem efeito somada a `produtos.gerenciar`, que é o que libera o `PUT /api/produtos/{id}` |
 | `vendas.operar` | Vendas no Caixa | abrir o PDV e finalizar vendas |
 | `vendas.historico` | Histórico de Vendas | consultar as vendas já finalizadas e os detalhes de cada uma |
-| `relatorios.visualizar` | Relatórios | abrir o Dashboard com o faturamento e os indicadores (RN16, RN17) |
+| `relatorios.visualizar` | Relatórios | abrir o Relatório com o faturamento e os indicadores (RN16, RN17) |
 | `equipe.gerenciar` | Equipe e Cargos | as telas de Equipe e de Cargos |
 | `loja.configurar` | Configuração da Loja | ver e alterar os dados cadastrais da loja |
 
@@ -673,5 +673,5 @@ não têm endpoints nem tela:
   gravado) no lugar de uma coluna "Cliente" que vivia vazia. A tabela e a
   coluna permanecem no banco para um CRUD futuro.
 - **`movimentacoes_financeiras`** — reservada para uma tela futura de
-  lançamentos manuais. Os indicadores financeiros do Dashboard (RF06)
+  lançamentos manuais. Os indicadores financeiros do Relatório (RF06)
   são calculados direto de `vendas`.

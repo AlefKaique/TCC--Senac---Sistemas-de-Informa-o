@@ -10,7 +10,7 @@ use Hydra\Support\Request;
 use Hydra\Support\Response;
 
 /**
- * Tela Relatório de Vendas (pages/dashboard.html, item "Relatório" do menu).
+ * Tela Relatório de Vendas (pages/relatorio.html, item "Relatório" do menu).
  *
  *   GET /api/relatorios/vendas        — o relatório, só com os blocos pedidos
  *   GET /api/relatorios/preferencias  — blocos salvos, acesso e filial em que o usuário está

@@ -497,7 +497,7 @@ final class Auth
      * Variante de requirePermission() para o endpoint que serve a mais de
      * uma área do sistema. O caso atual é GET /api/vendas: ele alimenta o
      * Histórico de Vendas ("vendas.historico") e também o cálculo do
-     * faturamento no Dashboard ("relatorios.visualizar"). Exigir só o
+     * faturamento no Relatório ("relatorios.visualizar"). Exigir só o
      * primeiro obrigaria a dar acesso ao histórico item a item a quem
      * deveria enxergar apenas os totais.
      *

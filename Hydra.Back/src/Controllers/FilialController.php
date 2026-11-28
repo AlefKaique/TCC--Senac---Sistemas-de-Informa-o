@@ -3,10 +3,10 @@
 namespace Hydra\Controllers;
 
 use Hydra\Repositories\FilialRepository;
+use Hydra\Repositories\LojaRepository;
 use Hydra\Repositories\CatalogoHortifrutiRepository;
 use Hydra\Repositories\ProdutoRepository;
 use Hydra\Repositories\UsuarioRepository;
-use Hydra\Repositories\VendaRepository;
 use Hydra\Support\Auth;
 use Hydra\Support\Request;
 use Hydra\Support\Response;
@@ -100,27 +100,12 @@ final class FilialController
         $admin = Auth::requireAnyPermission(['loja.configurar', 'equipe.gerenciar']);
         $filiais = array_map(fn ($f) => self::publica($f), $this->filiais->listByLoja($admin['id_loja']));
 
-        // Lucro do mês de cada filial (cartões da tela Filiais). É dado
-        // financeiro: só vai para quem tem "relatorios.visualizar", a mesma
-        // permissão do Dashboard (RN16/RN17). Sem ela, "resumo_mes" é null e
-        // a tela mostra o cartão sem os números.
-        $mostrarResumo = Auth::can('relatorios.visualizar');
-        $inicio = date('Y-m-01 00:00:00');
-        $fim = date('Y-m-01 00:00:00', strtotime('first day of next month'));
-        $resumos = $mostrarResumo
-            ? (new VendaRepository())->resumoPorFilial($admin['id_loja'], $inicio, $fim)
-            : [];
-        foreach ($filiais as &$filial) {
-            $filial['resumo_mes'] = $mostrarResumo
-                ? ($resumos[$filial['id_filial']] ?? ['vendas' => 0, 'faturamento' => 0.0, 'lucro' => 0.0])
-                : null;
-        }
-        unset($filial);
-
+        // Só dados cadastrais da filial. Antes ia junto o "resumo_mes"
+        // (vendas, faturamento e lucro bruto do mês), mostrado nos cartões da
+        // tela Filiais; valores ficam só no Relatório.
         Response::json([
             'filiais' => $filiais,
             'id_filial_ativa' => $admin['id_filial'],
-            'mes_referencia' => date('Y-m'),
         ]);
     }
 
@@ -161,6 +146,9 @@ final class FilialController
                 // Administrador, o mesmo que sql/migracao_filiais.sql faz.
                 $this->filiais->vincular($admin['id_usuario'], $id);
                 (new UsuarioRepository())->updateUltimaFilial($admin['id_usuario'], $id);
+                // O Cadastro não pede mais o nome da loja: a loja nasce com
+                // um nome provisório e passa a se chamar como a primeira filial.
+                (new LojaRepository())->renomear($admin['id_loja'], $campos['nome']);
             }
             $pdo->commit();
         } catch (\RuntimeException $e) {

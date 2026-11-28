@@ -104,7 +104,7 @@ final class CargoRepository
      * anterior: quem tinha "estoque.gerenciar" (que juntava consultar,
      * movimentar e cadastrar) recebe os três códigos que o substituem, e
      * quem tinha "vendas.operar" (que incluía histórico e dava acesso ao
-     * Dashboard) recebe também "vendas.historico" e "relatorios.visualizar".
+     * Relatório) recebe também "vendas.historico" e "relatorios.visualizar".
      * Ninguém perde acesso que já exercia; o administrador reduz o que
      * sobrou na tela de Cargos, que é uma operação reversível — ao
      * contrário de descobrir que o estoquista ficou trancado do lado de

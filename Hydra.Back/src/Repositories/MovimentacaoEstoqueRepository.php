@@ -8,7 +8,7 @@ namespace Hydra\Repositories;
  */
 final class MovimentacaoEstoqueRepository
 {
-    /** Usado pelo Dashboard (gráfico de movimentações dos últimos 30 dias). */
+    /** Usado pelo Relatório (gráfico de movimentações dos últimos 30 dias). */
     /** @return array<int,array<string,mixed>> */
     public function listByFilial(int $idFilial, int $dias = 30): array
     {

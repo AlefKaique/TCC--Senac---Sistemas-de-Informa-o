@@ -4,9 +4,13 @@
  * vêm da mesma API da tela (GET /api/relatorios/estoque-produtos?completo=1)
  * e o arquivo é baixado direto.
  *
- * Ordem do PDF: cabeçalho (filial, período, filtros, quem gerou), resumo,
- * entradas e saídas por produto, em falta, vencendo e, por último, a lista
- * de movimentações (a parte mais longa).
+ * O PDF traz só a parte que está aberta na tela (opção `parte`):
+ *   movimento + visao 'produtos' → entradas e saídas por produto;
+ *   movimento + visao 'lista'    → lista de movimentações (respeita `tipo`);
+ *   falta                        → produtos em falta ou no mínimo;
+ *   vencendo                     → lotes vencidos ou vencendo.
+ * Sem `parte`, sai o relatório inteiro, nesta ordem: resumo, por produto,
+ * em falta, vencendo e movimentações.
  *
  * Usa as fontes padrão do PDF (Helvetica), que cobrem os acentos do
  * português. Caracteres fora dessa tabela (como o sinal de menos "−") são
@@ -43,6 +47,12 @@
     function dataBR(chave) {
         const [ano, mes, dia] = String(chave).slice(0, 10).split('-');
         return `${dia}/${mes}/${ano}`;
+    }
+
+    /** Date → "2026-11-28" no fuso local. */
+    function chaveHoje(data) {
+        const dois = (valor) => String(valor).padStart(2, '0');
+        return `${data.getFullYear()}-${dois(data.getMonth() + 1)}-${dois(data.getDate())}`;
     }
 
     function numero(valor) {
@@ -104,6 +114,22 @@
         const de = dados.periodo.data_inicio;
         const ate = dados.periodo.data_fim;
         const agora = config.agora || new Date();
+        const parte = ['movimento', 'falta', 'vencendo'].includes(config.parte) ? config.parte : null;
+        const visao = config.visao === 'lista' ? 'lista' : 'produtos';
+        const tipo = ['entrada', 'saida'].includes(config.tipo) ? config.tipo : 'todas';
+        const tudo = parte === null;
+        const mostrar = {
+            movimento: tudo || parte === 'movimento',
+            porProduto: tudo || (parte === 'movimento' && visao === 'produtos'),
+            movimentacoes: tudo || (parte === 'movimento' && visao === 'lista'),
+            falta: tudo || parte === 'falta',
+            vencendo: tudo || parte === 'vencendo',
+        };
+        const nomeParte = tudo ? ''
+            : parte === 'falta' ? 'Em falta'
+                : parte === 'vencendo' ? 'Vencendo'
+                    : visao === 'produtos' ? 'Entradas e saídas por produto'
+                        : { todas: 'Movimentações', entrada: 'Entradas', saida: 'Saídas' }[tipo];
         let y = 18;
 
         const escrever = (texto, x, posY, estilo) => {
@@ -178,11 +204,14 @@
         escrever('Relatório de Estoque', MARGEM, y, { negrito: true, tamanho: 19, cor: AZUL });
         y += 7;
         const intervalo = de === ate ? `no dia ${dataBR(de)}` : `de ${dataBR(de)} a ${dataBR(ate)}`;
-        escrever(`${filial ? `Filial ${filial} · ` : ''}Movimentações ${intervalo}`, MARGEM, y, { tamanho: 10.5 });
+        // "Em falta" e "Vencendo" são a situação de agora: o período não vale para eles.
+        const assunto = mostrar.movimento ? `Movimentações ${intervalo}` : 'Situação atual do estoque';
+        escrever(`${filial ? `Filial ${filial} · ` : ''}${assunto}`, MARGEM, y, { tamanho: 10.5 });
         y += 5;
         const filtros = [];
         if (config.busca) filtros.push(`produto "${config.busca}"`);
         if (config.categoria) filtros.push(`categoria ${config.categoria}`);
+        if (!tudo && mostrar.movimentacoes && tipo !== 'todas') filtros.push(tipo === 'entrada' ? 'só entradas' : 'só saídas');
         if (filtros.length) {
             escrever(`Filtros: ${filtros.join(' · ')}`, MARGEM, y, { tamanho: 9.5, cor: CINZA });
             y += 4.6;
@@ -199,6 +228,7 @@
         const r = dados.resumo;
         const quadros = [
             {
+                parte: 'movimento',
                 rotulo: 'Entradas no período',
                 valor: numero(r.entradas.registros),
                 detalhe: r.entradas.registros
@@ -207,6 +237,7 @@
                 cor: VERDE,
             },
             {
+                parte: 'movimento',
                 rotulo: 'Saídas no período',
                 valor: numero(r.saidas.registros),
                 detalhe: r.saidas.registros
@@ -215,6 +246,7 @@
                 cor: AZUL,
             },
             {
+                parte: 'falta',
                 rotulo: 'Em falta agora',
                 valor: numero(r.em_falta.total),
                 detalhe: r.em_falta.total
@@ -223,6 +255,7 @@
                 cor: r.em_falta.total ? VERMELHO : TEXTO,
             },
             {
+                parte: 'vencendo',
                 rotulo: `Vencendo (até ${dados.dias_validade} dias)`,
                 valor: numero(r.vencendo.lotes),
                 detalhe: r.vencendo.lotes
@@ -230,9 +263,10 @@
                     : 'nada vencendo',
                 cor: r.vencendo.lotes ? AMBAR : TEXTO,
             },
-        ];
+        ].filter((quadro) => mostrar[quadro.parte]);
         const vao = 4;
-        const larguraQuadro = (util - vao * 3) / 4;
+        // Com 1 ou 2 quadros, cada um ocupa meia página; com 4, um quarto.
+        const larguraQuadro = (util - vao * (Math.max(quadros.length, 2) - 1)) / Math.max(quadros.length, 2);
         const alturaQuadro = 23;
         quadros.forEach((quadro, indice) => {
             const x = MARGEM + indice * (larguraQuadro + vao);
@@ -250,118 +284,127 @@
         y += alturaQuadro + 10;
 
         /* ----- Entradas e saídas por produto ----- */
-        titulo('Entradas e saídas por produto',
-            '"Vendido" já desconta as vendas canceladas. "Outras saídas" são perdas, vencimentos, ajustes e devoluções. "Estoque agora" é a quantidade no momento em que o PDF foi gerado.');
-        const porProduto = dados.por_produto || [];
-        if (porProduto.length) {
-            tabela(
-                ['Produto', 'Categoria', 'Entradas', 'Vendido', 'Outras saídas', 'Estoque agora', 'Situação'],
-                porProduto.map((item) => {
-                    const situacoes = [textoEstoque(item.situacao_estoque), textoValidade(item.vence_em_dias)].filter(Boolean);
-                    return [
-                        item.nome,
-                        item.categoria || '',
-                        qtdOuTraco(item.entradas, item.unidade, '+'),
-                        qtdOuTraco(item.vendido, item.unidade),
-                        qtdOuTraco(item.outras_saidas, item.unidade),
-                        quantidade(item.estoque, item.unidade),
-                        situacoes.length ? situacoes.join(' / ') : 'Normal',
-                    ];
-                }),
-                {
-                    0: { cellWidth: 42, fontStyle: 'bold' },
-                    1: { cellWidth: 23 },
-                    2: { halign: 'right' },
-                    3: { halign: 'right' },
-                    4: { halign: 'right' },
-                    5: { halign: 'right' },
-                    6: { cellWidth: 35 },
-                },
-                6
-            );
-            if (dados.por_produto_limitado) semDados('A lista mostra os primeiros 1.000 produtos. Use a busca para ver outros.');
-        } else {
-            semDados('Nenhuma entrada ou saída de produto nesse período.');
+        if (mostrar.porProduto) {
+            titulo('Entradas e saídas por produto',
+                '"Vendido" já desconta as vendas canceladas. "Outras saídas" são perdas, vencimentos, ajustes e devoluções. "Estoque agora" é a quantidade no momento em que o PDF foi gerado.');
+            const porProduto = dados.por_produto || [];
+            if (porProduto.length) {
+                tabela(
+                    ['Produto', 'Categoria', 'Entradas', 'Vendido', 'Outras saídas', 'Estoque agora', 'Situação'],
+                    porProduto.map((item) => {
+                        const situacoes = [textoEstoque(item.situacao_estoque), textoValidade(item.vence_em_dias)].filter(Boolean);
+                        return [
+                            item.nome,
+                            item.categoria || '',
+                            qtdOuTraco(item.entradas, item.unidade, '+'),
+                            qtdOuTraco(item.vendido, item.unidade),
+                            qtdOuTraco(item.outras_saidas, item.unidade),
+                            quantidade(item.estoque, item.unidade),
+                            situacoes.length ? situacoes.join(' / ') : 'Normal',
+                        ];
+                    }),
+                    {
+                        0: { cellWidth: 42, fontStyle: 'bold' },
+                        1: { cellWidth: 23 },
+                        2: { halign: 'right' },
+                        3: { halign: 'right' },
+                        4: { halign: 'right' },
+                        5: { halign: 'right' },
+                        6: { cellWidth: 35 },
+                    },
+                    6
+                );
+                if (dados.por_produto_limitado) semDados('A lista mostra os primeiros 1.000 produtos. Use a busca para ver outros.');
+            } else {
+                semDados('Nenhuma entrada ou saída de produto nesse período.');
+            }
         }
 
         /* ----- Em falta ----- */
-        titulo('Produtos em falta ou no estoque mínimo', 'Situação no momento em que o PDF foi gerado.');
-        const emFalta = dados.em_falta || [];
-        if (emFalta.length) {
-            tabela(
-                ['Produto', 'Categoria', 'Tem agora', 'Mínimo', 'Falta para o mínimo', 'Última entrada', 'Situação'],
-                emFalta.map((item) => [
-                    item.nome,
-                    item.categoria || '',
-                    quantidade(item.estoque, item.unidade),
-                    item.estoque_minimo ? quantidade(item.estoque_minimo, item.unidade) : '-',
-                    item.falta ? quantidade(item.falta, item.unidade) : '-',
-                    item.ultima_entrada ? dataBR(item.ultima_entrada) : '-',
-                    textoEstoque(item.situacao),
-                ]),
-                {
-                    0: { cellWidth: 44, fontStyle: 'bold' },
-                    2: { halign: 'right' },
-                    3: { halign: 'right' },
-                    4: { halign: 'right' },
-                    6: { cellWidth: 31 },
-                },
-                6
-            );
-        } else {
-            semDados('Nenhum produto em falta: todos estão acima do estoque mínimo.');
+        if (mostrar.falta) {
+            titulo('Produtos em falta ou no estoque mínimo', 'Situação no momento em que o PDF foi gerado.');
+            const emFalta = dados.em_falta || [];
+            if (emFalta.length) {
+                tabela(
+                    ['Produto', 'Categoria', 'Tem agora', 'Mínimo', 'Falta para o mínimo', 'Última entrada', 'Situação'],
+                    emFalta.map((item) => [
+                        item.nome,
+                        item.categoria || '',
+                        quantidade(item.estoque, item.unidade),
+                        item.estoque_minimo ? quantidade(item.estoque_minimo, item.unidade) : '-',
+                        item.falta ? quantidade(item.falta, item.unidade) : '-',
+                        item.ultima_entrada ? dataBR(item.ultima_entrada) : '-',
+                        textoEstoque(item.situacao),
+                    ]),
+                    {
+                        0: { cellWidth: 44, fontStyle: 'bold' },
+                        2: { halign: 'right' },
+                        3: { halign: 'right' },
+                        4: { halign: 'right' },
+                        6: { cellWidth: 31 },
+                    },
+                    6
+                );
+            } else {
+                semDados('Nenhum produto em falta: todos estão acima do estoque mínimo.');
+            }
         }
 
         /* ----- Vencendo ----- */
-        titulo(`Lotes vencidos ou que vencem em até ${dados.dias_validade} dias`, 'Lotes com produto na prateleira. Situação no momento em que o PDF foi gerado.');
-        const vencendo = dados.vencendo || [];
-        if (vencendo.length) {
-            tabela(
-                ['Produto', 'Categoria', 'Lote', 'Quantidade', 'Validade', 'Situação'],
-                vencendo.map((item) => [
-                    item.nome,
-                    item.categoria || '',
-                    item.lote && item.lote !== 'SEM-LOTE' ? item.lote : 'Sem lote',
-                    quantidade(item.quantidade, item.unidade),
-                    dataBR(item.validade),
-                    textoValidade(item.dias),
-                ]),
-                {
-                    0: { cellWidth: 50, fontStyle: 'bold' },
-                    3: { halign: 'right' },
-                },
-                5
-            );
-        } else {
-            semDados(`Nenhum lote vencido ou vencendo nos próximos ${dados.dias_validade} dias.`);
+        if (mostrar.vencendo) {
+            titulo(`Lotes vencidos ou que vencem em até ${dados.dias_validade} dias`, 'Lotes com produto na prateleira. Situação no momento em que o PDF foi gerado.');
+            const vencendo = dados.vencendo || [];
+            if (vencendo.length) {
+                tabela(
+                    ['Produto', 'Categoria', 'Lote', 'Quantidade', 'Validade', 'Situação'],
+                    vencendo.map((item) => [
+                        item.nome,
+                        item.categoria || '',
+                        item.lote && item.lote !== 'SEM-LOTE' ? item.lote : 'Sem lote',
+                        quantidade(item.quantidade, item.unidade),
+                        dataBR(item.validade),
+                        textoValidade(item.dias),
+                    ]),
+                    {
+                        0: { cellWidth: 50, fontStyle: 'bold' },
+                        3: { halign: 'right' },
+                    },
+                    5
+                );
+            } else {
+                semDados(`Nenhum lote vencido ou vencendo nos próximos ${dados.dias_validade} dias.`);
+            }
         }
 
         /* ----- Movimentações ----- */
-        const mov = dados.movimentacoes || { itens: [], total: 0 };
-        titulo('Movimentações do período', mov.total > mov.itens.length
-            ? `Da mais recente para a mais antiga. Mostrando as ${numero(mov.itens.length)} mais recentes de ${numero(mov.total)}.`
-            : 'Da mais recente para a mais antiga.');
-        if (mov.itens.length) {
-            tabela(
-                ['Data e hora', 'Produto', 'Tipo', 'Motivo', 'Quantidade', 'Quem registrou'],
-                mov.itens.map((item) => [
-                    `${dataBR(item.data)} ${String(item.data).slice(11, 16)}`,
-                    item.produto,
-                    item.tipo === 'entrada' ? 'Entrada' : 'Saída',
-                    item.detalhe ? `${item.motivo}\n${item.detalhe}` : item.motivo,
-                    `${item.tipo === 'entrada' ? '+' : '-'}${quantidade(item.quantidade, item.unidade)}`,
-                    item.responsavel || '-',
-                ]),
-                {
-                    0: { cellWidth: 27 },
-                    1: { cellWidth: 38, fontStyle: 'bold' },
-                    2: { cellWidth: 15 },
-                    4: { halign: 'right', cellWidth: 22 },
-                    5: { cellWidth: 28 },
-                }
-            );
-        } else {
-            semDados('Nenhuma movimentação nesse período.');
+        if (mostrar.movimentacoes) {
+            const mov = dados.movimentacoes || { itens: [], total: 0 };
+            const nomeMov = { todas: 'Movimentações', entrada: 'Entradas', saida: 'Saídas' }[tudo ? 'todas' : tipo];
+            titulo(`${nomeMov} do período`, mov.total > mov.itens.length
+                ? `Da mais recente para a mais antiga. Mostrando as ${numero(mov.itens.length)} mais recentes de ${numero(mov.total)}.`
+                : 'Da mais recente para a mais antiga.');
+            if (mov.itens.length) {
+                tabela(
+                    ['Data e hora', 'Produto', 'Tipo', 'Motivo', 'Quantidade', 'Quem registrou'],
+                    mov.itens.map((item) => [
+                        `${dataBR(item.data)} ${String(item.data).slice(11, 16)}`,
+                        item.produto,
+                        item.tipo === 'entrada' ? 'Entrada' : 'Saída',
+                        item.detalhe ? `${item.motivo}\n${item.detalhe}` : item.motivo,
+                        `${item.tipo === 'entrada' ? '+' : '-'}${quantidade(item.quantidade, item.unidade)}`,
+                        item.responsavel || '-',
+                    ]),
+                    {
+                        0: { cellWidth: 27 },
+                        1: { cellWidth: 38, fontStyle: 'bold' },
+                        2: { cellWidth: 15 },
+                        4: { halign: 'right', cellWidth: 22 },
+                        5: { cellWidth: 28 },
+                    }
+                );
+            } else {
+                semDados(`Nenhuma ${{ Movimentações: 'movimentação', Entradas: 'entrada', Saídas: 'saída' }[nomeMov]} nesse período.`);
+            }
         }
 
         /* ----- Rodapé em todas as páginas ----- */
@@ -371,12 +414,19 @@
             doc.setDrawColor(...BORDA);
             doc.setLineWidth(0.3);
             doc.line(MARGEM, altura - 12, largura - MARGEM, altura - 12);
-            escrever(`Hydra PDV · Relatório de Estoque${filial ? ` · Filial ${filial}` : ''}`, MARGEM, altura - 7.5, { tamanho: 8, cor: CINZA });
+            escrever(`Hydra PDV · Relatório de Estoque${nomeParte ? ` · ${nomeParte}` : ''}${filial ? ` · Filial ${filial}` : ''}`, MARGEM, altura - 7.5, { tamanho: 8, cor: CINZA });
             escrever(`Página ${pagina} de ${paginas}`, largura - MARGEM, altura - 7.5, { tamanho: 8, cor: CINZA, alinhar: 'right' });
         }
 
         if (config.retornar) return doc;
-        doc.save(`relatorio-estoque_${dataBR(de).replace(/\//g, '-')}_a_${dataBR(ate).replace(/\//g, '-')}.pdf`);
+        const arquivoData = (chave) => dataBR(chave).replace(/\//g, '-');
+        const periodo = `${arquivoData(de)}_a_${arquivoData(ate)}`;
+        let sufixo = periodo;
+        if (parte === 'falta') sufixo = `em-falta_${arquivoData(chaveHoje(agora))}`;
+        else if (parte === 'vencendo') sufixo = `vencendo_${arquivoData(chaveHoje(agora))}`;
+        else if (parte === 'movimento' && visao === 'produtos') sufixo = `por-produto_${periodo}`;
+        else if (parte === 'movimento') sufixo = `${{ todas: 'movimentacoes', entrada: 'entradas', saida: 'saidas' }[tipo]}_${periodo}`;
+        doc.save(`relatorio-estoque_${sufixo}.pdf`);
         return doc;
     }
 

@@ -444,6 +444,13 @@
 
             if (!podeConfigurarLoja) return;
         } catch (err) {
+            // Falha que não é 401: aviso com "Tentar de novo", e não a prévia
+            // pública (campos vazios e desativados) para um usuário logado.
+            if (!window.hydraEhVisitante(err)) {
+                window.hydraAvisoFalhaSessao(err);
+                nomeFilialIntro.textContent = 'não foi possível carregar';
+                return;
+            }
             alertasPreview.hidden = false;
             nomeFilialIntro.textContent = 'demonstração';
             // A prévia pública exibe apenas campos vazios e desativados.

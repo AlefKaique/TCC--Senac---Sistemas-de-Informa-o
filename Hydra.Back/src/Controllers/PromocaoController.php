@@ -19,7 +19,7 @@ use Hydra\Support\Response;
  */
 final class PromocaoController
 {
-    /** Janela de "prestes a vencer" — a mesma do alerta de validade do Dashboard. */
+    /** Janela de "prestes a vencer" — a mesma do alerta de validade do Relatório. */
     private const DIAS_A_VENCER = 30;
 
     private PromocaoRepository $promocoes;

@@ -665,7 +665,9 @@
             // Mesma permissao que a API exige em GET /api/usuarios.
             if (!window.hydraGuardaDeTela(usuario, ['equipe.gerenciar'])) return;
         } catch (err) {
-            // Visitante não autenticado (demo pública): mantém a tela estática, sem carregar dados reais.
+            // Visitante não autenticado (demo pública, 401): mantém a tela
+            // estática, sem carregar dados reais. Outra falha: aviso.
+            if (!window.hydraEhVisitante(err)) window.hydraAvisoFalhaSessao(err);
             return;
         }
 

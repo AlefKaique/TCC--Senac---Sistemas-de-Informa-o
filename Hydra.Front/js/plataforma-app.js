@@ -340,7 +340,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const data = await carregar('/plataforma/cadastros-pendentes');
     const tbody = document.getElementById('pendentes-body');
     document.getElementById('pendentes-vazio').hidden = data.cadastros.length > 0;
-    tbody.innerHTML = data.cadastros.map((item) => `<tr><td>${escapeHtml(item.nome)}</td><td>${escapeHtml(item.email)} <button type="button" class="plataforma-btn" data-copiar="${escapeHtml(item.email)}">Copiar e-mail</button></td><td>${escapeHtml(item.loja)}</td><td>${dateTime(item.criado_em)}</td><td>${Number(item.dias)} ${Number(item.dias) === 1 ? 'dia' : 'dias'}</td></tr>`).join('');
+    tbody.innerHTML = data.cadastros.map((item) => `<tr><td>${escapeHtml(item.nome)}</td><td>${escapeHtml(item.email)} <button type="button" class="plataforma-btn" data-copiar="${escapeHtml(item.email)}">Copiar e-mail</button></td><td>${item.loja ? escapeHtml(item.loja) : '—'}</td><td>${dateTime(item.criado_em)}</td><td>${Number(item.dias)} ${Number(item.dias) === 1 ? 'dia' : 'dias'}</td></tr>`).join('');
   }
 
   async function carregarAuditoria() {

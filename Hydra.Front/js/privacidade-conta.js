@@ -57,7 +57,7 @@
         premium: [
             'Tudo do Hydra Flex',
             'Cadastro de até 20 funcionários',
-            'Relatórios avançados e dashboards',
+            'Relatórios avançados e completos',
             'Prioridade no suporte técnico',
             'Recursos futuros liberados automaticamente',
         ],

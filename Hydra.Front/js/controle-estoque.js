@@ -883,6 +883,9 @@
             closeModal();
             refreshAll();
             showToast(isEntrada ? `Entrada registrada para "${p.name}"` : `Saída registrada para "${p.name}"`);
+            // Uma saída pode criar um alerta (esgotado, abaixo do mínimo):
+            // confere já, para o pop-up de alerta (notificacoes.js) avisar.
+            if (usingRealApi && window.hydraVerificarAlertas) window.hydraVerificarAlertas();
         });
     }
 
@@ -911,7 +914,7 @@
         renderTable();
     });
 
-    /* O Dashboard manda o termo pela URL (?busca=) ao clicar em "Ver produto"
+    /* O Relatório manda o termo pela URL (?busca=) ao clicar em "Ver produto"
        nos alertas de estoque e validade — aqui a tela já abre filtrada. */
     const buscaDaUrl = new URLSearchParams(window.location.search).get('busca');
     if (buscaDaUrl) {
@@ -1017,7 +1020,16 @@
         try {
             ({ usuario } = await window.hydraSessao());
         } catch (err) {
-            // Visitante não autenticado (demo pública): mantém os itens visíveis, mostrando todas as telas.
+            // Só quem não está logado (401) vê o catálogo de demonstração.
+            // Outra falha (rede, servidor) mostrava esses produtos inventados
+            // a um usuário logado, como se fossem os da loja.
+            if (!window.hydraEhVisitante(err)) {
+                window.hydraAvisoFalhaSessao(err);
+                aplicarBotoesPorPermissao(); // sem permissões carregadas: esconde Novo produto/Entrada/Saída
+                products = [];
+                refreshAll();
+                return;
+            }
             products = seedProducts();
             refreshAll();
             return;

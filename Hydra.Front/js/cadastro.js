@@ -41,7 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const nomeInput = document.getElementById('nome');
   const emailInput = document.getElementById('email');
-  const nomeLojaInput = document.getElementById('nome-loja');
+  /* O nome da loja não é mais pedido aqui: no primeiro acesso o
+     Administrador cria a primeira filial (primeira-filial.html), e o nome
+     dela passa a ser o nome da loja (FilialController::store). Antes o
+     mesmo nome era digitado duas vezes, no Cadastro e na filial. */
 
   // E-mail digitado no "Criar conta grátis" da página inicial.
   try {
@@ -49,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (emailDaHome && emailInput && !emailInput.value) emailInput.value = emailDaHome.trim();
   } catch (e) { /* sem parâmetro: segue o formulário vazio */ }
 
-  [senha, confirmarSenha, nomeInput, emailInput, nomeLojaInput].forEach(input => {
+  [senha, confirmarSenha, nomeInput, emailInput].forEach(input => {
     if (input) input.addEventListener('input', () => clearError(input));
   });
 
@@ -65,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* Campo que o back-end aponta em "campo" -> input da tela. */
-  const CAMPOS_API = { nome: nomeInput, email: emailInput, nome_loja: nomeLojaInput, senha };
+  const CAMPOS_API = { nome: nomeInput, email: emailInput, senha };
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -81,13 +84,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /* Validação junto de cada campo, no lugar do alerta nativo do
-       navegador que só dizia "Preencha nome, e-mail e nome da loja" (QA 002). */
+       navegador que só dizia "Preencha nome e e-mail" (QA 002). */
     const erroNome = erroNomePessoa(nomeInput.value.trim());
     if (erroNome) marcar(nomeInput, erroNome);
     const email = emailInput.value.trim();
     if (!email) marcar(emailInput, 'Informe seu e-mail.');
     else if (!emailInput.checkValidity()) marcar(emailInput, 'Informe um e-mail válido.');
-    if (!nomeLojaInput.value.trim()) marcar(nomeLojaInput, 'Informe o nome da loja.');
 
     const erroSenha = window.HydraPasswordRules
       ? window.HydraPasswordRules.primeiraRegraFalha(senha.value)
@@ -120,7 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
           nome: document.getElementById('nome').value.trim(),
           email: document.getElementById('email').value.trim(),
           senha: senha.value,
-          nome_loja: document.getElementById('nome-loja').value.trim(),
         },
       });
 

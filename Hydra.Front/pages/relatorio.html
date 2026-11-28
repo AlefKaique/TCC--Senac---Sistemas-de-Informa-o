@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydra · Relatório de Estoque</title>
+    <link rel="icon" type="image/png" href="../img/logo-hydra.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/dashboard.css?v=2026112820">
+    <link rel="stylesheet" href="../css/relatorio-estoque.css?v=2026112803">
+    <link rel="stylesheet" href="../css/menu-submenu.css?v=2026112606">
+    <link rel="stylesheet" href="../css/public-demo.css?v=2026112810">
+    <link rel="stylesheet" href="../css/font-size.css">
+    <link rel="stylesheet" href="../css/avatar.css">
+</head>
+
+<body>
+
+    <!-- Tudo isolado dentro de .hydro-dash para não colidir com o CSS/JS do restante do sistema -->
+    <div class="hydro-dash">
+
+        <button class="hydro-mobile-toggle" id="hydroMobileToggle" aria-label="Abrir menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+        </button>
+        <div class="hydro-sidebar-overlay" id="hydroSidebarOverlay"></div>
+
+        <div class="hydro-app">
+
+            <!-- Sidebar -->
+            <aside class="hydro-sidebar" id="hydroSidebar">
+                <a class="hydro-brand" href="controle-estoque.html" aria-label="Ir para o início">
+                    <img src="../img/logo-hydra.png" alt="Hydra PDV">
+                </a>
+
+                <nav class="hydro-menu">
+                    <p class="hydro-menu-label">Menu</p>
+                    <ul>
+                        <li><a href="controle-estoque.html" data-view="estoque"><i class="hydro-ic hydro-ic-inventory"></i><span>Estoque</span></a></li>
+                        <li><a href="caixa.html" data-view="caixa"><i class="hydro-ic hydro-ic-drawer"></i><span>Vendas</span></a>
+                        </li>
+                        <li><a href="#" class="hydro-active" data-view="relatorio"><i
+                                    class="hydro-ic hydro-ic-home"></i><span>Relatório</span></a></li>
+                    </ul>
+                </nav>
+
+                <div class="hydro-menu hydro-menu-admin">
+                    <p class="hydro-menu-label" id="hydroMenuAdminLabel"><span class="hydro-menu-restricted">Admin</span></p>
+                    <ul>
+                        <li id="hydroLiEquipe"><a href="gerenciar-usuarios.html"><i
+                                    class="hydro-ic hydro-ic-users"></i><span>Equipe</span></a></li>
+                        <li id="hydroLiConfig">
+                            <div class="hydro-submenu">
+                                <button type="button" class="hydro-submenu-toggle" aria-expanded="false" aria-controls="hydroSubmenuConfig" data-demo-allow><i class="hydro-ic hydro-ic-gear"></i><span>Configurações</span><i class="hydro-submenu-seta" aria-hidden="true"></i></button>
+                                <ul class="hydro-submenu-itens" id="hydroSubmenuConfig" hidden>
+                                    <li><a href="configuracoes-loja.html">Dados da loja</a></li>
+                                    <li><a href="filiais.html">Filiais</a></li>
+                                </ul>
+                            </div>
+                        </li>
+                        <li id="hydroLiCargos"><a href="cargos.html"><i
+                                    class="hydro-ic hydro-ic-shield"></i><span>Cargos</span></a></li>
+                        <li id="hydroLiPromocoes"><a href="promocoes.html"><i
+                                    class="hydro-ic hydro-ic-tag"></i><span>Promoções</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="hydro-menu hydro-menu-bottom">
+                    <p class="hydro-menu-label">Geral</p>
+                    <ul>
+                        <li><a href="login.html" data-view="sair"><i class="hydro-ic hydro-ic-exit"></i><span>Sair</span></a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Main -->
+            <main class="hydro-main">
+                <header class="hydro-topbar">
+                    <h1>Relatório de Estoque</h1>
+                    <div class="hydro-topbar-actions">
+                        <a class="hydro-btn hydro-btn-outline hydro-btn-sm" id="hydroAlertasSettingsLink"
+                            href="configuracoes-loja.html#alertas" hidden>Configurar alertas</a>
+                        <button class="hydro-icon-btn" aria-label="Notificações">
+                            <i class="hydro-ic hydro-ic-bell"></i>
+                            <span class="hydro-notif-dot"></span>
+                        </button>
+                        <div class="hydro-user">
+                            <span class="hydro-avatar" id="hydroUserAvatar" role="img" aria-label="Usuário"></span>
+                            <span class="hydro-user-name" id="hydroUserName"></span>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="re" id="re">
+
+                    <!-- ===== Filtros (sempre da filial em que a pessoa está trabalhando) ===== -->
+                    <section class="re-card re-filtros" aria-label="Filtros do relatório">
+                        <div class="re-filtros-linha">
+                            <div class="re-campo re-campo-data">
+                                <label for="reDe">Data inicial</label>
+                                <input type="date" id="reDe">
+                            </div>
+                            <div class="re-campo re-campo-data">
+                                <label for="reAte">Data final</label>
+                                <input type="date" id="reAte">
+                            </div>
+                            <div class="re-campo re-campo-busca">
+                                <label for="reBusca">Produto</label>
+                                <div class="re-busca">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                                    <input type="search" id="reBusca" placeholder="Nome ou código de barras" autocomplete="off" maxlength="100">
+                                </div>
+                            </div>
+                            <div class="re-campo re-campo-categoria">
+                                <label for="reCategoria">Categoria</label>
+                                <select id="reCategoria">
+                                    <option value="">Todas</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="re-filtros-rodape">
+                            <p class="re-filtros-info" id="reInfo" aria-live="polite"></p>
+                            <button type="button" class="re-btn re-btn-cheio re-btn-pdf" id="rePdf">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M12 11v6m0 0-2.5-2.5M12 17l2.5-2.5" /></svg>
+                                Baixar PDF
+                            </button>
+                        </div>
+                    </section>
+
+                    <div class="re-situacao" id="reSituacao" role="status" aria-live="polite"></div>
+
+                    <!-- ===== Cartões = abas: cada cartão mostra o número e abre a parte dele logo abaixo ===== -->
+                    <div class="re-cartoes" id="reCartoes" role="tablist" aria-label="Partes do relatório">
+                        <button type="button" role="tab" class="re-cartao re-cartao-movimento" id="reAba-movimento" data-aba="movimento"
+                            aria-controls="rePainel-movimento" aria-selected="true">
+                            <span class="re-cartao-rotulo">Entradas e saídas <span class="re-cartao-quando">no período</span></span>
+                            <span class="re-cartao-par">
+                                <span class="re-stat re-stat-entrada">
+                                    <span class="re-cartao-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14" /></svg></span>
+                                    <span class="re-stat-texto">
+                                        <span class="re-stat-linha"><strong class="re-cartao-valor" id="reValorEntradas">—</strong> <span class="re-stat-nome">entradas</span></span>
+                                        <span class="re-cartao-detalhe" id="reDetalheEntradas"></span>
+                                    </span>
+                                </span>
+                                <span class="re-stat re-stat-saida">
+                                    <span class="re-cartao-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 15V4m0 0L8 8m4-4 4 4M5 20h14" /></svg></span>
+                                    <span class="re-stat-texto">
+                                        <span class="re-stat-linha"><strong class="re-cartao-valor" id="reValorSaidas">—</strong> <span class="re-stat-nome">saídas</span></span>
+                                        <span class="re-cartao-detalhe" id="reDetalheSaidas"></span>
+                                    </span>
+                                </span>
+                            </span>
+                        </button>
+                        <button type="button" role="tab" class="re-cartao re-cartao-falta" id="reAba-falta" data-aba="falta"
+                            aria-controls="rePainel-falta" aria-selected="false" tabindex="-1">
+                            <span class="re-cartao-rotulo">Em falta <span class="re-cartao-quando">agora</span></span>
+                            <span class="re-stat">
+                                <span class="re-cartao-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z" /><path d="M12 10v4m0 3h.01" /></svg></span>
+                                <span class="re-stat-texto">
+                                    <span class="re-stat-linha"><strong class="re-cartao-valor" id="reValorFalta">—</strong> <span class="re-stat-nome" id="reNomeFalta">produtos</span></span>
+                                    <span class="re-cartao-detalhe" id="reDetalheFalta"></span>
+                                </span>
+                            </span>
+                        </button>
+                        <button type="button" role="tab" class="re-cartao re-cartao-vencendo" id="reAba-vencendo" data-aba="vencendo"
+                            aria-controls="rePainel-vencendo" aria-selected="false" tabindex="-1">
+                            <span class="re-cartao-rotulo">Vencendo <span class="re-cartao-quando">agora</span></span>
+                            <span class="re-stat">
+                                <span class="re-cartao-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4m8-4v4M12 14v3l2 1" /></svg></span>
+                                <span class="re-stat-texto">
+                                    <span class="re-stat-linha"><strong class="re-cartao-valor" id="reValorVencendo">—</strong> <span class="re-stat-nome" id="reNomeVencendo">lotes</span></span>
+                                    <span class="re-cartao-detalhe" id="reDetalheVencendo"></span>
+                                </span>
+                            </span>
+                        </button>
+                    </div>
+
+                    <!-- ===== Conteúdo do cartão escolhido ===== -->
+                    <section class="re-card re-painel" id="rePainel">
+                        <div class="re-aba-painel" role="tabpanel" id="rePainel-movimento" aria-labelledby="reAba-movimento" tabindex="0">
+                            <div class="re-painel-topo">
+                                <div class="re-segmentos" role="group" aria-label="Como mostrar as entradas e saídas">
+                                    <button type="button" class="re-segmento" data-visao="produtos" aria-pressed="true">Por produto</button>
+                                    <button type="button" class="re-segmento" data-visao="lista" aria-pressed="false">Cada movimentação</button>
+                                </div>
+                                <div class="re-segmentos" id="reTipos" role="group" aria-label="Quais movimentações mostrar" hidden>
+                                    <button type="button" class="re-segmento" data-tipo="todas" aria-pressed="true">Todas</button>
+                                    <button type="button" class="re-segmento" data-tipo="entrada" aria-pressed="false">Só entradas</button>
+                                    <button type="button" class="re-segmento" data-tipo="saida" aria-pressed="false">Só saídas</button>
+                                </div>
+                            </div>
+                            <p class="re-ajuda" id="reAjudaMovimento"></p>
+                            <div id="reConteudo-produtos"></div>
+                            <div id="reConteudo-movimentacoes" hidden></div>
+                        </div>
+
+                        <div class="re-aba-painel" role="tabpanel" id="rePainel-falta" aria-labelledby="reAba-falta" tabindex="0" hidden>
+                            <p class="re-ajuda">Produtos que acabaram ou chegaram ao estoque mínimo. É a situação de agora: não depende do período escolhido.</p>
+                            <div id="reConteudo-falta"></div>
+                        </div>
+
+                        <div class="re-aba-painel" role="tabpanel" id="rePainel-vencendo" aria-labelledby="reAba-vencendo" tabindex="0" hidden>
+                            <div class="re-painel-topo">
+                                <p class="re-ajuda">Lotes com produto na prateleira que já venceram ou vencem em breve. É a situação de agora: não depende do período escolhido.</p>
+                                <div class="re-campo re-campo-inline">
+                                    <label for="reDiasValidade">Vencem em até</label>
+                                    <select id="reDiasValidade">
+                                        <option value="7">7 dias</option>
+                                        <option value="15">15 dias</option>
+                                        <option value="30" selected>30 dias</option>
+                                        <option value="60">60 dias</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="reConteudo-vencendo"></div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+
+        <div class="hydro-toast" id="hydroToast"></div>
+
+    </div>
+
+    <div class="accessibility-widget">
+        <button id="font-plus" data-font-action="increase">A+</button>
+        <button id="font-minus" data-font-action="decrease">A−</button>
+    </div>
+
+    <script src="../js/api.js?v=2026112820"></script>
+    <script src="../js/menu-submenu.js?v=2026112605"></script>
+    <script src="../js/notificacoes.js?v=2026112820"></script>
+    <script src="../js/trocar-filial.js?v=20261126"></script>
+    <script src="../js/privacidade-menu.js"></script>
+    <script src="../js/public-demo.js?v=2026112820"></script>
+    <script src="../js/font-size.js"></script>
+    <!-- jsPDF + AutoTable (MIT), servidos daqui mesmo: a CSP só aceita scripts do próprio site. -->
+    <script src="../js/vendor/jspdf.umd.min.js?v=4.2.1"></script>
+    <script src="../js/vendor/jspdf.plugin.autotable.min.js?v=5.0.9"></script>
+    <script src="../js/relatorio-estoque-pdf.js?v=2026112810"></script>
+    <script src="../js/relatorio-estoque.js?v=2026112810"></script>
+</body>
+
+</html>

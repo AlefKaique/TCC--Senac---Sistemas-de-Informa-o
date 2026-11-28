@@ -105,42 +105,6 @@
     font-weight: 700;
 }
 
-/* Lucro do mês em destaque, logo abaixo do perfil. */
-.hydro-stock .hydro-filial-lucro {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 14px 16px;
-    border-radius: var(--radius-md);
-    background: var(--bg);
-}
-
-.hydro-stock .hydro-filial-lucro-rotulo {
-    color: var(--muted);
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.hydro-stock .hydro-filial-lucro-valor {
-    color: var(--navy-900);
-    font-size: 26px;
-    font-weight: 800;
-    line-height: 1.2;
-}
-
-.hydro-stock .hydro-filial-lucro-valor.hydro-positivo {
-    color: var(--green);
-}
-
-.hydro-stock .hydro-filial-lucro-valor.hydro-negativo {
-    color: var(--red);
-}
-
-.hydro-stock .hydro-filial-lucro-sub {
-    color: var(--muted);
-    font-size: 13.5px;
-}
-
 /* Dados cadastrais em linhas "rótulo: valor". */
 .hydro-stock .hydro-filial-dados {
     display: grid;
